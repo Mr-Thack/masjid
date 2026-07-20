@@ -6,5 +6,11 @@ export default defineConfig({
   plugins: [tailwindcss(), sveltekit()],
   server: {
     port: 5175,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5173',
+        changeOrigin: true,
+      },
+    },
   },
 });

@@ -37,27 +37,40 @@ export interface PagePayload {
 
 const BASE = '/api/v1/masjids';
 
-export async function fetchPagePayload(slug: string): Promise<PagePayload> {
-  const res = await fetch(`${BASE}/${slug}`);
+export async function fetchPagePayload(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<PagePayload> {
+  const res = await customFetch(`${BASE}/${slug}`);
   if (!res.ok) throw new Error(`Failed to fetch page payload: ${res.status}`);
   return res.json();
 }
 
-export async function fetchPrayerTimes(slug: string, date?: string): Promise<DailyTimes> {
+export async function fetchPrayerTimes(
+  slug: string,
+  date?: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<DailyTimes> {
   const params = date ? `?date=${date}` : '';
-  const res = await fetch(`${BASE}/${slug}/prayer-times${params}`);
+  const res = await customFetch(`${BASE}/${slug}/prayer-times${params}`);
   if (!res.ok) throw new Error(`Failed to fetch prayer times: ${res.status}`);
   return res.json();
 }
 
-export async function fetchAnnouncements(slug: string): Promise<{ announcements: Announcement[] }> {
-  const res = await fetch(`${BASE}/${slug}/announcements`);
+export async function fetchAnnouncements(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<{ announcements: Announcement[] }> {
+  const res = await customFetch(`${BASE}/${slug}/announcements`);
   if (!res.ok) throw new Error(`Failed to fetch announcements: ${res.status}`);
   return res.json();
 }
 
-export async function fetchJumuah(slug: string): Promise<{ sessions: JumuahSession[] }> {
-  const res = await fetch(`${BASE}/${slug}/jumuah`);
+export async function fetchJumuah(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<{ sessions: JumuahSession[] }> {
+  const res = await customFetch(`${BASE}/${slug}/jumuah`);
   if (!res.ok) throw new Error(`Failed to fetch jumuah: ${res.status}`);
   return res.json();
 }

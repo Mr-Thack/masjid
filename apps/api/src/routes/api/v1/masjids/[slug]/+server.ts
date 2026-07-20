@@ -7,6 +7,7 @@ import {
   announcements,
 } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
+import { computeIqaamah } from '$lib/server/prayer/engine';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -58,6 +59,19 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       .orderBy(desc(announcements.publishedAt))
       .limit(20);
 
+    const today = new Date();
+    const times = await computeIqaamah(
+      {
+        id: masjid.id,
+        calculation_method: masjid.calculationMethod,
+        latitude: masjid.latitude,
+        longitude: masjid.longitude,
+        timezone: masjid.timezone,
+      },
+      today,
+      db,
+    );
+
     return JsonResponse({
       masjid: {
         slug: masjid.slug,
@@ -87,6 +101,14 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         : null,
       calculation_method: masjid.calculationMethod,
       timezone: masjid.timezone,
+      prayer_times: {
+        fajr: times.fajr,
+        sunrise: times.sunrise,
+        dhuhr: times.dhuhr,
+        asr: times.asr,
+        maghrib: times.maghrib,
+        isha: times.isha,
+      },
       jumuah: sessions
         .filter((s) => s.isActive)
         .map((s) => ({

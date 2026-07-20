@@ -39,8 +39,11 @@ export interface PagePayload {
 
 const BASE = '/api/v1/masjids';
 
-export async function fetchPagePayload(slug: string): Promise<PagePayload> {
-  const res = await fetch(`${BASE}/${slug}`);
+export async function fetchPagePayload(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<PagePayload> {
+  const res = await customFetch(`${BASE}/${slug}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch page payload: ${res.status}`);
   }
@@ -50,9 +53,10 @@ export async function fetchPagePayload(slug: string): Promise<PagePayload> {
 export async function fetchPrayerTimes(
   slug: string,
   date?: string,
+  customFetch: typeof fetch = globalThis.fetch,
 ): Promise<DailyTimes> {
   const params = date ? `?date=${date}` : '';
-  const res = await fetch(`${BASE}/${slug}/prayer-times${params}`);
+  const res = await customFetch(`${BASE}/${slug}/prayer-times${params}`);
   if (!res.ok) {
     throw new Error(`Failed to fetch prayer times: ${res.status}`);
   }

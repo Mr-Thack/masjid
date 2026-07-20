@@ -40,22 +40,12 @@
   {#each times as row, i}
     {@const isNext = i === nextPrayerIndex}
     <div
-      class="flex items-center rounded-xl border px-6 py-5 transition-all duration-700"
-      class:bg-gray-900/80={!isNext}
-      class:bg-gray-800/90={isNext}
-      class:border-gray-800={!isNext}
-      class:border-accent={isNext}
-      style="border-color: {isNext ? accentColor : ''}; --accent: {accentColor};"
+      class="flex items-center rounded-xl border px-6 py-5 transition-all duration-700 {isNext ? 'bg-gray-800/90' : 'bg-gray-900/80'}"
+      style="border-color: {isNext ? accentColor : '#1f2937'}; --accent: {accentColor};"
     >
-      <style>
-        .border-accent {
-          border-color: var(--accent);
-        }
-      </style>
       <div class="w-40 flex-shrink-0">
         <span
-          class="text-3xl font-bold tracking-widest uppercase"
-          class:text-gray-100={!isNext}
+          class="text-3xl font-bold tracking-widest uppercase {isNext ? '' : 'text-gray-100'}"
           style="color: {isNext ? accentColor : ''}; font-family: var(--font-heading); opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: all 0.6s ease-out {i * 80}ms;"
         >
           {row.name}

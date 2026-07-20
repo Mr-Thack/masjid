@@ -86,9 +86,7 @@
   </header>
 
   <main
-    class="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24"
-    class:opacity-0={transitioning}
-    class:opacity-100={!transitioning}
+    class="flex-1 max-w-4xl mx-auto w-full px-4 py-6 pb-24 {transitioning ? 'opacity-0' : 'opacity-100'}"
     style="transition: opacity 0.2s ease;"
   >
     {@render children()}
@@ -101,8 +99,7 @@
     <div class="max-w-4xl mx-auto flex items-center justify-around py-2 px-4">
       <a
         href={navHref('')}
-        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline"
-        class:bg-white/5={isActive('home')}
+        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline {isActive('home') ? 'bg-white/5' : ''}"
         style="color: {isActive('home') ? 'var(--color-accent)' : '#9ca3af'};"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,8 +110,7 @@
 
       <a
         href={navHref('prayer')}
-        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline"
-        class:bg-white/5={isActive('prayer')}
+        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline {isActive('prayer') ? 'bg-white/5' : ''}"
         style="color: {isActive('prayer') ? 'var(--color-accent)' : '#9ca3af'};"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -125,8 +121,7 @@
 
       <a
         href={navHref('jumuah')}
-        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline"
-        class:bg-white/5={isActive('jumuah')}
+        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline {isActive('jumuah') ? 'bg-white/5' : ''}"
         style="color: {isActive('jumuah') ? 'var(--color-accent)' : '#9ca3af'};"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -137,8 +132,7 @@
 
       <a
         href={navHref('announcements')}
-        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline"
-        class:bg-white/5={isActive('announcements')}
+        class="flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors no-underline {isActive('announcements') ? 'bg-white/5' : ''}"
         style="color: {isActive('announcements') ? 'var(--color-accent)' : '#9ca3af'};"
       >
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
