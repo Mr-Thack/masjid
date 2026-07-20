@@ -36,34 +36,35 @@
   });
 </script>
 
-<div class="grid grid-cols-1 gap-3 w-full">
+<div class="prayer-board">
   {#each times as row, i}
     {@const isNext = i === nextPrayerIndex}
     <div
-      class="flex items-center rounded-xl border px-6 py-5 transition-all duration-700 {isNext ? 'bg-gray-800/90' : 'bg-gray-900/80'}"
-      style="border-color: {isNext ? accentColor : '#1f2937'}; --accent: {accentColor};"
+      class="prayer-row {isNext ? 'prayer-row--next' : ''}"
+      style="border-color: {isNext ? accentColor : '#1f2937'};"
     >
-      <div class="w-40 flex-shrink-0">
+      <div class="prayer-name">
         <span
-          class="text-3xl font-bold tracking-widest uppercase {isNext ? '' : 'text-gray-100'}"
-          style="color: {isNext ? accentColor : ''}; font-family: var(--font-heading); opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: all 0.6s ease-out {i * 80}ms;"
+          class="prayer-name-text {isNext ? 'prayer-name-text--next' : ''}"
+          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: opacity 0.6s ease-out {i * 80}ms, transform 0.6s ease-out {i * 80}ms;"
         >
           {row.name}
         </span>
       </div>
 
-      <div class="flex-1 flex items-center justify-center">
-        <span class="text-4xl font-light text-gray-400 tabular-nums tracking-wider"
-          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: all 0.6s ease-out {i * 80 + 100}ms;"
+      <div class="prayer-adhaan">
+        <span
+          class="prayer-adhaan-text"
+          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: opacity 0.6s ease-out {i * 80 + 100}ms, transform 0.6s ease-out {i * 80 + 100}ms;"
         >
           {row.adhaan}
         </span>
       </div>
 
-      <div class="w-40 flex-shrink-0 text-right">
+      <div class="prayer-iqaamah">
         <span
-          class="text-5xl font-extrabold tabular-nums tracking-wider"
-          style="color: {isNext ? accentColor : '#f9fafb'}; opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: all 0.6s ease-out {i * 80 + 200}ms;"
+          class="prayer-iqaamah-text {isNext ? 'prayer-iqaamah-text--next' : ''}"
+          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: opacity 0.6s ease-out {i * 80 + 200}ms, transform 0.6s ease-out {i * 80 + 200}ms;"
         >
           {row.iqaamah}
         </span>

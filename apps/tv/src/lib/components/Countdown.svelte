@@ -30,12 +30,12 @@
   });
 </script>
 
-<div class="flex flex-col items-center" class:animate-pulse={isUrgent}>
-  <span class="text-sm uppercase tracking-[0.2em] text-gray-500 mb-1">Next Prayer in</span>
+<div class="countdown-wrapper">
+  <span class="countdown-label {isUrgent ? 'animate-pulse' : ''}"
+    >Next Prayer in</span
+  >
   <span
-    class="text-4xl font-mono font-bold tabular-nums tracking-wider"
-    class:text-gray-100={!isUrgent}
-    style="color: {isUrgent ? 'var(--color-accent, #10b981)' : ''};"
+    class="countdown-time {isUrgent ? 'countdown-time--urgent animate-pulse' : ''}"
   >
     {display}
   </span>

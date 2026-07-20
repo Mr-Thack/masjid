@@ -10,17 +10,19 @@
 
 {#if announcement}
   <div
-    class="w-full py-4 overflow-hidden"
+    class="announcement-banner"
     style="background: linear-gradient(90deg, {accentColor}dd, {accentColor});"
   >
-    <div class="flex animate-marquee whitespace-nowrap">
-      <span class="inline-flex items-center gap-3 text-white text-xl font-semibold tracking-wide px-8">
+    <div class="announcement-marquee animate-marquee">
+      <span class="announcement-item">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           class="h-6 w-6"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          width="24"
+          height="24"
         >
           <path
             stroke-linecap="round"
@@ -36,6 +38,8 @@
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          width="24"
+          height="24"
         >
           <path
             stroke-linecap="round"
@@ -48,17 +52,4 @@
       </span>
     </div>
   </div>
-  <style>
-    @keyframes marquee {
-      0% {
-        transform: translateX(0);
-      }
-      100% {
-        transform: translateX(-50%);
-      }
-    }
-    .animate-marquee {
-      animation: marquee 25s linear infinite;
-    }
-  </style>
 {/if}

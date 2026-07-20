@@ -12,17 +12,16 @@
   let { sessions }: { sessions: Session[] } = $props();
 </script>
 
-<div class="flex items-center gap-4 bg-gray-800/80 rounded-xl border border-gray-700 px-5 py-3">
-  <div
-    class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
-    style="background: var(--color-accent, #10b981);"
-  >
+<div class="jumuah-notice">
+  <div class="jumuah-icon">
     <svg
       xmlns="http://www.w3.org/2000/svg"
       class="h-5 w-5 text-gray-950"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
+      width="20"
+      height="20"
     >
       <path
         stroke-linecap="round"
@@ -33,10 +32,10 @@
     </svg>
   </div>
   <div>
-    <p class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Jumu'ah</p>
-    <div class="flex gap-3 mt-1">
+    <p class="jumuah-label">Jumu'ah</p>
+    <div class="jumuah-times">
       {#each sessions as session}
-        <span class="text-lg font-bold text-gray-100">{session.time}</span>
+        <span class="jumuah-time">{session.time}</span>
       {/each}
     </div>
   </div>

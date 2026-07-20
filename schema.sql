@@ -176,6 +176,7 @@ CREATE TABLE admins (
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,        -- bcrypt hashed
     display_name TEXT,
+    whatsapp_phone TEXT,                -- E.164 format, used for WhatsApp-based Zero-UI auth
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
 );
@@ -194,4 +195,82 @@ CREATE TABLE custom_domains (
     verified_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
+);
+
+
+-- ============================================================
+-- Table 10: Configuration Transaction Branches (Zero-UI)
+-- ============================================================
+CREATE TABLE config_branches (
+    id TEXT PRIMARY KEY,
+    masjid_id TEXT NOT NULL,
+    admin_id TEXT NOT NULL,
+    branch_name TEXT NOT NULL DEFAULT 'main',
+    status TEXT NOT NULL DEFAULT 'OPEN',    -- 'OPEN' | 'MERGED' | 'ABANDONED'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_branches_state ON config_branches(masjid_id, status);
+
+
+-- ============================================================
+-- Table 11: Granular Intent Mutations (Zero-UI Staging Ledger)
+-- ============================================================
+CREATE TABLE config_mutations (
+    id TEXT PRIMARY KEY,
+    branch_id TEXT NOT NULL,
+    domain TEXT NOT NULL,                   -- 'THEME' | 'PROFILE' | 'PRAYER_RULES' | 'ANNOUNCEMENTS' | 'JUMUAH'
+    action_type TEXT NOT NULL,              -- 'UPSERT' | 'DELETE' | 'PATCH'
+    target_key TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    sequence_order INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(branch_id) REFERENCES config_branches(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_mutations_sequence ON config_mutations(branch_id, sequence_order ASC);
+
+
+-- ============================================================
+-- Table 12: Point-In-Time Snapshots (Zero-UI Time-Travel)
+-- ============================================================
+CREATE TABLE config_snapshots (
+    id TEXT PRIMARY KEY,
+    masjid_id TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    full_state_json TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_snapshots_chronology ON config_snapshots(masjid_id, created_at DESC);
+
+
+-- ============================================================
+-- Table 13: Multimodal Asset Map (Zero-UI Media)
+-- ============================================================
+CREATE TABLE masjid_assets (
+    id TEXT PRIMARY KEY,
+    masjid_id TEXT NOT NULL,
+    associated_domain TEXT NOT NULL,        -- 'ANNOUNCEMENTS' | 'TIMETABLE_PARSER' | 'THEME'
+    associated_id TEXT,
+    r2_key TEXT NOT NULL UNIQUE,
+    public_url TEXT NOT NULL UNIQUE,
+    content_type TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_assets_routing ON masjid_assets(masjid_id, associated_domain);
+
+
+-- ============================================================
+-- Table 14: Announcement-Attachment Join (Zero-UI)
+-- ============================================================
+CREATE TABLE announcement_attachments (
+    id TEXT PRIMARY KEY,
+    announcement_id TEXT NOT NULL,
+    asset_id TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
+    FOREIGN KEY(asset_id) REFERENCES masjid_assets(id) ON DELETE CASCADE
 );

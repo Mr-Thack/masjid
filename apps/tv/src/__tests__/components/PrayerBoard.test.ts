@@ -48,6 +48,6 @@ describe('PrayerBoard', () => {
     const { container } = render(PrayerBoard, {
       props: { times: [], nextPrayerIndex: 0, accentColor: '#10b981', key: 0 },
     });
-    expect(container.querySelector('.grid')).toBeTruthy();
+    expect(container.querySelector('.prayer-board')).toBeTruthy();
   });
 });

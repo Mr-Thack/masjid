@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { PagePayload } from '../../lib/api';
-  import { onMount } from 'svelte';
   import PrayerBoard from '$lib/components/PrayerBoard.svelte';
   import AnnouncementBanner from '$lib/components/AnnouncementBanner.svelte';
   import Countdown from '$lib/components/Countdown.svelte';
@@ -102,31 +101,24 @@
 </script>
 
 <div
-  class="min-h-screen w-screen bg-gray-950 text-gray-100 flex flex-col select-none overflow-hidden"
-  style="--color-primary: {payload.theme.primary_color}; --color-accent: {payload.theme.accent_color}; --font-heading: '{payload.theme.font_heading}', sans-serif; --font-body: '{payload.theme.font_body}', sans-serif; font-family: var(--font-body);"
+  class="tv-page"
+  style="--color-primary: {payload.theme.primary_color}; --color-accent: {payload.theme.accent_color}; --font-heading: '{payload.theme.font_heading}', sans-serif; --font-body: '{payload.theme.font_body}', sans-serif;"
 >
-  <header
-    class="flex items-center justify-between px-10 py-6 border-b border-gray-800/50"
-  >
+  <header class="tv-header">
     <div class="flex flex-col">
-      <h1
-        class="text-4xl font-bold tracking-tight"
-        style="font-family: var(--font-heading); color: var(--color-primary);"
-      >
-        {payload.masjid.name}
-      </h1>
+      <h1 class="tv-header-name">{payload.masjid.name}</h1>
       {#if payload.masjid.city}
-        <p class="text-gray-400 text-lg mt-1">{payload.masjid.city}</p>
+        <p class="tv-header-city">{payload.masjid.city}</p>
       {/if}
     </div>
     <div class="text-right">
-      <p class="text-xl text-gray-300">{formattedDate}</p>
-      <p class="text-2xl font-semibold text-gray-100 mt-1">{formattedTime}</p>
+      <p class="tv-header-date">{formattedDate}</p>
+      <p class="tv-header-time">{formattedTime}</p>
     </div>
   </header>
 
-  <main class="flex-1 flex flex-col items-center justify-center px-10">
-    <div class="w-full max-w-5xl">
+  <main class="tv-main">
+    <div class="tv-main-inner">
       <PrayerBoard
         {times}
         nextPrayerIndex={nextPrayerIndex}
@@ -135,7 +127,7 @@
       />
     </div>
 
-    <div class="mt-10 flex items-center gap-6">
+    <div class="tv-bottom">
       <Countdown nextPrayerIqaamah={nextPrayerIqaamah} />
       {#if isFriday && hasJumuah}
         <JumuahNotice sessions={payload.jumuah} />

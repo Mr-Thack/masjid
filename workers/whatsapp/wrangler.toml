@@ -1,0 +1,19 @@
+name = "masjid-worker-whatsapp"
+compatibility_date = "2024-12-01"
+main = "src/index.ts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "masjid-db"
+database_id = "placeholder-db-id"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "masjid-assets"
+
+[vars]
+API_URL = "https://api.example.com"
+JWT_SECRET = "placeholder-jwt-secret"
+WHATSAPP_TOKEN = "placeholder-whatsapp-token"
+WHATSAPP_PHONE_ID = "placeholder-phone-id"
+WHATSAPP_VERIFY_TOKEN = "placeholder-verify-token"

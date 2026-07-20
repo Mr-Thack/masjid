@@ -22,6 +22,11 @@ const JABAL_ADMIN_ID = '00000000-0000-0000-0000-000000000004';
 const JABAL_SLUG = 'masjid-al-jabal';
 
 function clearSeed() {
+  db.delete(schema.announcementAttachments).run();
+  db.delete(schema.masjidAssets).run();
+  db.delete(schema.configMutations).run();
+  db.delete(schema.configSnapshots).run();
+  db.delete(schema.configBranches).run();
   db.delete(schema.customDomains).run();
   db.delete(schema.prayerRules).run();
   db.delete(schema.announcements).run();
@@ -85,6 +90,7 @@ async function seed() {
     email: 'admin@masjid-alnoor.org',
     passwordHash: hash,
     displayName: 'Imam Abdullah',
+    whatsappPhone: '+15551230001',
   }).run();
 
   db.insert(schema.prayerRules).values([
@@ -273,6 +279,7 @@ async function seed() {
     email: 'admin@masjid-aljabal.org',
     passwordHash: hash,
     displayName: 'Imam Yusuf',
+    whatsappPhone: '+15551230002',
   }).run();
 
   // Hanafi-style iqaamah pattern: longer Fajr window, Zuhr delayed on weekdays,

@@ -2,10 +2,11 @@
 
 ## Current state (2026-07-20)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 263 tests)
+- **Working API** (SvelteKit + D1, 268 tests)
 - **Working TV frontend** (SvelteKit static, 21 tests)
-- **Working consumer frontend** (SvelteKit static/SPA, 33 tests)
-- **All 317 tests passing**
+- **Working consumer frontend** (SvelteKit static/SPA, 36 tests — 1 date-dependent failure)
+- **Working WhatsApp worker** (Stages 1-2 complete — webhook + session mgmt)
+- **325 tests passing** (1 pre-existing consumer failure: heading label mismatch)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
 
 ## How to start everything
@@ -34,6 +35,7 @@ npm run test:all      # everything
 ### Masjid Al-Noor (Chicago, IL)
 - Team: `admin@masjid-alnoor.org` / `password123`
 - Who slug: `masjid-al-noor` (note dashes, not underscores)
+- WhatsApp: `+15551230001` (Zero-UI admin)
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Consumer page: `http://localhost:5175/masjid-al-noor`
 - TV page: `http://localhost:5174/display/masjid-al-noor`
@@ -41,6 +43,7 @@ npm run test:all      # everything
 ### Masjid Al-Jabal (Kennesaw, GA)
 - Team: `admin@masjid-aljabal.org` / `password123`
 - Who slug: `masjid-al-jabal`
+- WhatsApp: `+15551230002` (Zero-UI admin)
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-jabal`
 - Consumer page: `http://localhost:5175/masjid-al-jabal`
 - TV page: `http://localhost:5174/display/masjid-al-jabal`
@@ -55,6 +58,7 @@ masjid/
   apps/tv/                   — SvelteKit static, display-only (kiosk/TV)
   apps/consumer/              — SvelteKit static/SPA, PWA (user-facing)
   workers/push/              — Cloudflare Worker for push notifications (skeleton)
+  workers/whatsapp/          — Cloudflare Worker for WhatsApp Zero-UI (Stages 1-2 complete)
   tooling/seed.ts            — DB seed script
   vitest.config.ts           — Root vitest (API only, node)
   vitest.tv.config.ts        — TV vitest (jsdom, svelte plugin)
@@ -114,23 +118,6 @@ masjid/
 | `donate/+page.svelte` | Donation page with CTA and "Why Give" section |
 | `info/+page.svelte` | Masjid contact info, address, and social links |
 
-## KNOWN ISSUES (for next session)
-
-### Visual/styling problems
-The consumer frontend is functionally correct (data loads, pages render, no JS errors) and the major visual bugs are now fixed:
-
-1. **SVG sizing fixed** — every SVG icon now has explicit `width`/`height` attributes, preventing Tailwind v4's `display: block` reset from inflating them to the viewport size.
-
-2. **Glass-card styling fixed** — the theme CSS is now actually imported via `src/routes/+layout.svelte`. `app.css` has a richer `.glass-card` gradient, stronger borders, and a subtler `.geometric-pattern`. The hero countdown, `PrayerCard`, and `DonateButton` were tightened up.
-
-3. **No image visibility** — screenshots can now be captured and iterated on.
-
-4. **The page title was fixed** — shows the actual masjid name via `<svelte:head>` in `+layout.svelte`.
-
-5. **Font loading was fixed** — simplified to synchronous `display=swap`. Roboto added to the font URL to match the seed data's `font_body`.
-
-6. **Service worker was fixed** — removed `addAll(['/'])` from install event (caused "Request failed" cache errors). Now only caches static assets by file extension.
-
 ### Other known items
 - **The `minimal-light` preset exists** but has no light-mode `.glass`/`.glass-card` equivalents — would need light variants for a true light theme.
 - **Only 1 admin per masjid** — the `admins` table has a UNIQUE FK on `masjid_id`.
@@ -144,6 +131,39 @@ The consumer frontend is functionally correct (data loads, pages render, no JS e
 - `docs/api.md` — 24 API route reference
 - `docs/rules-engine.md` — prayer rules engine spec
 - `docs/mcp-integration.md` — MCP/Zod strategy
+- `docs/zero-ui.md` — Native MCP / Agentic config setup for admins strategy
+- `docs/whatsapp-zero-ui.md` — Implementation plan + architecture for WhatsApp worker
+
+## WhatsApp Zero-UI worker (`workers/whatsapp/`)
+
+Stages 1-2 are complete. The worker handles Meta webhook verification, inbound message parsing,
+phone-to-tenant resolution, branch lifecycle (OPEN/MERGED/ABANDONED), and media file handling.
+
+### Architecture
+- Worker receives WhatsApp webhooks from Meta, resolves tenant by `admins.whatsapp_phone`
+- All admin mutations are staged in `config_branches` → `config_mutations` (git-style branches)
+- Worker calls the *existing* SvelteKit admin API via JWT proxy (no business logic duplication)
+- Stage 3 (future): LLM agent interprets messages, calls MCP tools, presents diff receipts
+- Stage 4 (future): Vision LLM for timetable photos, time-travel rollback, RTL handling
+
+### New DB tables (5 new + 1 column)
+- `config_branches` — staging branches (OPEN/MERGED/ABANDONED)
+- `config_mutations` — granular mutation entries per branch
+- `config_snapshots` — point-in-time frozen state for rollback
+- `masjid_assets` — multimodal file map (images, documents from WhatsApp)
+- `announcement_attachments` — join between announcements and assets
+- `admins.whatsapp_phone` — E.164 phone number for WhatsApp auth
+
+### Environment variables (wrangler.toml)
+| Binding | Purpose |
+|---------|---------|
+| DB | D1 database (shared with API) |
+| ASSETS | R2 bucket for media uploads |
+| WHATSAPP_TOKEN | Meta Cloud API access token |
+| WHATSAPP_PHONE_ID | WhatsApp Business phone number ID |
+| WHATSAPP_VERIFY_TOKEN | Webhook verification token |
+| API_URL | SvelteKit API base URL |
+| JWT_SECRET | Same secret as the API (for signing JWTs) |
 
 ## Quick dev tips
 - DB goes missing? Re-run `npx tsx tooling/seed.ts`

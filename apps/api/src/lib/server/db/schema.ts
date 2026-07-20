@@ -125,6 +125,7 @@ export const admins = sqliteTable('admins', {
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name'),
+  whatsappPhone: text('whatsapp_phone'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
   masjidIdx: index('idx_admins_masjid').on(table.masjidId),
@@ -137,5 +138,61 @@ export const customDomains = sqliteTable('custom_domains', {
   cfHostnameId: text('cf_hostname_id'),
   sslStatus: text('ssl_status').notNull().default('pending'),
   verifiedAt: text('verified_at'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const configBranches = sqliteTable('config_branches', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
+  adminId: text('admin_id').notNull(),
+  branchName: text('branch_name').notNull().default('main'),
+  status: text('status').notNull().default('OPEN'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  stateIdx: index('idx_branches_state').on(table.masjidId, table.status),
+}));
+
+export const configMutations = sqliteTable('config_mutations', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  branchId: text('branch_id').notNull().references(() => configBranches.id, { onDelete: 'cascade' }),
+  domain: text('domain').notNull(),
+  actionType: text('action_type').notNull(),
+  targetKey: text('target_key').notNull(),
+  payloadJson: text('payload_json').notNull(),
+  sequenceOrder: integer('sequence_order').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  sequenceIdx: index('idx_mutations_sequence').on(table.branchId, table.sequenceOrder),
+}));
+
+export const configSnapshots = sqliteTable('config_snapshots', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
+  summary: text('summary').notNull(),
+  fullStateJson: text('full_state_json').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  chronologyIdx: index('idx_snapshots_chronology').on(table.masjidId, table.createdAt),
+}));
+
+export const masjidAssets = sqliteTable('masjid_assets', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
+  associatedDomain: text('associated_domain').notNull(),
+  associatedId: text('associated_id'),
+  r2Key: text('r2_key').notNull().unique(),
+  publicUrl: text('public_url').notNull().unique(),
+  contentType: text('content_type').notNull(),
+  fileSize: integer('file_size').notNull(),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  routingIdx: index('idx_assets_routing').on(table.masjidId, table.associatedDomain),
+}));
+
+export const announcementAttachments = sqliteTable('announcement_attachments', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  announcementId: text('announcement_id').notNull().references(() => announcements.id, { onDelete: 'cascade' }),
+  assetId: text('asset_id').notNull().references(() => masjidAssets.id, { onDelete: 'cascade' }),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });

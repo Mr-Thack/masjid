@@ -154,6 +154,7 @@ function ensureTables(sqlite: Database.Database) {
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       display_name TEXT,
+      whatsapp_phone TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_admins_masjid ON admins(masjid_id);
@@ -165,6 +166,58 @@ function ensureTables(sqlite: Database.Database) {
       cf_hostname_id TEXT,
       ssl_status TEXT NOT NULL DEFAULT 'pending',
       verified_at TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS config_branches (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      admin_id TEXT NOT NULL,
+      branch_name TEXT NOT NULL DEFAULT 'main',
+      status TEXT NOT NULL DEFAULT 'OPEN',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_branches_state ON config_branches(masjid_id, status);
+
+    CREATE TABLE IF NOT EXISTS config_mutations (
+      id TEXT PRIMARY KEY,
+      branch_id TEXT NOT NULL REFERENCES config_branches(id) ON DELETE CASCADE,
+      domain TEXT NOT NULL,
+      action_type TEXT NOT NULL,
+      target_key TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      sequence_order INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_mutations_sequence ON config_mutations(branch_id, sequence_order);
+
+    CREATE TABLE IF NOT EXISTS config_snapshots (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      summary TEXT NOT NULL,
+      full_state_json TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_snapshots_chronology ON config_snapshots(masjid_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS masjid_assets (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      associated_domain TEXT NOT NULL,
+      associated_id TEXT,
+      r2_key TEXT NOT NULL UNIQUE,
+      public_url TEXT NOT NULL UNIQUE,
+      content_type TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_assets_routing ON masjid_assets(masjid_id, associated_domain);
+
+    CREATE TABLE IF NOT EXISTS announcement_attachments (
+      id TEXT PRIMARY KEY,
+      announcement_id TEXT NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+      asset_id TEXT NOT NULL REFERENCES masjid_assets(id) ON DELETE CASCADE,
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
@@ -180,6 +233,7 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'");
+  addColumnIfMissing(sqlite, 'admins', 'whatsapp_phone', 'TEXT');
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {

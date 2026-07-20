@@ -1,0 +1,18 @@
+{
+  "name": "@masjid/worker-whatsapp",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@masjid/schemas": "*",
+    "jose": "^5.9.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241201.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^3.99.0"
+  }
+}
