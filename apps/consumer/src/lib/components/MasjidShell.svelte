@@ -5,5 +5,5 @@
 </script>
 
 <div class="flex flex-col min-h-dvh">
-  {@render children()}
+  {@render children?.()}
 </div>

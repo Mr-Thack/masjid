@@ -9,7 +9,10 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'node',
     include: ['apps/api/src/__tests__/**/*.test.ts'],
+    environment: 'node',
+    env: {
+      IS_LOCAL: 'true',
+    },
   },
 });
