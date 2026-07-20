@@ -293,6 +293,20 @@
   </div>
 
   <aside class="space-y-6 lg:pt-6">
+    {#if pinnedAnnouncement}
+      <section>
+        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
+          Announcement
+        </h2>
+        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
+          <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
+          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+            {@html pinnedAnnouncement.compiled_html}
+          </div>
+        </div>
+      </section>
+    {/if}
+
     {#if hasJumuah}
       <section>
         <h2 class="text-lg font-semibold mb-1 uppercase tracking-wider text-accent font-heading">
@@ -310,20 +324,6 @@
               {/if}
             </div>
           {/each}
-        </div>
-      </section>
-    {/if}
-
-    {#if pinnedAnnouncement}
-      <section>
-        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
-          Announcement
-        </h2>
-        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
-          <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
-          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
-            {@html pinnedAnnouncement.compiled_html}
-          </div>
         </div>
       </section>
     {/if}
