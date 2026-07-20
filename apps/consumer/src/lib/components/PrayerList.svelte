@@ -33,7 +33,7 @@
 
 <div class="flex flex-wrap justify-center gap-3 items-stretch">
   {#each times as entry, i}
-    <div class="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] h-full">
+    <div class="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] flex flex-col">
       <PrayerCard
         name={entry.name}
         adhaan={entry.adhaan}

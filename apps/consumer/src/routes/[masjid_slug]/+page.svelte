@@ -154,14 +154,21 @@
       }
 
       const changes: ChangeEntry[] = [];
+      const seenPrayers = new Set<string>();
 
       for (let offset = 1; offset <= 6; offset++) {
+        if (seenPrayers.size == prayerNames.length) break;
+
         const date = addDays(now, offset);
         const result: DailyTimes = await fetchPrayerTimes(masjid.slug, formatDate(date));
         const dayTimes = result.times as unknown as PrayerTimes;
+
         for (const name of prayerNames) {
+          if (seenPrayers.has(name)) continue;
+
           const current = base[name]!;
           const future = dayTimes[name]?.iqaamah;
+
           if (future && future !== current) {
             changes.push({
               date,
@@ -171,6 +178,8 @@
               to: future,
             });
           }
+
+          seenPrayers.add(name);
         }
       }
 
@@ -278,9 +287,8 @@
     {#if hasJumuah}
       <section>
         <h2 class="text-lg font-semibold mb-1 uppercase tracking-wider text-accent font-heading">
-          Friday {jumuahLabel}
+          {jumuahLabel} Timings
         </h2>
-        <p class="text-xs mb-3" style="color: var(--color-text-dim);">Every Friday</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
           {#each jumuah ?? [] as session}
             <div class="glass-card p-4">
