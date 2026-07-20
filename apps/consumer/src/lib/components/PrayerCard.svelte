@@ -35,9 +35,9 @@
 </script>
 
 <div
-  class="glass-card p-4 flex flex-col items-center gap-1.5 relative overflow-hidden"
+  class="glass-card p-4 flex flex-col items-center justify-center gap-1.5 relative overflow-hidden h-full"
   class:ring-1={isCurrent || isNext}
-  class:animate-pulse-border={isNext}
+  class:animate-pulse-border={isCurrent}
   class:opacity-40={isPast}
   class:opacity-100={!isPast}
   style="border-color: {isCurrent ? 'var(--color-primary)' : isNext ? 'var(--color-accent)' : ''};"

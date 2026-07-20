@@ -1,4 +1,4 @@
-import type { DailyTimes, Announcement, JumuahSession } from '@masjid/schemas';
+import type { DailyTimes, Announcement } from '@masjid/schemas';
 
 export interface PrayerTimeEntry {
   adhaan: string;
@@ -13,6 +13,14 @@ export interface PrayerTimes {
   asr: PrayerTimeEntry;
   maghrib: PrayerTimeEntry;
   isha: PrayerTimeEntry;
+}
+
+export interface JumuahSession {
+  id: string;
+  label: string;
+  time: string;
+  khateeb: string | null;
+  language: string;
 }
 
 export interface PagePayload {
@@ -36,8 +44,8 @@ export interface PagePayload {
   theme: {
     primary_color: string;
     accent_color: string;
-    font_heading: string;
     font_body: string;
+    font_heading: string;
     layout_preset: string;
     time_format: '12h' | '24h';
     label_adhaan: string;

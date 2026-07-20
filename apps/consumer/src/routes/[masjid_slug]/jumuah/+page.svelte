@@ -1,14 +1,17 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { fetchJumuah } from '$lib/api';
+  import { fetchJumuah, type JumuahSession } from '$lib/api';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
+  import { formatTime } from '$lib/time';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
+  let theme = $derived(data.theme);
 
-  let sessions = $state(data.jumuah ?? []);
+  let timeFormat = $derived(theme?.time_format ?? '24h');
+  let sessions = $state<JumuahSession[]>(data.jumuah ?? []);
   let loading = $state(false);
   let error = $state('');
 
@@ -62,31 +65,24 @@
 
             <div class="flex-1 min-w-0">
               <h3 class="text-base font-semibold" style="color: var(--color-text);">{session.label}</h3>
-              <p class="text-3xl font-extrabold tabular-nums mt-2 text-accent">{session.time}</p>
+              <p class="text-3xl font-extrabold tabular-nums mt-2 text-accent">
+                {formatTime(session.time, timeFormat)}
+              </p>
 
               {#if session.khateeb}
-                <div class="mt-3 pt-3 border-t border-white/5">
+                <div class="mt-3 pt-3 border-t" style="border-color: var(--color-border);">
                   <p class="text-xs uppercase tracking-wider" style="color: var(--color-text-dim);">Khateeb</p>
                   <p class="text-sm font-medium mt-0.5" style="color: var(--color-text-muted);">{session.khateeb}</p>
                 </div>
               {/if}
 
-              <div class="flex items-center gap-3 mt-3">
-                {#if session.language && session.language !== 'en'}
-                  <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded" style="background: rgba(255,255,255,0.06); color: var(--color-text-muted);">
+              {#if session.language && session.language !== 'en'}
+                <div class="mt-3">
+                  <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded" style="background: var(--color-border); color: var(--color-text-muted);">
                     {session.language}
                   </span>
-                {/if}
-                {#if session.location}
-                  <div class="flex items-center gap-1 text-xs" style="color: var(--color-text-dim);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {session.location}
-                  </div>
-                {/if}
-              </div>
+                </div>
+              {/if}
             </div>
           </div>
         </div>

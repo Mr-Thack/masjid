@@ -170,7 +170,6 @@ async function seed() {
       time: '13:30',
       khateeb: 'Imam Abdullah',
       language: 'en',
-      location: 'Main Hall',
       isActive: true,
     },
     {
@@ -180,7 +179,6 @@ async function seed() {
       time: '14:30',
       khateeb: 'Sheikh Ahmad',
       language: 'ar',
-      location: 'Main Hall',
       isActive: true,
     },
   ]).run();
@@ -364,6 +362,8 @@ async function seed() {
   ]).run();
 
   // Jummah sessions reflecting the Indo-Pak/American congregation.
+  // Note: location has been phased out from the public feature set; the
+  // column still exists for backward compatibility but is not populated.
   db.insert(schema.jumuahSessions).values([
     {
       id: 'jum-jabal-01',
@@ -372,7 +372,6 @@ async function seed() {
       time: '13:30',
       khateeb: 'Imam Yusuf',
       language: 'en',
-      location: 'Main Prayer Hall',
       isActive: true,
     },
     {
@@ -382,7 +381,6 @@ async function seed() {
       time: '14:30',
       khateeb: 'Maulana Tariq',
       language: 'ur',
-      location: 'Main Prayer Hall',
       isActive: true,
     },
     {
@@ -392,7 +390,6 @@ async function seed() {
       time: '15:30',
       khateeb: 'Sheikh Khalid',
       language: 'ar',
-      location: 'Gymnasium Overflow',
       isActive: true,
     },
   ]).run();

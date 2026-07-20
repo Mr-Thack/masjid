@@ -3,7 +3,7 @@ import { computeHijriDate } from './hijri';
 import type { Condition, Action } from '@masjid/schemas';
 import type { Db } from '../db';
 import { prayerRules } from '../db/schema';
-import { eq, asc } from 'drizzle-orm';
+import { and, eq, asc } from 'drizzle-orm';
 
 export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 
@@ -102,6 +102,61 @@ export type PrayerTimeResult = {
 
 export type ComputedTimes = Record<PrayerName, PrayerTimeResult> & { sunrise: string };
 
+function parseHM(time: string): number {
+  const [h, m] = time.split(':').map(Number) as [number, number];
+  return h * 60 + m;
+}
+
+function minutesBetween(a: string, b: string): number {
+  return parseHM(b) - parseHM(a);
+}
+
+/**
+ * Verification guard (see Background.md §6). Rejects impossible schedules
+ * before they can reach the live display. If a rule combination produces
+ * inverted prayer times, we throw rather than broadcasting bad data.
+ */
+export function verifyComputedTimes(times: ComputedTimes): void {
+  const order: PrayerName[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+  for (const name of order) {
+    const prayer = times[name];
+    if (!prayer) throw new Error(`Missing ${name} prayer time`);
+
+    if (prayer.right_after_adhaan) {
+      if (prayer.iqaamah !== prayer.adhaan) {
+        throw new Error(`right_after_adhaan flag set for ${name} but iqaamah != adhaan`);
+      }
+      continue;
+    }
+
+    if (parseHM(prayer.iqaamah) < parseHM(prayer.adhaan)) {
+      throw new Error(`Iqaamah before adhaan for ${name}`);
+    }
+  }
+
+  if (parseHM(times.fajr.iqaamah) >= parseHM(times.sunrise)) {
+    throw new Error('Fajr iqaamah must be before sunrise');
+  }
+
+  let previousIqaamah = parseHM(times.fajr.iqaamah);
+  for (let i = 1; i < order.length; i++) {
+    const currentIqaamah = parseHM(times[order[i]!].iqaamah);
+    if (currentIqaamah <= previousIqaamah) {
+      throw new Error(`Prayer order invalid around ${order[i]}`);
+    }
+    if (minutesBetween(times[order[i - 1]!].iqaamah, times[order[i]!].adhaan) < 0) {
+      throw new Error(`Adhaan of ${order[i]} is before iqaamah of ${order[i - 1]}`);
+    }
+    previousIqaamah = currentIqaamah;
+  }
+
+  // Sanity bounds: isha should not run past 1 AM relative to the day.
+  if (parseHM(times.isha.iqaamah) > 60) {
+    // no-op; just here for documentation
+  }
+}
+
 export async function computeIqaamah(
   masjid: MasjidConfig,
   date: Date,
@@ -120,8 +175,7 @@ export async function computeIqaamah(
     const rules = await db
       .select()
       .from(prayerRules)
-      .where(eq(prayerRules.masjidId, masjid.id))
-      .where(eq(prayerRules.prayerName, prayer))
+      .where(and(eq(prayerRules.masjidId, masjid.id), eq(prayerRules.prayerName, prayer)))
       .orderBy(asc(prayerRules.executionOrder));
 
     for (const rule of rules) {
@@ -150,7 +204,7 @@ export async function computeIqaamah(
     result[prayer] = { adhaan: adhaanTime, iqaamah: iqaamahTime, right_after_adhaan: rightAfterAdhaan };
   }
 
-  return {
+  const computed = {
     fajr: result.fajr,
     sunrise: adhaan.sunrise,
     dhuhr: result.dhuhr,
@@ -158,4 +212,7 @@ export async function computeIqaamah(
     maghrib: result.maghrib,
     isha: result.isha,
   } as ComputedTimes;
+
+  verifyComputedTimes(computed);
+  return computed;
 }

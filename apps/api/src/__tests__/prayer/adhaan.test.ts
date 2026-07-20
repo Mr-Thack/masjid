@@ -22,6 +22,7 @@ const chicagoMasjid: MasjidLocation = {
   calculation_method: 2,
   latitude: 41.85,
   longitude: -87.65,
+  timezone: 'America/Chicago',
 };
 
 // ---------------------------------------------------------------------------
@@ -97,6 +98,7 @@ describe('calculateAdhaan', () => {
         calculation_method: 2,
         latitude: 61.22,
         longitude: -149.9,
+        timezone: 'America/Anchorage',
       };
       const times = calculateAdhaan(anchorage, new Date('2026-07-15'));
       // All values should be strings
@@ -108,6 +110,7 @@ describe('calculateAdhaan', () => {
         calculation_method: 2,
         latitude: 61.22,
         longitude: -149.9,
+        timezone: 'America/Anchorage',
       };
       const times = calculateAdhaan(anchorage, new Date('2026-01-15'));
       Object.values(times).forEach((t) => expect(typeof t).toBe('string'));
@@ -118,6 +121,7 @@ describe('calculateAdhaan', () => {
         calculation_method: 4,
         latitude: 21.42,
         longitude: 39.83,
+        timezone: 'Asia/Riyadh',
       };
       const summer = calculateAdhaan(mecca, new Date('2026-07-15'));
       const winter = calculateAdhaan(mecca, new Date('2026-01-15'));
@@ -157,6 +161,7 @@ describe('calculateAdhaan', () => {
         calculation_method: 3,
         latitude: -33.87,
         longitude: 151.21,
+        timezone: 'Australia/Sydney',
       };
       const jan = calculateAdhaan(sydney, new Date('2026-01-15'));
       const jul = calculateAdhaan(sydney, new Date('2026-07-15'));

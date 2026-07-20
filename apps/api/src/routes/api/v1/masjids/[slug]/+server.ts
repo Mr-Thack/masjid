@@ -127,7 +127,6 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           time: s.time,
           khateeb: s.khateeb,
           language: s.language,
-          location: s.location,
         })),
       pinned_announcement: pinnedAnnouncement
         ? {

@@ -81,8 +81,8 @@
   style="background-color: var(--color-bg); color: var(--color-text);"
 >
   <header
-    class="sticky top-0 z-50 glass border-b border-white/5"
-    style="border-top: 3px solid var(--color-primary);"
+    class="sticky top-0 z-50 glass border-b"
+    style="border-top: 3px solid var(--color-primary); border-color: var(--color-border);"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
       <a href={navHref('')} class="flex items-center gap-3 no-underline min-w-0">
@@ -122,8 +122,8 @@
   </main>
 
   <nav
-    class="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/5 lg:hidden"
-    style="padding-bottom: var(--safe-bottom);"
+    class="fixed bottom-0 left-0 right-0 z-50 glass border-t lg:hidden"
+    style="padding-bottom: var(--safe-bottom); border-color: var(--color-border);"
     aria-label="Mobile navigation"
   >
     <div class="max-w-7xl mx-auto flex items-center justify-around py-2 px-4">

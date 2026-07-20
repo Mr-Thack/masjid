@@ -4,6 +4,7 @@ export interface MasjidLocation {
   calculation_method: number;
   latitude: number;
   longitude: number;
+  timezone: string;
 }
 
 function toRadians(deg: number): number {
@@ -47,7 +48,14 @@ function equationOfTime(jd: number): number {
   return toDegrees(eotY) * 4;
 }
 
-function sunAngleTime(angle: number, lat: number, decl: number, eot: number, rising: boolean): number {
+function sunAngleTime(
+  angle: number,
+  lat: number,
+  decl: number,
+  eot: number,
+  lng: number,
+  rising: boolean,
+): number {
   const latRad = toRadians(lat);
   const declRad = toRadians(decl);
   const numerator = Math.sin(toRadians(angle)) - Math.sin(latRad) * Math.sin(declRad);
@@ -56,10 +64,42 @@ function sunAngleTime(angle: number, lat: number, decl: number, eot: number, ris
   if (Math.abs(cosHA) > 1) return NaN;
   let ha = toDegrees(Math.acos(cosHA));
   if (rising) ha = ha * -1;
-  const solarNoon = (720 - 4 * lat - eot) / 1440;
+  const solarNoon = (720 - 4 * lng - eot) / 1440;
   return solarNoon + ha / 360;
 }
 
+/**
+ * Convert a UTC day-fraction (0 = UTC midnight of `date`) to a local
+ * "HH:MM" string for the masjid's IANA timezone.
+ */
+function utcFractionToLocalHM(dayFraction: number, utcDate: Date, timeZone: string): string {
+  if (!Number.isFinite(dayFraction)) return '--:--';
+
+  const base = new Date(
+    Date.UTC(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate(), 0, 0, 0),
+  );
+  base.setUTCMinutes(Math.round(dayFraction * 1440));
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false,
+    timeZone,
+  }).formatToParts(base);
+
+  const hourPart = parts.find((p) => p.type === 'hour')?.value;
+  const minutePart = parts.find((p) => p.type === 'minute')?.value;
+  if (!hourPart || !minutePart) return '--:--';
+
+  let hour = Number(hourPart);
+  // Some ICU implementations emit 24:00 for midnight.
+  if (hour === 24) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${minutePart}`;
+}
+
+/**
+ * @deprecated Kept for tests that still expect a raw fractional-day formatter.
+ */
 function minutesToHM(minutes: number): string {
   if (isNaN(minutes) || !isFinite(minutes)) return '--:--';
   const totalMinutes = Math.round(((minutes % 1) + 1440) % 1 * 1440);
@@ -97,28 +137,29 @@ export function calculateAdhaan(
   const lat = masjid.latitude;
   const lng = masjid.longitude;
   const method = masjid.calculation_method;
+  const timeZone = masjid.timezone;
 
-  const sunriseTime = sunAngleTime(-0.833, lat, decl, eot, true);
+  const sunriseTime = sunAngleTime(-0.833, lat, decl, eot, lng, true);
   const dhuhrTime = (720 - 4 * lng - eot) / 1440;
   const asrAngle = 90 - toDegrees(Math.atan(1 / (asrFactor(method) + Math.tan(toRadians(Math.abs(lat - decl))))));
-  const asrTime = sunAngleTime(asrAngle, lat, decl, eot, false);
-  const maghribTime = sunAngleTime(-0.833, lat, decl, eot, false);
+  const asrTime = sunAngleTime(asrAngle, lat, decl, eot, lng, false);
+  const maghribTime = sunAngleTime(-0.833, lat, decl, eot, lng, false);
   const fajrAngle = getAngle(method, 'fajr');
-  const fajrTime = sunAngleTime(fajrAngle, lat, decl, eot, true);
+  const fajrTime = sunAngleTime(fajrAngle, lat, decl, eot, lng, true);
   const ishaAngle = getAngle(method, 'isha');
   let ishaTime: number;
   if (ishaAngle >= 0) {
     ishaTime = maghribTime + ishaAngle / 1440;
   } else {
-    ishaTime = sunAngleTime(ishaAngle, lat, decl, eot, false);
+    ishaTime = sunAngleTime(ishaAngle, lat, decl, eot, lng, false);
   }
 
   return {
-    fajr: minutesToHM(fajrTime),
-    sunrise: minutesToHM(sunriseTime),
-    dhuhr: minutesToHM(dhuhrTime),
-    asr: minutesToHM(asrTime),
-    maghrib: minutesToHM(maghribTime),
-    isha: minutesToHM(ishaTime),
+    fajr: utcFractionToLocalHM(fajrTime, date, timeZone),
+    sunrise: utcFractionToLocalHM(sunriseTime, date, timeZone),
+    dhuhr: utcFractionToLocalHM(dhuhrTime, date, timeZone),
+    asr: utcFractionToLocalHM(asrTime, date, timeZone),
+    maghrib: utcFractionToLocalHM(maghribTime, date, timeZone),
+    isha: utcFractionToLocalHM(ishaTime, date, timeZone),
   };
 }

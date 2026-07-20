@@ -134,7 +134,7 @@ describe('homepage', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByText('Dhuhr in')).toBeInTheDocument();
-    expect(screen.getByText('02:15:00')).toBeInTheDocument();
+    expect(screen.getByText('2:15:00')).toBeInTheDocument();
 
     expect(
       screen.getByRole('heading', { name: 'Prayer Times' }),
@@ -156,10 +156,6 @@ describe('homepage', () => {
     expect(screen.getByText('Second Khutbah')).toBeInTheDocument();
     expect(screen.getByText('14:00')).toBeInTheDocument();
     expect(screen.getByText('Sh. Yusuf')).toBeInTheDocument();
-    expect(screen.getByText('Main Hall')).toBeInTheDocument();
-    // Location is shown once at the section level, not repeated in every card.
-    expect(screen.queryAllByText('Main Hall')).toHaveLength(1);
-
     expect(
       screen.getByRole('heading', { name: 'Announcement' }),
     ).toBeInTheDocument();

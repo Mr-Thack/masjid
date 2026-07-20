@@ -31,9 +31,9 @@
   } = $props();
 </script>
 
-<div class="flex flex-wrap justify-center gap-3">
+<div class="flex flex-wrap justify-center gap-3 items-stretch">
   {#each times as entry, i}
-    <div class="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)]">
+    <div class="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] h-full">
       <PrayerCard
         name={entry.name}
         adhaan={entry.adhaan}

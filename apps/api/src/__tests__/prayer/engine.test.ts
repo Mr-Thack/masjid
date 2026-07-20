@@ -4,7 +4,7 @@ import type { Condition, Action } from '@masjid/schemas';
 // ---------------------------------------------------------------------------
 // Import pure functions (now exported) and the full pipeline
 // ---------------------------------------------------------------------------
-import { applyAction, allConditionsMatch, computeIqaamah } from '$lib/server/prayer/engine';
+import { applyAction, allConditionsMatch, computeIqaamah, verifyComputedTimes } from '$lib/server/prayer/engine';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -405,17 +405,13 @@ describe('computeIqaamah', () => {
   const mondayDate = new Date('2026-07-13T12:00:00Z');
 
   // A fully working drizzle chain mock
-  function createDb(rulesByPrayer: Record<string, DbRule[]> = {}) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  function createDb(_rulesByPrayer: Record<string, DbRule[]> = {}) {
     return {
       select: () => ({
         from: () => ({
           where: () => ({
-            where: () => ({
-              orderBy: () => {
-                // Resolve based on the last trace
-                return Promise.resolve([]);
-              },
-            }),
+            orderBy: () => Promise.resolve([]),
           }),
         }),
       }),
@@ -451,5 +447,90 @@ describe('computeIqaamah', () => {
     expect(result.asr.iqaamah).toBe(result.asr.adhaan);
     expect(result.maghrib.iqaamah).toBe(result.maghrib.adhaan);
     expect(result.isha.iqaamah).toBe(result.isha.adhaan);
+  });
+
+  it('produces plausible local times for Kennesaw, GA in summer', async () => {
+    const kennesawMasjid: MasjidConfig = {
+      id: 'masjid-kennesaw-1',
+      calculation_method: 2,
+      latitude: 34.0234,
+      longitude: -84.6157,
+      timezone: 'America/New_York',
+    };
+    const db = createDb();
+    const result = await computeIqaamah(kennesawMasjid, new Date('2026-07-20T12:00:00Z'), db);
+
+    function toMinutes(t: string): number {
+      const [h, m] = t.split(':').map(Number) as [number, number];
+      return h * 60 + m;
+    }
+
+    // Sunrise-correct ordering should hold.
+    expect(toMinutes(result.fajr.adhaan)).toBeLessThan(toMinutes(result.sunrise));
+    expect(toMinutes(result.sunrise)).toBeLessThan(toMinutes(result.dhuhr.adhaan));
+    expect(toMinutes(result.dhuhr.adhaan)).toBeLessThan(toMinutes(result.asr.adhaan));
+    expect(toMinutes(result.asr.adhaan)).toBeLessThan(toMinutes(result.maghrib.adhaan));
+    expect(toMinutes(result.maghrib.adhaan)).toBeLessThan(toMinutes(result.isha.adhaan));
+
+    // ED(T) in July: fajr ~5 AM, dhuhr ~1 PM, maghrib ~8:30 PM.
+    expect(toMinutes(result.fajr.adhaan)).toBeGreaterThan(240); // after 4 AM
+    expect(toMinutes(result.fajr.adhaan)).toBeLessThan(420); // before 7 AM
+    expect(toMinutes(result.dhuhr.adhaan)).toBeGreaterThan(720); // after 12 PM
+    expect(toMinutes(result.dhuhr.adhaan)).toBeLessThan(900); // before 3 PM
+    expect(toMinutes(result.maghrib.adhaan)).toBeGreaterThan(1170); // after 7:30 PM
+    expect(toMinutes(result.maghrib.adhaan)).toBeLessThan(1320); // before 10 PM
+  });
+});
+
+// =========================================================================
+// verifyComputedTimes
+// =========================================================================
+describe('verifyComputedTimes', () => {
+  it('accepts a normal schedule for Atlanta/Kennesaw', () => {
+    const times = {
+      fajr: { adhaan: '05:21', iqaamah: '05:41' },
+      sunrise: '06:42',
+      dhuhr: { adhaan: '13:45', iqaamah: '14:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      isha: { adhaan: '22:09', iqaamah: '22:19' },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).not.toThrow();
+  });
+
+  it('rejects iqaamah before adhaan', () => {
+    const times = {
+      fajr: { adhaan: '05:21', iqaamah: '05:41' },
+      sunrise: '06:42',
+      dhuhr: { adhaan: '13:45', iqaamah: '12:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      isha: { adhaan: '22:09', iqaamah: '22:19' },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Iqaamah before adhaan/);
+  });
+
+  it('rejects fajr iqaamah after sunrise', () => {
+    const times = {
+      fajr: { adhaan: '06:00', iqaamah: '06:30' },
+      sunrise: '06:15',
+      dhuhr: { adhaan: '13:00', iqaamah: '13:15' },
+      asr: { adhaan: '16:00', iqaamah: '16:15' },
+      maghrib: { adhaan: '20:00', iqaamah: '20:05' },
+      isha: { adhaan: '22:00', iqaamah: '22:15' },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Fajr iqaamah must be before sunrise/);
+  });
+
+  it('rejects inverted prayer order', () => {
+    const times = {
+      fajr: { adhaan: '05:21', iqaamah: '05:41' },
+      sunrise: '06:42',
+      dhuhr: { adhaan: '13:45', iqaamah: '14:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      isha: { adhaan: '19:00', iqaamah: '19:10' },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Prayer order invalid/);
   });
 });

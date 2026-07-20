@@ -3,6 +3,9 @@
   import PrayerList from '$lib/components/PrayerList.svelte';
   import DonateButton from '$lib/components/DonateButton.svelte';
   import SkeletonPrayerCard from '$lib/components/SkeletonPrayerCard.svelte';
+  import { fetchPrayerTimes, type PrayerTimes } from '$lib/api';
+  import { formatTime } from '$lib/time';
+  import type { DailyTimes } from '@masjid/schemas';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
@@ -78,20 +81,12 @@
     const hrs = Math.floor(remaining / 3600);
     const mins = Math.floor((remaining % 3600) / 60);
     const secs = remaining % 60;
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   });
 
   let hasJumuah = $derived((jumuah?.length ?? 0) > 0);
-
-  let commonJumuahLocation = $derived.by(() => {
-    if (!jumuah || jumuah.length === 0) return null;
-    const locations = jumuah.map((s) => s.location).filter(Boolean);
-    if (locations.length === 0) return null;
-    const first = locations[0];
-    return locations.every((l) => l === first) ? first : null;
-  });
-
   let jumuahLabel = $derived(theme?.label_jumuah ?? "Jumu'ah");
+  let timeFormat = $derived(theme?.time_format ?? '24h');
 
   let hijriDate = $derived(
     new Intl.DateTimeFormat('en-TN-u-ca-islamic', {
@@ -115,6 +110,82 @@
       now = new Date();
     }, 1000);
     return () => clearInterval(t);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Upcoming Iqamah changes (next 6 days vs today)
+  // ───────────────────────────────────────────────────────────────────────────
+  type ChangeEntry = {
+    date: Date;
+    prayerKey: string;
+    prayerLabel: string;
+    from: string;
+    to: string;
+  };
+
+  let upcomingChanges = $state<ChangeEntry[]>([]);
+  let loadingChanges = $state(false);
+  let changesError = $state('');
+
+  function addDays(date: Date, days: number): Date {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function formatDate(date: Date): string {
+    return date.toISOString().split('T')[0]!;
+  }
+
+  function formatDateLabel(date: Date): string {
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  async function loadUpcomingChanges() {
+    if (!masjid?.slug || !prayerTimes) return;
+    loadingChanges = true;
+    changesError = '';
+
+    try {
+      const base: Record<string, string> = {};
+      for (const name of prayerNames) {
+        base[name] = prayerTimes[name]?.iqaamah ?? '--:--';
+      }
+
+      const changes: ChangeEntry[] = [];
+
+      for (let offset = 1; offset <= 6; offset++) {
+        const date = addDays(now, offset);
+        const result: DailyTimes = await fetchPrayerTimes(masjid.slug, formatDate(date));
+        const dayTimes = result.times as unknown as PrayerTimes;
+        for (const name of prayerNames) {
+          const current = base[name]!;
+          const future = dayTimes[name]?.iqaamah;
+          if (future && future !== current) {
+            changes.push({
+              date,
+              prayerKey: name,
+              prayerLabel: prayerLabels[name] ?? name,
+              from: current,
+              to: future,
+            });
+          }
+        }
+      }
+
+      upcomingChanges = changes;
+    } catch (e) {
+      console.error('Failed to load upcoming changes', e);
+      changesError = 'Could not load upcoming changes.';
+      upcomingChanges = [];
+    } finally {
+      loadingChanges = false;
+    }
+  }
+
+  $effect(() => {
+    loadUpcomingChanges();
   });
 </script>
 
@@ -169,6 +240,38 @@
         </div>
       {/if}
     </section>
+
+    {#if upcomingChanges.length > 0}
+      <section>
+        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
+          Upcoming Iqamah Changes
+        </h2>
+        <div class="space-y-2">
+          {#each upcomingChanges as change}
+            <div class="glass-card p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-text-dim);">
+                  {formatDateLabel(change.date)}
+                </span>
+                <p class="text-sm font-medium mt-0.5" style="color: var(--color-text);">
+                  <strong class="text-accent">{change.prayerLabel}</strong>
+                  Iqamah changing
+                </p>
+              </div>
+              <div class="text-sm tabular-nums" style="color: var(--color-text-muted);">
+                {formatTime(change.from, timeFormat)}
+                <span class="mx-1" style="color: var(--color-text-dim);">→</span>
+                <span class="font-semibold text-accent">{formatTime(change.to, timeFormat)}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+      </section>
+    {:else if loadingChanges}
+      <div class="h-8 rounded-lg animate-shimmer" style="background: var(--color-surface);"></div>
+    {:else if changesError}
+      <p class="text-xs" style="color: var(--color-text-dim);">{changesError}</p>
+    {/if}
   </div>
 
   <aside class="space-y-6 lg:pt-6">
@@ -177,21 +280,16 @@
         <h2 class="text-lg font-semibold mb-1 uppercase tracking-wider text-accent font-heading">
           Friday {jumuahLabel}
         </h2>
-        {#if commonJumuahLocation}
-          <p class="text-xs mb-3" style="color: var(--color-text-dim);">{commonJumuahLocation}</p>
-        {/if}
+        <p class="text-xs mb-3" style="color: var(--color-text-dim);">Every Friday</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
           {#each jumuah ?? [] as session}
             <div class="glass-card p-4">
               <p class="text-sm font-semibold" style="color: var(--color-text-muted);">{session.label}</p>
               <p class="text-2xl font-bold tabular-nums mt-1 text-accent">
-                {session.time}
+                {formatTime(session.time, timeFormat)}
               </p>
               {#if session.khateeb}
                 <p class="text-sm mt-1" style="color: var(--color-text-muted);">{session.khateeb}</p>
-              {/if}
-              {#if session.location && !commonJumuahLocation}
-                <p class="text-xs mt-0.5" style="color: var(--color-text-dim);">{session.location}</p>
               {/if}
             </div>
           {/each}
