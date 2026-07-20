@@ -40,13 +40,13 @@ describe('fetchPrayerTimes', () => {
   it('calls the correct URL without date', async () => {
     const fake = mockFetch({ times: {} });
     await fetchPrayerTimes('test', undefined, fake);
-    expect(fake).toHaveBeenCalledWith('/api/v1/masjids/test/prayer-times');
+    expect(fake).toHaveBeenCalledWith('/api/v1/masjids/test/prayer');
   });
 
   it('appends date query param', async () => {
     const fake = mockFetch({ times: {} });
     await fetchPrayerTimes('test', '2026-06-15', fake);
-    expect(fake).toHaveBeenCalledWith('/api/v1/masjids/test/prayer-times?date=2026-06-15');
+    expect(fake).toHaveBeenCalledWith('/api/v1/masjids/test/prayer?date=2026-06-15');
   });
 });
 

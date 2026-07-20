@@ -52,7 +52,7 @@ export async function fetchPrayerTimes(
   customFetch: typeof fetch = globalThis.fetch,
 ): Promise<DailyTimes> {
   const params = date ? `?date=${date}` : '';
-  const res = await customFetch(`${BASE}/${slug}/prayer-times${params}`);
+  const res = await customFetch(`${BASE}/${slug}/prayer${params}`);
   if (!res.ok) throw new Error(`Failed to fetch prayer times: ${res.status}`);
   return res.json();
 }

@@ -76,11 +76,15 @@
     try {
       for (const date of weekDates) {
         const dateStr = formatDate(date);
-        const times = await fetchPrayerTimes(masjid.slug, dateStr);
-        newData.set(dateStr, times.times);
+        const result = await fetchPrayerTimes(masjid.slug, dateStr);
+        newData.set(
+          dateStr,
+          result.times as unknown as Record<string, { adhaan: string; iqaamah: string }>,
+        );
       }
       weekData = newData;
-    } catch {
+    } catch (e) {
+      console.error('Failed to load prayer times', e);
       error = 'Failed to load prayer times. Please try again.';
     } finally {
       loading = false;
@@ -89,6 +93,7 @@
 
   $effect(() => {
     weekOffset;
+    if (!masjid?.slug) return;
     loadWeek();
   });
 </script>
@@ -117,7 +122,7 @@
   {#if loading}
     <LoadingSpinner />
   {:else if error}
-    <ErrorState {message} />
+    <ErrorState message={error} />
   {:else}
     <div class="space-y-4">
       {#each weekDates as date}
