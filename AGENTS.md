@@ -104,22 +104,18 @@ masjid/
 
 ## KNOWN ISSUES (for next session)
 
-### Visual/styling problems (the current blocker)
-The consumer frontend is functionally correct (data loads, pages render, no JS errors) but has visual issues:
+### Visual/styling problems
+The consumer frontend is functionally correct (data loads, pages render, no JS errors) and the major visual bugs are now fixed:
 
-1. **SVG icons in the bottom nav and DonateButton might appear too large or improperly sized.** Tailwind v4's base reset applies `display: block` to all `<svg>` elements. SVGs in flex containers should still work, but `flex-shrink-0` was added to nav icons and DonateButton icons to prevent potential shrinking/stretching in narrow viewports.
+1. **SVG sizing fixed** — every SVG icon now has explicit `width`/`height` attributes, preventing Tailwind v4's `display: block` reset from inflating them to the viewport size.
 
-2. **The glass-card dark theme "looks clunky"** — this is subjective. Key files to adjust:
-   - `src/app.css` — glass-card class, geometric-pattern, animations
-   - `src/routes/[masjid_slug]/+page.svelte` — hero section layout
-   - `src/lib/components/PrayerCard.svelte` — individual card styling
-   - `src/lib/components/DonateButton.svelte` — CTA button
+2. **Glass-card styling fixed** — the theme CSS is now actually imported via `src/routes/+layout.svelte`. `app.css` has a richer `.glass-card` gradient, stronger borders, and a subtler `.geometric-pattern`. The hero countdown, `PrayerCard`, and `DonateButton` were tightened up.
 
-3. **No image visibility** — the last agent could not see screenshots. A fresh session with image capabilities should take a screenshot of `http://localhost:5175/masjid-al-noor` and iterate on the visual design.
+3. **No image visibility** — screenshots can now be captured and iterated on.
 
-4. **The page title was fixed** — now shows the actual masjid name via `<svelte:head>` in `+layout.svelte`.
+4. **The page title was fixed** — shows the actual masjid name via `<svelte:head>` in `+layout.svelte`.
 
-5. **Font loading was fixed** — simplified to synchronous `display=swap` (was using unreliable `media="print"` trick). Roboto added to the font URL to match the seed data's `font_body`.
+5. **Font loading was fixed** — simplified to synchronous `display=swap`. Roboto added to the font URL to match the seed data's `font_body`.
 
 6. **Service worker was fixed** — removed `addAll(['/'])` from install event (caused "Request failed" cache errors). Now only caches static assets by file extension.
 

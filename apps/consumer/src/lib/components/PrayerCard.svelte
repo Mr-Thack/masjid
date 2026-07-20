@@ -35,7 +35,7 @@
 
   <div class="flex flex-col items-center gap-1">
     <span class="text-sm" style="color: var(--color-text-dim);">Adhaan</span>
-    <span class="text-xl font-bold tabular-nums" style="color: #e5e7eb;">
+    <span class="text-xl font-bold tabular-nums" style="color: var(--color-text);">
       {adhaan}
     </span>
   </div>
@@ -44,10 +44,7 @@
 
   <div class="flex flex-col items-center gap-1">
     <span class="text-sm font-semibold text-accent">Iqaamah</span>
-    <span
-      class="text-2xl font-extrabold tabular-nums"
-      style="color: {isNext ? '#ffffff' : 'var(--color-text)'};"
-    >
+    <span class="text-2xl font-extrabold tabular-nums" style="color: var(--color-text);">
       {iqaamah}
     </span>
   </div>

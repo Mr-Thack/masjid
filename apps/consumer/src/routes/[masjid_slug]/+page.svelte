@@ -105,11 +105,11 @@
           </p>
         {/if}
 
-        <div class="mt-6 glass-card inline-flex flex-col items-center gap-2 px-6 py-4">
+        <div class="mt-6 glass-card flex flex-col items-center gap-3 w-full max-w-sm mx-auto px-6 py-5">
           <span class="text-xs uppercase tracking-[0.2em]" style="color: var(--color-text-dim);">
             {nextPrayerName} in
           </span>
-          <span class="text-3xl sm:text-4xl font-mono font-bold tabular-nums text-accent">
+          <span class="text-4xl sm:text-5xl font-mono font-bold tabular-nums text-accent">
             {countdownDisplay}
           </span>
         </div>

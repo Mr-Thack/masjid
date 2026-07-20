@@ -44,6 +44,8 @@
     </div>
     <svg
       xmlns="http://www.w3.org/2000/svg"
+      width="20"
+      height="20"
       class="h-5 w-5 flex-shrink-0 transition-transform duration-300 mt-1"
       class:rotate-180={expanded}
       style="color: var(--color-text-dim);"
