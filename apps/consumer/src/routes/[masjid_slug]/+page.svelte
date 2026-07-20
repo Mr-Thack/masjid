@@ -45,7 +45,16 @@
       const [h, m] = iqaamah.split(':').map(Number);
       if (h == null || m == null) continue;
       const iqaamahMinutes = h * 60 + m;
-      if (iqaamahMinutes <= currentMinutes) current = i;
+      if (iqaamahMinutes <= currentMinutes) {
+        if (i === 0) {
+          const sunrise = prayerTimes?.sunrise;
+          if (sunrise) {
+            const [sh, sm] = sunrise.split(':').map(Number);
+            if (sh != null && sm != null && currentMinutes >= sh * 60 + sm) continue;
+          }
+        }
+        current = i;
+      }
     }
     return current;
   });
