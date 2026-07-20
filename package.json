@@ -20,6 +20,7 @@
     "test:all": "vitest run && vitest run --config vitest.tv.config.ts && vitest run --config vitest.consumer.config.ts",
     "test:tv": "vitest run --config vitest.tv.config.ts",
     "test:consumer": "vitest run --config vitest.consumer.config.ts",
+    "test:whatsapp": "vitest run --config vitest.whatsapp.config.ts",
     "test:watch": "vitest",
     "db:generate": "npm run db:generate -w @masjid/api",
     "db:migrate": "npm run db:migrate -w @masjid/api",
