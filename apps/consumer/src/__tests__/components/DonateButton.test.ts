@@ -12,7 +12,7 @@ describe('DonateButton', () => {
 
   it('renders a link with the correct href', () => {
     render(DonateButton, {
-      props: { url: 'https://donate.example.org', accentColor: '#10b981' },
+      props: { url: 'https://donate.example.org' },
     });
     const link = screen.getByRole('link');
     expect(link).toBeDefined();
@@ -21,14 +21,14 @@ describe('DonateButton', () => {
 
   it('renders the support text', () => {
     render(DonateButton, {
-      props: { url: 'https://donate.example.org', accentColor: '#10b981' },
+      props: { url: 'https://donate.example.org' },
     });
     expect(screen.getByText('Support This Masjid')).toBeDefined();
   });
 
   it('has target=_blank and rel=noopener', () => {
     render(DonateButton, {
-      props: { url: 'https://donate.example.org', accentColor: '#10b981' },
+      props: { url: 'https://donate.example.org' },
     });
     const link = screen.getByRole('link');
     expect(link.getAttribute('target')).toBe('_blank');

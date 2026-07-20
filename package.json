@@ -45,5 +45,8 @@
     "sharp@0.33.5": true,
     "workerd@1.20250718.0": true,
     "better-sqlite3@12.11.1": true
+  },
+  "dependencies": {
+    "opencode-agent-browser": "^1.0.0"
   }
 }

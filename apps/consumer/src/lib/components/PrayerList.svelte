@@ -10,11 +10,9 @@
   let {
     times,
     nextPrayerIndex = -1,
-    accentColor = '#10b981',
   }: {
     times: PrayerEntry[];
     nextPrayerIndex?: number;
-    accentColor?: string;
   } = $props();
 </script>
 
@@ -26,7 +24,6 @@
       iqaamah={entry.iqaamah}
       isNext={i === nextPrayerIndex}
       isPast={i < nextPrayerIndex && nextPrayerIndex >= 0}
-      {accentColor}
     />
   {/each}
 </div>

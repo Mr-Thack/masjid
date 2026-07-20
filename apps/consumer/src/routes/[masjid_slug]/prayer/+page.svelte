@@ -1,11 +1,11 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { fetchPrayerTimes } from '$lib/api';
-  import PrayerCard from '$lib/components/PrayerCard.svelte';
+  import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
+  import ErrorState from '$lib/components/ErrorState.svelte';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
-  let theme = $derived(data.theme);
 
   let weekOffset = $state(0);
   let weekData = $state<Map<string, Record<string, { adhaan: string; iqaamah: string }>>>(new Map());
@@ -97,37 +97,27 @@
   <div class="flex items-center justify-between">
     <button
       onclick={() => (weekOffset -= 1)}
-      class="glass-card px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer"
+      class="glass-card px-4 py-2 text-sm font-medium cursor-pointer"
       disabled={loading}
+      style="color: var(--color-text-muted);"
     >
       Previous
     </button>
-    <h2
-      class="text-lg font-semibold text-gray-100 text-center"
-      style="font-family: var(--font-heading);"
-    >
-      {weekLabel}
-    </h2>
+    <h2 class="text-lg font-semibold text-center font-heading" style="color: var(--color-text);">{weekLabel}</h2>
     <button
       onclick={() => (weekOffset += 1)}
-      class="glass-card px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors cursor-pointer"
+      class="glass-card px-4 py-2 text-sm font-medium cursor-pointer"
       disabled={loading}
+      style="color: var(--color-text-muted);"
     >
       Next
     </button>
   </div>
 
   {#if loading}
-    <div class="flex justify-center py-12">
-      <div
-        class="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-        style="border-color: var(--color-accent); border-top-color: transparent;"
-      ></div>
-    </div>
+    <LoadingSpinner />
   {:else if error}
-    <div class="glass-card p-6 text-center">
-      <p class="text-red-400">{error}</p>
-    </div>
+    <ErrorState {message} />
   {:else}
     <div class="space-y-4">
       {#each weekDates as date}
@@ -138,25 +128,14 @@
           class:ring-1={isToday(date)}
           style="border-color: {isToday(date) ? 'var(--color-accent)' : ''};"
         >
-          <div
-            class="px-4 py-3 flex items-center justify-between"
-            style="background: {isToday(date) ? 'rgba(255,255,255,0.03)' : 'transparent'};"
-          >
+          <div class="px-4 py-3 flex items-center justify-between" style="background: {isToday(date) ? 'rgba(255,255,255,0.03)' : 'transparent'};">
             <div>
-              <span
-                class="text-sm font-semibold"
-                style="color: {isToday(date) ? 'var(--color-accent)' : '#9ca3af'};"
-              >
+              <span class="text-sm font-semibold" style="color: {isToday(date) ? 'var(--color-accent)' : 'var(--color-text-muted)'};">
                 {formatDayLabel(date)}
               </span>
-              <span class="text-sm text-gray-500 ml-2">{formatDateLabel(date)}</span>
+              <span class="text-sm ml-2" style="color: var(--color-text-dim);">{formatDateLabel(date)}</span>
               {#if isToday(date)}
-                <span
-                  class="ml-2 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded text-white"
-                  style="background: var(--color-accent);"
-                >
-                  Today
-                </span>
+                <span class="ml-2 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded text-white bg-accent">Today</span>
               {/if}
             </div>
           </div>
@@ -167,13 +146,13 @@
                 {@const time = dayTimes[name]}
                 {#if time}
                   <div class="flex flex-col items-center text-center">
-                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-dim);">
                       {prayerLabels[name]}
                     </span>
-                    <span class="text-sm font-bold tabular-nums text-gray-300 mt-0.5">
+                    <span class="text-sm font-bold tabular-nums mt-0.5" style="color: var(--color-text-muted);">
                       {time.iqaamah}
                     </span>
-                    <span class="text-[10px] text-gray-600 tabular-nums">
+                    <span class="text-[10px] tabular-nums" style="color: var(--color-text-dim);">
                       {time.adhaan}
                     </span>
                   </div>
@@ -182,7 +161,7 @@
             </div>
           {:else}
             <div class="px-4 py-3">
-              <p class="text-sm text-gray-600 italic">No data available</p>
+              <p class="text-sm italic" style="color: var(--color-text-dim);">No data available</p>
             </div>
           {/if}
         </div>
