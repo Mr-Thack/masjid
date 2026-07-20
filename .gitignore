@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.svelte-kit/
+build/
+.env
+.env.*
+*.tsbuildinfo
+.DS_Store
+wrangler.state.*
+.wrangler/
+drizzle/

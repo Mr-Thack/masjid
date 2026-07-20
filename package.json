@@ -1,0 +1,27 @@
+{
+  "name": "masjid",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "workers/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "lint": "eslint .",
+    "check": "npm run check --workspaces --if-present",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "npm run db:generate -w @masjid/api",
+    "db:migrate": "npm run db:migrate -w @masjid/api",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "vitest": "^3.1.1"
+  }
+}
