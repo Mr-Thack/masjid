@@ -3,10 +3,10 @@
 ## Current state (2026-07-20)
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 268 tests)
-- **Working TV frontend** (SvelteKit static, 21 tests)
+- **Working TV frontend** (SvelteKit static, 21 tests — no Tailwind, hand-written CSS ~6 KB)
 - **Working consumer frontend** (SvelteKit static/SPA, 36 tests — 1 date-dependent failure)
 - **Working WhatsApp worker** (Stages 1-3 complete — webhook + session + LLM agent)
-- **325 tests passing** (1 pre-existing consumer failure: heading label mismatch)
+- **289 tests passing** (268 API + 21 TV; 1 pre-existing consumer failure: heading label mismatch)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
 
 ## How to start everything
@@ -71,9 +71,10 @@ masjid/
 - **API proxy**: Both TV and consumer have Vite proxy configs: `/api` → `localhost:5173`
 - **SvelteKit fetch**: Load functions must use `event.fetch` for SSR, not `globalThis.fetch`. The `api.ts` in both apps accepts an optional `customFetch` parameter for this.
 - **Svelte 5 runes**: All components use `$props()`, `$state`, `$derived`, `$effect`. No Svelte 4 syntax.
-- **Tailwind v4**: Uses `@tailwindcss/vite` plugin (CSS-first config), NOT postcss. No `tailwind.config.ts` in consumer (deleted — uses `@theme` block in `app.css` instead).
+- **Tailwind v4**: Used in consumer app only (via `@tailwindcss/vite` plugin, CSS-first config, `@theme` block in `app.css`). TV app uses hand-written CSS (~300 lines, 6 KB gzipped) — Tailwind v4 was removed because it failed to output CSS in the static build.
 - **Svelte `class:` directive bug**: Svelte 5 parser chokes on `class:` with Tailwind classes containing `/` (e.g., `class:bg-gray-900/80`). Must use inline `{cond ? 'class' : 'class'}` instead.
 - **Admin routes**: Moved under `admin/masjids/[id]/...` to avoid route conflict with public `masjids/[slug]`.
+- **Board endpoint**: `GET /api/v1/masjids/{slug}/board` returns today + 7 upcoming days of prayer times, theme, jumuah, and announcements in a single request. The TV frontend uses this instead of 8 separate API calls.
 
 ## Consumer frontend architecture (Phase 2 complete)
 
@@ -122,13 +123,36 @@ masjid/
 - **The `minimal-light` preset exists** but has no light-mode `.glass`/`.glass-card` equivalents — would need light variants for a true light theme.
 - **Only 1 admin per masjid** — the `admins` table has a UNIQUE FK on `masjid_id`.
 - **No admin UI exists** — all data management is via API only. This is intentional (Zero-UI ingestion path).
-- **TV frontend uses separate theming** — check `apps/tv/src/routes/display/[masjid_slug]/+page.svelte` for its CSS variable injection.
+- **TV frontend uses separate theming** — check `apps/tv/src/routes/display/[masjid_slug]/+page.svelte` for its CSS variable injection. All 15 theme fields (including `time_format` and `label_*`) are used.
 - **The `+error.svelte` page is basic** — shows a generic error message. Could be improved.
+
+## TV frontend architecture
+
+The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc: `docs/tv-display.md`.
+
+### Component library (`src/lib/components/`)
+| Component | Purpose |
+|---|---|
+| `AnalogClock` | SVG analog clock (hour/minute/second hands, accent-colored second hand) |
+| `PrayerBoard` | 6-column CSS grid table (label + 5 prayers) with adhaan/iqamah/sunrise rows, current prayer highlight, sharp flash pulse |
+| `Countdown` | Compact `<span>` showing "6h 07m" or "04:32" until next iqaamah |
+| `JumuahNotice` | One-liner: `* Jumu'ah: 1:30 PM (Eng) · 2:30 PM (Arb)` |
+| `AnnouncementBanner` | Marquee banner at page bottom |
+
+### Key design decisions
+- **No Tailwind** — replaced with ~300 lines of hand-written CSS in `app.css`. Tailwind v4 failed to emit CSS in the static build.
+- **Single API call** — `fetchBoardPayload()` hits the `/board` endpoint which returns today + 7 upcoming days in one response. No client-side waterfall.
+- **Current prayer highlight** — highlights the prayer whose time window we're in. Fajr window ends at sunrise (not Dhuhr iqaamah).
+- **Flash signal** — CSS pulse animation on cells when `now` matches an adhaan/iqaamah minute. Replaces the old countdown-centric approach.
+- **Upcoming changes** — derived from `upcoming_days` in the board payload. Only shows iqaamah time diffs.
+- **Non-blocking fonts** — Google Fonts loaded with `media="print" onload="this.media='all'"`, `<noscript>` fallback.
+- **`formatTime()` utility** — copied from consumer (`src/lib/time.ts`), handles 12h/24h from admin config.
 
 ## Design documents (always useful)
 - `Background.md` — original vision/spec
 - `schema.sql` — complete D1 schema (9 tables + indexes)
-- `docs/api.md` — 24 API route reference
+- `docs/api.md` — API route reference (including board endpoint)
+- `docs/tv-display.md` — TV display architecture & design decisions
 - `docs/rules-engine.md` — prayer rules engine spec
 - `docs/mcp-integration.md` — MCP/Zod strategy
 - `docs/zero-ui.md` — Native MCP / Agentic config setup for admins strategy

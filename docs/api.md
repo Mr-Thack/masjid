@@ -131,6 +131,7 @@ See [rules-engine.md](rules-engine.md) for the full type reference.
 | `GET` | `/masjids/:slug/announcements` | Published announcements feed (last 20) |
 | `GET` | `/masjids/:slug/announcements/:ann_slug` | Single announcement detail |
 | `GET` | `/masjids/:slug` | Full page payload (profile + times + jumuah + pinned announcement + feed) |
+| `GET` | `/masjids/:slug/board` | TV display board (today + 7 upcoming days, theme, jumuah, announcements) — see [TV Display docs](./tv-display.md) |
 
 ### Prayer times response
 ```json
@@ -158,6 +159,45 @@ See [rules-engine.md](rules-engine.md) for the full type reference.
   "jumuah": [ { "label": "1st Session", "time": "13:30", "khateeb": "..." } ],
   "pinned_announcement": { "title": "...", "compiled_html": "..." },
   "recent_announcements": [ ... ]
+}
+```
+
+### Board endpoint response
+
+`GET /masjids/:slug/board` — Returns everything the TV display needs in one request, including 8 days of computed prayer times (today + 7 upcoming). Used by the kiosk/TV frontend.
+
+```json
+{
+  "masjid": { "slug": "masjid-al-noor", "name": "Masjid Al-Noor", "city": "Chicago", "external_donation_url": "..." },
+  "theme": {
+    "primary_color": "#1e3a8a", "accent_color": "#10b981",
+    "font_heading": "Inter", "font_body": "Roboto",
+    "layout_preset": "modern_minimal", "time_format": "24h",
+    "label_adhaan": "Adhaan", "label_iqaamah": "Iqaamah",
+    "label_jumuah": "Jumu'ah", "label_sunrise": "Sunrise",
+    "label_fajr": "Fajr", "label_dhuhr": "Dhuhr",
+    "label_asr": "Asr", "label_maghrib": "Maghrib", "label_isha": "Isha"
+  },
+  "today": {
+    "date": "2026-07-20",
+    "times": {
+      "fajr": { "adhaan": "03:57", "iqaamah": "04:17" },
+      "sunrise": "05:33",
+      "dhuhr": { "adhaan": "12:57", "iqaamah": "13:10" },
+      "asr": { "adhaan": "15:14", "iqaamah": "15:24" },
+      "maghrib": { "adhaan": "20:21", "iqaamah": "20:26" },
+      "isha": { "adhaan": "21:57", "iqaamah": "22:10" }
+    }
+  },
+  "upcoming_days": [
+    {
+      "date": "2026-07-21",
+      "times": { "fajr": {...}, "sunrise": "05:34", "dhuhr": {...}, ... }
+    }
+  ],
+  "jumuah": [ { "id": "jum-01", "label": "1st Session (English)", "time": "13:30", "khateeb": "Imam Abdullah", "language": "en" } ],
+  "pinned_announcement": { "title": "Welcome to Masjid Al-Noor", "compiled_html": "..." },
+  "recent_announcements": [ { "id": "...", "title": "...", "compiled_html": "...", "status": "published", "published_at": "2026-07-20T12:00:00.000Z", "expires_at": null } ]
 }
 ```
 
