@@ -38,6 +38,17 @@ export const masjidThemes = sqliteTable('masjid_themes', {
   accentColor: text('accent_color').notNull().default('#10b981'),
   fontHeading: text('font_heading').notNull().default('Inter'),
   fontBody: text('font_body').notNull().default('Roboto'),
+
+  timeFormat: text('time_format').notNull().default('24h'),
+  labelAdhaan: text('label_adhaan').notNull().default('Adhaan'),
+  labelIqaamah: text('label_iqaamah').notNull().default('Iqaamah'),
+  labelJumuah: text('label_jumuah').notNull().default("Jumu'ah"),
+  labelSunrise: text('label_sunrise').notNull().default('Sunrise'),
+  labelFajr: text('label_fajr').notNull().default('Fajr'),
+  labelDhuhr: text('label_dhuhr').notNull().default('Dhuhr'),
+  labelAsr: text('label_asr').notNull().default('Asr'),
+  labelMaghrib: text('label_maghrib').notNull().default('Maghrib'),
+  labelIsha: text('label_isha').notNull().default('Isha'),
 });
 
 export const prayerRules = sqliteTable('prayer_rules', {

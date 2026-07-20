@@ -8,9 +8,11 @@ const mockTimes = [
   { name: 'Asr', adhaan: '15:00', iqaamah: '15:15' },
 ];
 
+const mockLabels = { adhaan: 'Adhaan', iqaamah: 'Iqaamah', sunrise: 'Sunrise' };
+
 describe('PrayerList', () => {
   it('renders a card for each prayer time', () => {
-    render(PrayerList, { props: { times: mockTimes } });
+    render(PrayerList, { props: { times: mockTimes, labels: mockLabels } });
 
     expect(screen.getByText('Fajr')).toBeDefined();
     expect(screen.getByText('Dhuhr')).toBeDefined();
@@ -18,13 +20,13 @@ describe('PrayerList', () => {
   });
 
   it('marks the next prayer when nextPrayerIndex is set', () => {
-    render(PrayerList, { props: { times: mockTimes, nextPrayerIndex: 1 } });
+    render(PrayerList, { props: { times: mockTimes, labels: mockLabels, nextPrayerIndex: 1 } });
 
     expect(screen.getByText('Next')).toBeDefined();
   });
 
   it('does not show Next badge when nextPrayerIndex is -1', () => {
-    render(PrayerList, { props: { times: mockTimes, nextPrayerIndex: -1 } });
+    render(PrayerList, { props: { times: mockTimes, labels: mockLabels, nextPrayerIndex: -1 } });
 
     expect(screen.queryByText('Next')).toBeNull();
   });

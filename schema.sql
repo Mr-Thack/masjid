@@ -50,6 +50,19 @@ CREATE TABLE masjid_themes (
     accent_color TEXT NOT NULL DEFAULT '#10b981',
     font_heading TEXT NOT NULL DEFAULT 'Inter',
     font_body TEXT NOT NULL DEFAULT 'Roboto',
+
+    -- Display settings (per-masjid customization)
+    time_format TEXT NOT NULL DEFAULT '24h',          -- '12h' | '24h'
+    label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
+    label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
+    label_jumuah TEXT NOT NULL DEFAULT "Jumu'ah",
+    label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
+    label_fajr TEXT NOT NULL DEFAULT 'Fajr',
+    label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
+    label_asr TEXT NOT NULL DEFAULT 'Asr',
+    label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
+    label_isha TEXT NOT NULL DEFAULT 'Isha',
+
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
 );
 

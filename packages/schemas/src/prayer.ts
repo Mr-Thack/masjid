@@ -52,6 +52,9 @@ export const ActionSchema = z.discriminatedUnion('type', [
     type: z.literal('set_fixed_time'),
     time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   }),
+  z.object({
+    type: z.literal('right_after_adhaan'),
+  }),
 ]);
 export type Action = z.infer<typeof ActionSchema>;
 
@@ -81,6 +84,7 @@ export type PrayerRule = z.infer<typeof PrayerRuleSchema>;
 export const PrayerTimeSchema = z.object({
   adhaan: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   iqaamah: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  right_after_adhaan: z.boolean().optional(),
 });
 export type PrayerTime = z.infer<typeof PrayerTimeSchema>;
 

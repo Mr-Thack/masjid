@@ -9,25 +9,43 @@
   let prayerTimes = $derived(data.prayer_times);
   let jumuah = $derived(data.jumuah);
   let pinnedAnnouncement = $derived(data.pinned_announcement);
+  let theme = $derived(data.theme);
 
   let now = $state(new Date());
 
   const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
-  const prayerLabels: Record<string, string> = {
-    fajr: 'Fajr',
-    dhuhr: 'Dhuhr',
-    asr: 'Asr',
-    maghrib: 'Maghrib',
-    isha: 'Isha',
-  };
+
+  let prayerLabels: Record<string, string> = $derived({
+    fajr: theme?.label_fajr ?? 'Fajr',
+    dhuhr: theme?.label_dhuhr ?? 'Dhuhr',
+    asr: theme?.label_asr ?? 'Asr',
+    maghrib: theme?.label_maghrib ?? 'Maghrib',
+    isha: theme?.label_isha ?? 'Isha',
+  });
 
   let times = $derived(
     prayerNames.map((name) => ({
       name: prayerLabels[name]!,
       adhaan: prayerTimes?.[name]?.adhaan ?? '--:--',
       iqaamah: prayerTimes?.[name]?.iqaamah ?? '--:--',
+      rightAfterAdhaan: prayerTimes?.[name]?.right_after_adhaan ?? false,
+      sunrise: name === 'fajr' ? (prayerTimes?.sunrise ?? undefined) : undefined,
     })),
   );
+
+  let currentPrayerIndex = $derived.by(() => {
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    let current = -1;
+    for (let i = 0; i < prayerNames.length; i++) {
+      const iqaamah = prayerTimes?.[prayerNames[i]!]?.iqaamah;
+      if (!iqaamah) continue;
+      const [h, m] = iqaamah.split(':').map(Number);
+      if (h == null || m == null) continue;
+      const iqaamahMinutes = h * 60 + m;
+      if (iqaamahMinutes <= currentMinutes) current = i;
+    }
+    return current;
+  });
 
   let nextPrayerIndex = $derived.by(() => {
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -64,6 +82,16 @@
   });
 
   let hasJumuah = $derived((jumuah?.length ?? 0) > 0);
+
+  let commonJumuahLocation = $derived.by(() => {
+    if (!jumuah || jumuah.length === 0) return null;
+    const locations = jumuah.map((s) => s.location).filter(Boolean);
+    if (locations.length === 0) return null;
+    const first = locations[0];
+    return locations.every((l) => l === first) ? first : null;
+  });
+
+  let jumuahLabel = $derived(theme?.label_jumuah ?? "Jumu'ah");
 
   let hijriDate = $derived(
     new Intl.DateTimeFormat('en-TN-u-ca-islamic', {
@@ -124,11 +152,19 @@
         Prayer Times
       </h2>
       {#if prayerTimes && Object.keys(prayerTimes).length > 0}
-        <PrayerList {times} {nextPrayerIndex} />
+        <PrayerList
+          {times}
+          labels={{ adhaan: theme?.label_adhaan ?? 'Adhaan', iqaamah: theme?.label_iqaamah ?? 'Iqaamah', sunrise: theme?.label_sunrise ?? 'Sunrise' }}
+          timeFormat={theme?.time_format ?? '24h'}
+          {currentPrayerIndex}
+          {nextPrayerIndex}
+        />
       {:else}
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="flex flex-wrap justify-center gap-3">
           {#each Array(5) as _}
-            <SkeletonPrayerCard />
+            <div class="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)]">
+              <SkeletonPrayerCard />
+            </div>
           {/each}
         </div>
       {/if}
@@ -138,9 +174,12 @@
   <aside class="space-y-6 lg:pt-6">
     {#if hasJumuah}
       <section>
-        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
-          Friday Jumu'ah
+        <h2 class="text-lg font-semibold mb-1 uppercase tracking-wider text-accent font-heading">
+          Friday {jumuahLabel}
         </h2>
+        {#if commonJumuahLocation}
+          <p class="text-xs mb-3" style="color: var(--color-text-dim);">{commonJumuahLocation}</p>
+        {/if}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
           {#each jumuah ?? [] as session}
             <div class="glass-card p-4">
@@ -151,7 +190,7 @@
               {#if session.khateeb}
                 <p class="text-sm mt-1" style="color: var(--color-text-muted);">{session.khateeb}</p>
               {/if}
-              {#if session.location}
+              {#if session.location && !commonJumuahLocation}
                 <p class="text-xs mt-0.5" style="color: var(--color-text-dim);">{session.location}</p>
               {/if}
             </div>

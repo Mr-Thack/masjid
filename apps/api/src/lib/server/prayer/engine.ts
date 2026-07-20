@@ -58,6 +58,9 @@ export function applyAction(action: Action, time: string): string {
       }
       break;
     }
+    case 'right_after_adhaan':
+      // iqaamah stays at adhaan time; flag is set downstream
+      break;
   }
 
   return formatTime(minutes);
@@ -91,19 +94,28 @@ export function allConditionsMatch(
   return true;
 }
 
+export type PrayerTimeResult = {
+  adhaan: string;
+  iqaamah: string;
+  right_after_adhaan?: boolean;
+};
+
+export type ComputedTimes = Record<PrayerName, PrayerTimeResult> & { sunrise: string };
+
 export async function computeIqaamah(
   masjid: MasjidConfig,
   date: Date,
   db: Db,
-): Promise<Record<Exclude<PrayerName, 'sunrise'> | 'sunrise', { adhaan: string; iqaamah: string }>> {
+): Promise<ComputedTimes> {
   const adhaan = calculateAdhaan(masjid, date);
   const hijriDate = computeHijriDate(date);
   const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as PrayerName[];
-  const result = {} as Record<PrayerName, { adhaan: string; iqaamah: string }>;
+  const result = {} as Record<PrayerName, PrayerTimeResult>;
 
   for (const prayer of prayers) {
     const adhaanTime = adhaan[prayer];
     let iqaamahTime = adhaanTime;
+    let rightAfterAdhaan = false;
 
     const rules = await db
       .select()
@@ -129,10 +141,13 @@ export async function computeIqaamah(
 
       if (allConditionsMatch(conditions, date, hijriDate)) {
         iqaamahTime = applyAction(action, iqaamahTime);
+        if (action.type === 'right_after_adhaan') {
+          rightAfterAdhaan = true;
+        }
       }
     }
 
-    result[prayer] = { adhaan: adhaanTime, iqaamah: iqaamahTime };
+    result[prayer] = { adhaan: adhaanTime, iqaamah: iqaamahTime, right_after_adhaan: rightAfterAdhaan };
   }
 
   return {
@@ -142,5 +157,5 @@ export async function computeIqaamah(
     asr: result.asr,
     maghrib: result.maghrib,
     isha: result.isha,
-  } as Record<Exclude<PrayerName, 'sunrise'> | 'sunrise', { adhaan: string; iqaamah: string }>;
+  } as ComputedTimes;
 }

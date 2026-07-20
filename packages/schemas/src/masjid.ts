@@ -46,6 +46,17 @@ export const ThemeSchema = z.object({
   accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default('#10b981'),
   font_heading: z.string().default('Inter'),
   font_body: z.string().default('Roboto'),
+
+  time_format: z.enum(['12h', '24h']).default('24h'),
+  label_adhaan: z.string().min(1).default('Adhaan'),
+  label_iqaamah: z.string().min(1).default('Iqaamah'),
+  label_jumuah: z.string().min(1).default("Jumu'ah"),
+  label_sunrise: z.string().min(1).default('Sunrise'),
+  label_fajr: z.string().min(1).default('Fajr'),
+  label_dhuhr: z.string().min(1).default('Dhuhr'),
+  label_asr: z.string().min(1).default('Asr'),
+  label_maghrib: z.string().min(1).default('Maghrib'),
+  label_isha: z.string().min(1).default('Isha'),
 });
 export type Theme = z.infer<typeof ThemeSchema>;
 

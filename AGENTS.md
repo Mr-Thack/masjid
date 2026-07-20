@@ -63,10 +63,11 @@ masjid/
 
 ## Consumer frontend architecture (Phase 2 complete)
 
-### Theme system (extensible, per-masjid)
+### Theme & display settings (extensible, per-masjid)
 - **`src/lib/theme/context.svelte.ts`**: `applyTheme(theme)` function sets CSS custom properties on `document.documentElement` from DB theme data
 - **`src/lib/theme/presets.ts`**: Two presets — `glass-dark` (dark glassmorphism) and `minimal-light` (light cards)
 - **`layout_preset` field** in `masjid_themes` table switches presets. Current seed uses `"modern_minimal"` which falls through to `glass-dark` default.
+- **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerCard`, `PrayerList`, and the weekly prayer view.
 - **CSS custom properties** (16 total):
   - `--color-primary`, `--color-accent`, `--color-primary-light`, `--color-accent-light` — set by theme
   - `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-text-dim` — set by preset
@@ -81,8 +82,8 @@ masjid/
 ### Component library (`src/lib/components/`)
 | Component | Purpose |
 |---|---|
-| `PrayerCard` | Single prayer time card (adhaan + iqaamah, next/past states) |
-| `PrayerList` | Grid of PrayerCards with next prayer index logic |
+| `PrayerCard` | Single prayer time card (adhaan + iqaamah, sunrise line for Fajr, current/next badges, optional right-after-adhaan collapse) |
+| `PrayerList` | Wrapping grid of PrayerCards with current + next prayer index logic |
 | `AnnouncementCard` | Expandable announcement (title, date, compiled_html, pin badge) |
 | `DonateButton` | External donation link CTA (heart + external link icons) |
 | `LoadingSpinner` | Centered spinning loader |
@@ -93,14 +94,15 @@ masjid/
 ### Pages (under `/[masjid_slug]/`)
 | Route | Description |
 |---|---|
-| `+layout.svelte` | Shell: sticky header, bottom nav (4 tabs), theme application, nav transitions |
+| `+layout.svelte` | Shell: sticky header, top nav on desktop/bottom nav on mobile (Home | Prayer | News | Info), theme application, nav transitions |
 | `+layout.ts` | Load function — fetches page payload, returns masjid/theme/prayer_times/jumuah/announcements |
 | `+page.svelte` | Home: hero + countdown, prayer cards grid, jumuah today, pinned announcement, donate CTA |
 | `+error.svelte` | Error boundary fallback |
 | `prayer/+page.svelte` | Weekly prayer times viewer (prev/next week navigation) |
-| `jumuah/+page.svelte` | Jumu'ah sessions list with session cards |
+| `jumuah/+page.svelte` | Jumu'ah sessions list with session cards (sessions now also show on homepage; location shown once when shared) |
 | `announcements/+page.svelte` | Announcements feed |
 | `donate/+page.svelte` | Donation page with CTA and "Why Give" section |
+| `info/+page.svelte` | Masjid contact info, address, and social links |
 
 ## KNOWN ISSUES (for next session)
 

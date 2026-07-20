@@ -66,6 +66,16 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
             accent_color: theme.accentColor,
             font_heading: theme.fontHeading,
             font_body: theme.fontBody,
+            time_format: theme.timeFormat,
+            label_adhaan: theme.labelAdhaan,
+            label_iqaamah: theme.labelIqaamah,
+            label_jumuah: theme.labelJumuah,
+            label_sunrise: theme.labelSunrise,
+            label_fajr: theme.labelFajr,
+            label_dhuhr: theme.labelDhuhr,
+            label_asr: theme.labelAsr,
+            label_maghrib: theme.labelMaghrib,
+            label_isha: theme.labelIsha,
           }
         : null,
     });
@@ -129,6 +139,16 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       if (themeUpdate.data.accent_color !== undefined) themeData.accentColor = themeUpdate.data.accent_color;
       if (themeUpdate.data.font_heading !== undefined) themeData.fontHeading = themeUpdate.data.font_heading;
       if (themeUpdate.data.font_body !== undefined) themeData.fontBody = themeUpdate.data.font_body;
+      if (themeUpdate.data.time_format !== undefined) themeData.timeFormat = themeUpdate.data.time_format;
+      if (themeUpdate.data.label_adhaan !== undefined) themeData.labelAdhaan = themeUpdate.data.label_adhaan;
+      if (themeUpdate.data.label_iqaamah !== undefined) themeData.labelIqaamah = themeUpdate.data.label_iqaamah;
+      if (themeUpdate.data.label_jumuah !== undefined) themeData.labelJumuah = themeUpdate.data.label_jumuah;
+      if (themeUpdate.data.label_sunrise !== undefined) themeData.labelSunrise = themeUpdate.data.label_sunrise;
+      if (themeUpdate.data.label_fajr !== undefined) themeData.labelFajr = themeUpdate.data.label_fajr;
+      if (themeUpdate.data.label_dhuhr !== undefined) themeData.labelDhuhr = themeUpdate.data.label_dhuhr;
+      if (themeUpdate.data.label_asr !== undefined) themeData.labelAsr = themeUpdate.data.label_asr;
+      if (themeUpdate.data.label_maghrib !== undefined) themeData.labelMaghrib = themeUpdate.data.label_maghrib;
+      if (themeUpdate.data.label_isha !== undefined) themeData.labelIsha = themeUpdate.data.label_isha;
       if (Object.keys(themeData).length > 0) {
         await db.update(masjidThemes).set(themeData).where(eq(masjidThemes.masjidId, params.id));
       }

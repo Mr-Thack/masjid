@@ -22,6 +22,20 @@ function getLocalDb() {
   return localDb;
 }
 
+function addColumnIfMissing(
+  sqlite: Database.Database,
+  table: string,
+  column: string,
+  def: string,
+) {
+  const existing = sqlite
+    .prepare(`PRAGMA table_info(${table})`)
+    .all() as Array<{ name: string }>;
+  if (!existing.some((c) => c.name === column)) {
+    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+  }
+}
+
 function ensureTables(sqlite: Database.Database) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS masjids (
@@ -57,7 +71,17 @@ function ensureTables(sqlite: Database.Database) {
       primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
       accent_color TEXT NOT NULL DEFAULT '#10b981',
       font_heading TEXT NOT NULL DEFAULT 'Inter',
-      font_body TEXT NOT NULL DEFAULT 'Roboto'
+      font_body TEXT NOT NULL DEFAULT 'Roboto',
+      time_format TEXT NOT NULL DEFAULT '24h',
+      label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
+      label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
+      label_jumuah TEXT NOT NULL DEFAULT "Jumu'ah",
+      label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
+      label_fajr TEXT NOT NULL DEFAULT 'Fajr',
+      label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
+      label_asr TEXT NOT NULL DEFAULT 'Asr',
+      label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
+      label_isha TEXT NOT NULL DEFAULT 'Isha'
     );
 
     CREATE TABLE IF NOT EXISTS prayer_rules (
@@ -144,6 +168,18 @@ function ensureTables(sqlite: Database.Database) {
       created_at TEXT DEFAULT (datetime('now'))
     );
   `);
+
+  // Migrate existing local databases created before these columns existed.
+  addColumnIfMissing(sqlite, 'masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'");
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {

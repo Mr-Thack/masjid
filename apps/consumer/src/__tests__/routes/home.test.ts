@@ -75,7 +75,7 @@ vi.mock('$app/stores', () => {
 });
 
 function setPageData(data: PageData) {
-  page.set({ data });
+  (page as any).set({ data });
 }
 
 describe('homepage', () => {
@@ -156,7 +156,9 @@ describe('homepage', () => {
     expect(screen.getByText('Second Khutbah')).toBeInTheDocument();
     expect(screen.getByText('14:00')).toBeInTheDocument();
     expect(screen.getByText('Sh. Yusuf')).toBeInTheDocument();
-    expect(screen.getAllByText('Main Hall')).toHaveLength(2);
+    expect(screen.getByText('Main Hall')).toBeInTheDocument();
+    // Location is shown once at the section level, not repeated in every card.
+    expect(screen.queryAllByText('Main Hall')).toHaveLength(1);
 
     expect(
       screen.getByRole('heading', { name: 'Announcement' }),

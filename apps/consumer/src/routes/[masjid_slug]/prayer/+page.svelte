@@ -4,23 +4,30 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
 
+  import { formatTime } from '$lib/time';
+
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
+  let theme = $derived(data.theme);
 
   let weekOffset = $state(0);
-  let weekData = $state<Map<string, Record<string, { adhaan: string; iqaamah: string }>>>(new Map());
+  let weekData = $state<Map<string, Record<string, { adhaan: string; iqaamah: string; right_after_adhaan?: boolean }>>>(new Map());
   let loading = $state(false);
   let error = $state('');
   let today = $state(new Date());
 
   const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
-  const prayerLabels: Record<string, string> = {
-    fajr: 'Fajr',
-    dhuhr: 'Dhuhr',
-    asr: 'Asr',
-    maghrib: 'Maghrib',
-    isha: 'Isha',
-  };
+  let prayerLabels: Record<string, string> = $derived({
+    fajr: theme?.label_fajr ?? 'Fajr',
+    dhuhr: theme?.label_dhuhr ?? 'Dhuhr',
+    asr: theme?.label_asr ?? 'Asr',
+    maghrib: theme?.label_maghrib ?? 'Maghrib',
+    isha: theme?.label_isha ?? 'Isha',
+  });
+
+  let timeFormat = $derived(theme?.time_format ?? '24h');
+  let adhaanLabel = $derived(theme?.label_adhaan ?? 'Adhaan');
+  let iqaamahLabel = $derived(theme?.label_iqaamah ?? 'Iqaamah');
 
   function getWeekDates(offset: number): Date[] {
     const now = new Date(today);
@@ -155,10 +162,10 @@
                       {prayerLabels[name]}
                     </span>
                     <span class="text-sm font-bold tabular-nums mt-0.5" style="color: var(--color-text-muted);">
-                      {time.iqaamah}
+                      {formatTime(time.iqaamah, timeFormat)}
                     </span>
                     <span class="text-[10px] tabular-nums" style="color: var(--color-text-dim);">
-                      {time.adhaan}
+                      {adhaanLabel}: {formatTime(time.adhaan, timeFormat)}
                     </span>
                   </div>
                 {/if}
