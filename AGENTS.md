@@ -30,11 +30,21 @@ npm run test:all      # everything
 ```
 
 ## Seed data
+
+### Masjid Al-Noor (Chicago, IL)
 - Team: `admin@masjid-alnoor.org` / `password123`
 - Who slug: `masjid-al-noor` (note dashes, not underscores)
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Consumer page: `http://localhost:5175/masjid-al-noor`
 - TV page: `http://localhost:5174/display/masjid-al-noor`
+
+### Masjid Al-Jabal (Kennesaw, GA)
+- Team: `admin@masjid-aljabal.org` / `password123`
+- Who slug: `masjid-al-jabal`
+- API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-jabal`
+- Consumer page: `http://localhost:5175/masjid-al-jabal`
+- TV page: `http://localhost:5174/display/masjid-al-jabal`
+- Notes: Hanafi / Indo-Pak congregation; uses `minimal-light` theme, `12h` time format, ISNA calculation method, and Indo-Pak transliterations (`Azaan`, `Iqamah`, `Zuhr`, `Jummah`).
 - DB file: `.masjid/local.db` (SQLite via better-sqlite3 in dev mode)
 
 ## Monorepo structure
