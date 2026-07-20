@@ -1,21 +1,14 @@
-const CACHE_NAME = 'masjid-v1';
+const CACHE_NAME = 'masjid-consumer-v1';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(['/']);
-    }),
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) => {
-      return Promise.all(
-        names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)),
-      );
-    }),
+    caches.keys().then((names) =>
+      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))),
+    ),
   );
   self.clients.claim();
 });
@@ -23,21 +16,30 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  if (url.pathname.startsWith('/api/')) {
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/@')) {
     return;
   }
 
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
-        if (response.ok) {
+      if (cached) return cached;
+
+      return fetch(event.request).then((response) => {
+        if (!response.ok) return response;
+
+        const cacheable =
+          url.pathname.match(/\.(js|css|png|svg|ico|woff2)$/) ||
+          url.pathname.startsWith('/icon-');
+
+        if (cacheable) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
+
         return response;
-      });
+      }).catch(() => caches.match(event.request));
     }),
   );
 });
@@ -45,17 +47,19 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
-  const data = event.data.json();
-  const options = {
-    body: data.body,
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    data: { url: data.url },
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options),
-  );
+  try {
+    const data = event.data.json();
+    event.waitUntil(
+      self.registration.showNotification(data.title, {
+        body: data.body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        data: { url: data.url },
+      }),
+    );
+  } catch {
+    // ignore malformed push payloads
+  }
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -64,11 +68,8 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((clients) => {
       const existing = clients.find((c) => c.url.includes(url));
-      if (existing) {
-        existing.focus();
-      } else {
-        self.clients.openWindow(url);
-      }
+      if (existing) existing.focus();
+      else self.clients.openWindow(url);
     }),
   );
 });

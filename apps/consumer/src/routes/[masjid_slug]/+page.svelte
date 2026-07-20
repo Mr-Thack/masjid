@@ -11,7 +11,6 @@
   let pinnedAnnouncement = $derived(data.pinned_announcement);
 
   let now = $state(new Date());
-  let ready = $state(false);
 
   const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
   const prayerLabels: Record<string, string> = {
@@ -87,7 +86,6 @@
   $effect(() => {
     const t = setInterval(() => {
       now = new Date();
-      if (!ready) ready = true;
     }, 1000);
     return () => clearInterval(t);
   });
@@ -126,7 +124,7 @@
     <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
       Prayer Times
     </h2>
-    {#if ready}
+    {#if times.length > 0}
       <PrayerList {times} {nextPrayerIndex} />
     {:else}
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">

@@ -1,5 +1,3 @@
-import { onMount } from 'svelte';
-
 export const presetTokens: Record<string, Record<string, string>> = {
   'glass-dark': {
     '--color-bg': '#030712',
