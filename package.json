@@ -8,8 +8,11 @@
     "workers/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces",
-    "build": "npm run build --workspaces",
+    "dev": "npm run dev -w @masjid/api",
+    "dev:tv": "npm run dev -w @masjid/tv",
+    "dev:consumer": "npm run dev -w @masjid/consumer",
+    "dev:all": "npm run dev -w @masjid/api & npm run dev -w @masjid/tv & npm run dev -w @masjid/consumer",
+    "build": "npm run build --workspaces --if-present",
     "lint": "eslint .",
     "check": "npm run check --workspaces --if-present",
     "format": "prettier --write .",
@@ -23,5 +26,15 @@
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "vitest": "^3.1.1"
+  },
+  "allowScripts": {
+    "esbuild@0.18.20": true,
+    "esbuild@0.24.2": true,
+    "esbuild@0.19.12": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "esbuild@0.17.19": true,
+    "sharp@0.33.5": true,
+    "workerd@1.20250718.0": true
   }
 }

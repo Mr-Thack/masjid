@@ -5,20 +5,14 @@ import { admins } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Handle } from '@sveltejs/kit';
 
-const PUBLIC_PATHS = [
-  /^\/api\/v1\/auth\/login$/,
-  /^\/api\/v1\/auth\/register$/,
+const PUBLIC_PATTERNS = [
+  /^\/api\/v1\/auth\/(login|register)$/,
   /^\/api\/v1\/webhooks\/stripe$/,
+  /^\/api\/v1\/masjids\//,
 ];
 
-const PUBLIC_MASJID_PATTERN = /^\/api\/v1\/masjids\/(?!.*\b[a-f0-9-]{36}\b)([a-z0-9-]+)/;
-
 function isPublicPath(pathname: string): boolean {
-  for (const pattern of PUBLIC_PATHS) {
-    if (pattern.test(pathname)) return true;
-  }
-  if (PUBLIC_MASJID_PATTERN.test(pathname)) return true;
-  return false;
+  return PUBLIC_PATTERNS.some((p) => p.test(pathname));
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
