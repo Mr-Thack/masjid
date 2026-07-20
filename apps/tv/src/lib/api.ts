@@ -3,6 +3,7 @@ export interface BoardPayload {
     slug: string;
     name: string;
     city: string | null;
+    state: string | null;
     external_donation_url: string | null;
   };
   theme: {

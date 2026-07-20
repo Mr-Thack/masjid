@@ -34,7 +34,7 @@
     x1="100"
     y1="100"
     x2="100"
-    y2="42"
+    y2="44"
     class="clock-hand clock-hand--hour"
     transform="rotate({hourAngle} 100 100)"
   />
@@ -43,7 +43,7 @@
     x1="100"
     y1="100"
     x2="100"
-    y2="28"
+    y2="30"
     class="clock-hand clock-hand--minute"
     transform="rotate({minuteAngle} 100 100)"
   />
@@ -52,7 +52,7 @@
     x1="100"
     y1="100"
     x2="100"
-    y2="20"
+    y2="24"
     class="clock-hand clock-hand--second"
     transform="rotate({secondAngle} 100 100)"
   />
@@ -64,24 +64,24 @@
   .analog-clock {
     width: 100%;
     height: auto;
-    max-width: 220px;
     display: block;
     margin: 0 auto;
+    max-width: 280px;
   }
 
   .clock-face {
-    fill: rgba(17, 24, 39, 0.6);
-    stroke: rgba(55, 65, 81, 0.8);
+    fill: var(--color-surface, rgba(17, 24, 39, 0.6));
+    stroke: var(--color-border, rgba(55, 65, 81, 0.8));
     stroke-width: 2;
   }
 
   .clock-tick {
-    stroke: #4b5563;
+    stroke: var(--color-text-dim, #4b5563);
     stroke-width: 1.5;
   }
 
   .clock-tick--hour {
-    stroke: #9ca3af;
+    stroke: var(--color-text-muted, #9ca3af);
     stroke-width: 2.5;
   }
 
@@ -91,12 +91,12 @@
   }
 
   .clock-hand--hour {
-    stroke: #e5e7eb;
+    stroke: var(--color-text, #e5e7eb);
     stroke-width: 4;
   }
 
   .clock-hand--minute {
-    stroke: #d1d5db;
+    stroke: var(--color-text-muted, #d1d5db);
     stroke-width: 2.5;
   }
 

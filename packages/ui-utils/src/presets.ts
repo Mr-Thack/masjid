@@ -1,0 +1,28 @@
+export const presetTokens: Record<string, Record<string, string>> = {
+  'glass-dark': {
+    '--color-bg': '#030712',
+    '--color-surface': 'rgba(17, 24, 39, 0.6)',
+    '--color-text': '#f9fafb',
+    '--color-text-muted': '#9ca3af',
+    '--color-text-dim': '#6b7280',
+    '--color-border': 'rgba(255, 255, 255, 0.06)',
+    '--color-border-hover': 'rgba(255, 255, 255, 0.12)',
+    '--color-current-highlight': 'rgba(255, 255, 255, 0.08)',
+    '--glass-shine': 'rgba(255, 255, 255, 0.06)',
+    '--shadow-card': '0 4px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 var(--glass-shine)',
+    '--shadow-card-hover': '0 8px 32px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  },
+  'minimal-light': {
+    '--color-bg': '#f8fafc',
+    '--color-surface': 'rgba(255, 255, 255, 0.72)',
+    '--color-text': '#0f172a',
+    '--color-text-muted': '#64748b',
+    '--color-text-dim': '#94a3b8',
+    '--color-border': 'rgba(0, 0, 0, 0.08)',
+    '--color-border-hover': 'rgba(0, 0, 0, 0.16)',
+    '--color-current-highlight': 'rgba(0, 0, 0, 0.06)',
+    '--glass-shine': 'rgba(255, 255, 255, 0.6)',
+    '--shadow-card': '0 4px 20px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--glass-shine)',
+    '--shadow-card-hover': '0 8px 28px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+  },
+};

@@ -2,9 +2,11 @@
 
 html, body {
   height: 100%; width: 100%; overflow: hidden;
-  background-color: #030712; color: #f9fafb;
+  background-color: var(--color-bg, #030712);
+  color: var(--color-text, #f9fafb);
   font-family: var(--font-body, 'Inter', sans-serif);
-  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection { background-color: var(--color-primary, #1e3a8a); color: #fff; }
@@ -25,98 +27,123 @@ html, body {
 
 /* === Page shell === */
 .tv-page {
-  min-height: 100vh; width: 100vw;
+  height: 100vh; width: 100vw;
   display: flex; flex-direction: column;
   user-select: none; overflow: hidden;
-  background-color: #030712; color: #f3f4f6;
+  background-color: var(--color-bg, #030712);
+  color: var(--color-text, #f9fafb);
   font-family: var(--font-body, 'Inter', sans-serif);
 }
 
 .tv-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1rem 2.5rem; border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+  padding: 1.25rem 3rem;
+  border-bottom: 1px solid var(--color-border, rgba(31, 41, 55, 0.5));
   flex-shrink: 0;
+  background-color: var(--color-surface, transparent);
 }
 
 .tv-header-name {
-  font-size: 2rem; line-height: 2.25rem; font-weight: 700;
-  letter-spacing: -0.025em;
-  font-family: var(--font-heading, 'Inter', sans-serif);
-  color: var(--color-primary, #1e3a8a);
+  font-size: clamp(2.25rem, 3.5vw, 3.5rem);
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-family: var(--font-heading, 'Inter'), sans-serif;
+  color: var(--color-text, #f9fafb);
 }
 
 .tv-header-city {
-  font-size: 1rem; color: #9ca3af; margin-top: 0.15rem;
+  font-size: 1.1rem;
+  color: var(--color-text-muted, #9ca3af);
+  margin-top: 0.35rem;
 }
 
+.tv-header-date-block { text-align: right; }
+
 .tv-header-date {
-  font-size: 1.1rem; color: #d1d5db;
+  font-size: 1.4rem;
+  color: var(--color-text, #f9fafb);
+  font-weight: 500;
 }
 
 .tv-header-hijri {
-  font-size: 0.9rem; color: #6b7280; margin-top: 0.15rem;
+  font-size: 1.05rem;
+  color: var(--color-text-dim, #6b7280);
+  margin-top: 0.25rem;
 }
 
 .tv-main {
-  flex: 1 1 0%; display: flex; align-items: stretch; padding: 1.5rem 2.5rem;
-  overflow: hidden; min-height: 0;
+  flex: 1 1 0%;
+  display: flex;
+  padding: 2rem 3rem;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .tv-columns {
-  display: flex; width: 100%; gap: 2rem; min-height: 0;
+  display: flex;
+  width: 100%;
+  gap: 3rem;
+  min-height: 0;
 }
 
 /* === Info panel (left column) === */
 .tv-info-panel {
-  width: 260px; flex-shrink: 0;
+  width: 320px; flex-shrink: 0;
   display: flex; flex-direction: column; align-items: center;
   padding-top: 0.5rem; overflow: hidden;
 }
 
 .tv-digital-time {
-  font-size: 1.5rem; font-weight: 300; color: #9ca3af;
-  font-family: var(--font-heading, 'Inter', sans-serif);
-  margin-top: 0.5rem; letter-spacing: 0.05em;
+  font-size: clamp(1.75rem, 2.5vw, 2.5rem);
+  font-weight: 300;
+  color: var(--color-text-muted, #9ca3af);
+  font-family: var(--font-heading, 'Inter'), sans-serif;
+  margin-top: 0.75rem;
+  letter-spacing: 0.05em;
 }
 
 .tv-countdown-label {
-  font-size: 0.8rem; color: #6b7280;
-  margin-top: 0.75rem; letter-spacing: 0.05em;
-  display: flex; align-items: center; gap: 0.3rem;
+  font-size: 1rem;
+  color: var(--color-text-dim, #6b7280);
+  margin-top: 1rem;
+  letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 0.4rem;
 }
 
 .tv-divider {
   width: 80%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(75, 85, 99, 0.5), transparent);
-  margin: 1rem 0;
+  background: linear-gradient(90deg, transparent, var(--color-border, rgba(75, 85, 99, 0.5)), transparent);
+  margin: 1.25rem 0;
 }
 
 .tv-changes {
-  width: 100%; font-size: 0.72rem; color: #6b7280;
+  width: 100%; font-size: 0.85rem;
+  color: var(--color-text-dim, #6b7280);
   overflow-y: auto; flex: 1 1 0%;
 }
 
 .tv-changes-heading {
-  font-size: 0.7rem; text-transform: uppercase;
-  letter-spacing: 0.15em; color: #4b5563;
-  margin-bottom: 0.4rem; text-align: center;
+  font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: 0.2em; color: var(--color-text-muted, #4b5563);
+  margin-bottom: 0.5rem; text-align: center; font-weight: 700;
 }
 
 .tv-change-line {
-  display: flex; align-items: center; gap: 0.3rem;
-  padding: 0.15rem 0.5rem; flex-wrap: wrap; justify-content: center;
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.5rem; flex-wrap: wrap; justify-content: center;
 }
 
 .tv-change-date {
-  color: #4b5563; font-size: 0.65rem;
+  color: var(--color-text-dim, #4b5563); font-size: 0.75rem;
 }
 
 .tv-change-prayer {
-  color: #9ca3af; font-weight: 600; font-size: 0.7rem;
+  color: var(--color-text-muted, #9ca3af); font-weight: 700; font-size: 0.8rem;
 }
 
 .tv-change-from {
-  color: #6b7280; font-family: monospace;
+  color: var(--color-text-dim, #6b7280); font-family: monospace;
 }
 
 .tv-change-arrow {
@@ -125,19 +152,20 @@ html, body {
 
 .tv-change-to {
   color: var(--color-accent, #10b981);
-  font-family: monospace; font-weight: 600;
+  font-family: monospace; font-weight: 700;
 }
 
 /* === Prayer grid (right column) === */
 .tv-grid-section {
-  flex: 1 1 0%; display: flex; flex-direction: column; gap: 0.5rem;
+  flex: 1 1 0%;
+  display: flex; flex-direction: column; gap: 1.5rem;
   min-height: 0; justify-content: center;
 }
 
 .prayer-grid {
   display: grid;
-  grid-template-columns: 60px repeat(5, 1fr);
-  gap: 0.5rem; width: 100%;
+  grid-template-columns: 80px repeat(5, 1fr);
+  gap: 0.75rem; width: 100%;
 }
 
 .prayer-grid-header,
@@ -147,21 +175,21 @@ html, body {
 
 .prayer-grid-label {
   display: flex; align-items: center; justify-content: flex-end;
-  padding-right: 0.75rem; font-size: 0.7rem;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: #4b5563; font-weight: 600;
+  padding-right: 1rem; font-size: 0.9rem;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--color-text-dim, #4b5563); font-weight: 700;
 }
 
 .prayer-grid-label--sunrise {
-  color: #374151; font-size: 0.65rem;
+  color: var(--color-text-dim, #374151); font-size: 0.8rem;
 }
 
 .prayer-col-header {
   display: flex; align-items: center; justify-content: center;
-  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #6b7280;
-  font-family: var(--font-heading, 'Inter', sans-serif);
-  padding: 0.35rem 0; border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+  font-size: 1.1rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--color-text-muted, #6b7280);
+  font-family: var(--font-heading, 'Inter'), sans-serif;
+  padding: 0.5rem 0; border-bottom: 2px solid var(--color-border, rgba(31, 41, 55, 0.5));
 }
 
 .prayer-col-header--current {
@@ -171,20 +199,25 @@ html, body {
 
 .prayer-cell {
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem; font-weight: 700;
-  font-variant-numeric: tabular-nums; letter-spacing: 0.03em;
-  color: #d1d5db; padding: 0.6rem 0.3rem;
-  border-radius: 0.5rem; transition: background-color 0.3s, color 0.3s;
+  font-size: clamp(2rem, 3.2vw, 3.5rem); font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+  color: var(--color-text, #d1d5db);
+  padding: clamp(0.75rem, 1.5vh, 1.25rem) 0.5rem;
+  border-radius: 0.75rem;
+  transition: background-color 0.3s, color 0.3s;
+  white-space: nowrap;
 }
 
 .prayer-cell--current {
   color: var(--color-accent, #10b981);
-  background-color: rgba(16, 185, 129, 0.08);
-  font-weight: 800; font-size: 2rem;
+  background-color: var(--color-current-highlight, rgba(255, 255, 255, 0.08));
+  font-weight: 800;
+  font-size: clamp(2.2rem, 3.5vw, 3.75rem);
 }
 
 .prayer-cell--sunrise {
-  font-size: 0.8rem; color: #4b5563; font-weight: 400; padding: 0.2rem;
+  font-size: 1rem; color: var(--color-text-dim, #4b5563);
+  font-weight: 500; padding: 0.35rem;
 }
 
 .prayer-cell--flash {
@@ -192,80 +225,115 @@ html, body {
 }
 
 @keyframes flash-pulse {
-  0%   { color: var(--color-accent, #10b981); transform: scale(1); }
-  100% { color: #fff; transform: scale(1.08);
+  0% { color: var(--color-accent, #10b981); transform: scale(1); }
+  100% { color: var(--color-text, #fff); transform: scale(1.08);
          text-shadow: 0 0 12px var(--color-accent, #10b981),
                       0 0 24px var(--color-accent, #10b981); }
 }
 
 /* === Countdown === */
 .countdown-time {
-  font-size: 0.9rem; font-weight: 600; font-variant-numeric: tabular-nums;
-  font-family: 'Courier New', Courier, monospace; color: #d1d5db;
+  font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--color-text-muted, #d1d5db);
 }
 
 .countdown-time--urgent { color: var(--color-accent, #10b981); }
 
-/* === Jumuah line === */
-.jumuah-line {
-  display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;
-  font-size: 0.72rem; color: #6b7280;
-  padding-top: 0.25rem; border-top: 1px solid rgba(31, 41, 55, 0.3);
+/* === Jumuah === */
+.tv-jumuah-wrapper {
+  display: flex; justify-content: center;
+  padding-top: 0.5rem;
 }
 
-.jumuah-asterisk { color: var(--color-accent, #10b981); font-weight: 700; }
+.jumuah-line {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  flex-wrap: wrap; font-size: 1rem;
+  color: var(--color-text-dim, #6b7280);
+  padding: 0.6rem 1.25rem;
+  border: 1px solid var(--color-border, rgba(31, 41, 55, 0.3));
+  border-radius: 999px;
+  background-color: var(--color-surface, transparent);
+}
 
-.jumuah-heading { font-weight: 600; color: #9ca3af; }
-
-.jumuah-session { display: inline-flex; align-items: center; gap: 0.15rem;
-  color: #9ca3af; font-variant-numeric: tabular-nums; }
-
-.jumuah-khateeb { font-size:0.65rem; color: #6b7280; }
-
-.jumuah-lang { font-size:0.6rem; color: #4b5563;
-  text-transform: uppercase; }
-
-.jumuah-sep { color: #4b5563; margin: 0 0.15rem; }
+.jumuah-asterisk { color: var(--color-accent, #10b981); font-weight: 800; }
+.jumuah-heading { font-weight: 700; color: var(--color-text-muted, #9ca3af); }
+.jumuah-session { display: inline-flex; align-items: center; gap: 0.25rem;
+  color: var(--color-text-muted, #9ca3af); font-variant-numeric: tabular-nums; }
+.jumuah-khateeb { font-size: 0.85rem; color: var(--color-text-dim, #6b7280); }
+.jumuah-lang { font-size: 0.75rem; color: var(--color-text-dim, #4b5563);
+  text-transform: uppercase; font-weight: 700; }
+.jumuah-sep { color: var(--color-text-dim, #4b5563); margin: 0 0.2rem; }
 
 /* === Announcement Banner === */
-.announcement-banner { width: 100%; padding: 0.75rem 0;
-  overflow: hidden; flex-shrink: 0; }
+.announcement-banner {
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.12));
+  background-color: var(--color-accent, #10b981);
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+}
 
-.announcement-marquee { display: flex; white-space: nowrap; }
+.announcement-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+
+.announcement-track:hover {
+  animation-play-state: paused;
+}
 
 .announcement-item {
-  display: inline-flex; align-items: center; gap: 0.75rem;
-  color: #fff; font-size: 1.1rem; font-weight: 600;
-  letter-spacing: 0.025em; padding: 0 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-width: 100vw;
+  color: #fff; font-size: 1.35rem; font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.9rem 3rem;
+  white-space: nowrap;
+}
+
+.announcement-icon {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 /* === Error state === */
 .tv-error {
   min-height: 100vh; display: flex;
   flex-direction: column; align-items: center; justify-content: center;
-  background-color: #030712; color: #f3f4f6;
-  font-family: var(--font-body, 'Inter', sans-serif);
+  background-color: var(--color-bg, #030712); color: var(--color-text, #f3f4f6);
+  font-family: var(--font-body, 'Inter'), sans-serif;
   padding: 2rem; text-align: center;
 }
 
 .tv-error-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.5; }
-
 .tv-error-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
-
-.tv-error-message { font-size: 1.125rem; color: #9ca3af;
-  max-width: 32rem; }
+.tv-error-message { font-size: 1.125rem; color: var(--color-text-muted, #9ca3af); max-width: 32rem; }
 
 /* === Animations === */
-@keyframes marquee {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.5; }
 }
 
-.animate-marquee { animation: marquee 25s linear infinite; }
-
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

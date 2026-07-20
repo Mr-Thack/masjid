@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render } from '@testing-library/svelte';
 import AnnouncementBanner from '$lib/components/AnnouncementBanner.svelte';
 
 describe('AnnouncementBanner', () => {
   it('renders nothing when announcement is null', () => {
     const { container } = render(AnnouncementBanner, {
-      props: { announcement: null, accentColor: '#10b981' },
+      props: { announcement: null },
     });
     expect(container.textContent).toBe('');
   });
@@ -14,19 +14,19 @@ describe('AnnouncementBanner', () => {
     const { container } = render(AnnouncementBanner, {
       props: {
         announcement: { title: 'Eid Mubarak!', compiled_html: '<p>Eid Mubarak!</p>' },
-        accentColor: '#10b981',
       },
     });
     expect(container.textContent).toContain('Eid Mubarak!');
   });
 
-  it('renders title twice (marquee technique)', () => {
+  it('duplicates title for a continuous marquee track', () => {
     const { container } = render(AnnouncementBanner, {
       props: {
         announcement: { title: 'Important Notice', compiled_html: '<p>Notice</p>' },
-        accentColor: '#10b981',
       },
     });
+    const track = container.querySelector('.announcement-track');
+    expect(track).toBeTruthy();
     const matches = container.textContent?.match(/Important Notice/g);
     expect(matches).toHaveLength(2);
   });

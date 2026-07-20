@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { BoardPayload } from '../../lib/api';
+  import type { BoardPayload } from '$lib/api';
   import { formatTime } from '$lib/time';
+  import { applyTheme, presetTokens, findNearestIqaamahChanges } from '@masjid/ui-utils';
   import PrayerBoard from '$lib/components/PrayerBoard.svelte';
   import AnnouncementBanner from '$lib/components/AnnouncementBanner.svelte';
   import Countdown from '$lib/components/Countdown.svelte';
@@ -10,7 +11,6 @@
   let { data }: { data: BoardPayload } = $props();
 
   let payload = $state(data);
-  let refreshKey = $state(0);
   let now = $state(new Date());
 
   let theme = $derived(payload.theme);
@@ -35,6 +35,27 @@
     adhaanHM: [number, number];
     iqaamahHM: [number, number];
   }
+
+  function buildThemeStyle(theme: BoardPayload['theme']): string {
+    const preset = presetTokens[theme.layout_preset ?? ''] ?? presetTokens['glass-dark'];
+    const vars: Record<string, string> = {
+      '--color-primary': theme.primary_color,
+      '--color-accent': theme.accent_color,
+      '--font-heading': `'${theme.font_heading}', sans-serif`,
+      '--font-body': `'${theme.font_body}', sans-serif`,
+      ...preset,
+    };
+    if (theme.layout_preset === 'minimal-light') {
+      vars['--color-primary-light'] = '#3b5cb8';
+      vars['--color-primary-dark'] = '#13265e';
+      vars['--color-accent-light'] = '#34d399';
+    }
+    return Object.entries(vars)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join('; ');
+  }
+
+  let themeStyle = $derived(buildThemeStyle(theme));
 
   let times = $derived.by(() => {
     const fmt = timeFormat;
@@ -131,29 +152,42 @@
     now.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
+      hour12: timeFormat === '12h',
     }),
   );
 
-  let upcomingChanges = $derived.by(() => {
-    const changes: Array<{ date: string; label: string; prayerKey: string; from: string; to: string }> = [];
-    const todayTimes = payload.today.times;
-    for (const day of payload.upcoming_days) {
-      for (const name of prayerNames) {
-        const todayIq = todayTimes[name]?.iqaamah;
-        const futureIq = day.times[name]?.iqaamah;
-        if (todayIq && futureIq && futureIq !== todayIq) {
-          const d = new Date(day.date + 'T12:00:00');
-          changes.push({
-            date: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-            label: prayerLabels[name],
-            prayerKey: name,
-            from: formatTime(todayIq, timeFormat),
-            to: formatTime(futureIq, timeFormat),
-          });
-        }
-      }
+  let baseIqaamahs = $derived.by(() => {
+    const base: Record<string, { iqaamah: string }> = {};
+    for (const name of prayerNames) {
+      base[name] = { iqaamah: payload.today.times[name]?.iqaamah ?? '--:--' };
     }
-    return changes;
+    return base;
+  });
+
+  let upcomingIqaamahs = $derived.by(() => {
+    return payload.upcoming_days.map((day) => {
+      const times: Record<string, { iqaamah: string }> = {};
+      for (const name of prayerNames) {
+        times[name] = { iqaamah: day.times[name]?.iqaamah ?? '--:--' };
+      }
+      return { date: day.date, times };
+    });
+  });
+
+  let rawUpcomingChanges = $derived(
+    findNearestIqaamahChanges(baseIqaamahs, upcomingIqaamahs, prayerNames),
+  );
+
+  let upcomingChanges = $derived.by(() => {
+    return rawUpcomingChanges.map((change) => {
+      const d = new Date(change.date + 'T12:00:00');
+      return {
+        date: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        label: prayerLabels[change.prayer as PrayerKey],
+        from: formatTime(change.from, timeFormat),
+        to: formatTime(change.to, timeFormat),
+      };
+    });
   });
 
   async function refresh() {
@@ -161,7 +195,6 @@
       const res = await fetch(`/api/v1/masjids/${payload.masjid.slug}/board`);
       if (res.ok) {
         payload = await res.json();
-        refreshKey++;
         now = new Date();
       }
     } catch {
@@ -177,20 +210,23 @@
       clearInterval(poll);
     };
   });
+
+  $effect(() => {
+    applyTheme(theme);
+  });
 </script>
 
-<div
-  class="tv-page"
-  style="--color-primary: {theme.primary_color}; --color-accent: {theme.accent_color}; --font-heading: '{theme.font_heading}', sans-serif; --font-body: '{theme.font_body}', sans-serif;"
->
+<div class="tv-page" style={themeStyle}>
   <header class="tv-header">
     <div class="flex flex-col">
       <h1 class="tv-header-name">{payload.masjid.name}</h1>
       {#if payload.masjid.city}
-        <p class="tv-header-city">{payload.masjid.city}, IL</p>
+        <p class="tv-header-city">
+          {payload.masjid.city}{#if payload.masjid.state}, {payload.masjid.state}{/if}
+        </p>
       {/if}
     </div>
-    <div class="text-right">
+    <div class="tv-header-date-block">
       <p class="tv-header-date">{formattedDate}</p>
       <p class="tv-header-hijri">{hijriDate}</p>
     </div>
@@ -232,18 +268,16 @@
           sunriseLabel={theme.label_sunrise}
           adhaanLabel={theme.label_adhaan}
           iqaamahLabel={theme.label_iqaamah}
-          key={refreshKey}
         />
 
-        <JumuahNotice sessions={payload.jumuah} label={theme.label_jumuah} />
+        <div class="tv-jumuah-wrapper">
+          <JumuahNotice sessions={payload.jumuah} label={theme.label_jumuah} />
+        </div>
       </section>
     </div>
   </main>
 
   {#if payload.pinned_announcement}
-    <AnnouncementBanner
-      announcement={payload.pinned_announcement}
-      accentColor={theme.accent_color}
-    />
+    <AnnouncementBanner announcement={payload.pinned_announcement} />
   {/if}
 </div>

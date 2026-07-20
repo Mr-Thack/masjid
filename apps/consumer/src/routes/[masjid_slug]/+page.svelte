@@ -5,6 +5,7 @@
   import SkeletonPrayerCard from '$lib/components/SkeletonPrayerCard.svelte';
   import { fetchPrayerTimes, type PrayerTimes } from '$lib/api';
   import { formatTime } from '$lib/time';
+  import { findNearestIqaamahChanges } from '@masjid/ui-utils';
   import type { DailyTimes } from '@masjid/schemas';
 
   let data = $derived($page.data);
@@ -157,42 +158,35 @@
     changesError = '';
 
     try {
-      const base: Record<string, string> = {};
+      const baseIqaamahs: Record<string, { iqaamah: string }> = {};
       for (const name of prayerNames) {
-        base[name] = prayerTimes[name]?.iqaamah ?? '--:--';
+        baseIqaamahs[name] = { iqaamah: prayerTimes[name]?.iqaamah ?? '--:--' };
       }
 
-      const changes: ChangeEntry[] = [];
-      const seenPrayers = new Set<string>();
+      const futureDays: Array<{ date: string; times: Record<string, { iqaamah: string }> }> = [];
 
       for (let offset = 1; offset <= 6; offset++) {
-        if (seenPrayers.size == prayerNames.length) break;
-
         const date = addDays(now, offset);
-        const result: DailyTimes = await fetchPrayerTimes(masjid.slug, formatDate(date));
+        const iso = formatDate(date);
+        const result: DailyTimes = await fetchPrayerTimes(masjid.slug, iso);
         const dayTimes = result.times as unknown as PrayerTimes;
 
+        const timesByName: Record<string, { iqaamah: string }> = {};
         for (const name of prayerNames) {
-          if (seenPrayers.has(name)) continue;
-
-          const current = base[name]!;
-          const future = dayTimes[name]?.iqaamah;
-
-          if (future && future !== current) {
-            changes.push({
-              date,
-              prayerKey: name,
-              prayerLabel: prayerLabels[name] ?? name,
-              from: current,
-              to: future,
-            });
-          }
-
-          seenPrayers.add(name);
+          timesByName[name] = { iqaamah: dayTimes[name]?.iqaamah ?? '--:--' };
         }
+        futureDays.push({ date: iso, times: timesByName });
       }
 
-      upcomingChanges = changes;
+      const rawChanges = findNearestIqaamahChanges(baseIqaamahs, futureDays, [...prayerNames]);
+
+      upcomingChanges = rawChanges.map((change) => ({
+        date: new Date(change.date + 'T12:00:00'),
+        prayerKey: change.prayer,
+        prayerLabel: prayerLabels[change.prayer] ?? change.prayer,
+        from: change.from,
+        to: change.to,
+      }));
     } catch (e) {
       console.error('Failed to load upcoming changes', e);
       changesError = 'Could not load upcoming changes.';

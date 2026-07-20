@@ -1,28 +1,22 @@
 <script lang="ts">
   let {
     announcement,
-    accentColor = '#10b981',
   }: {
     announcement: { title: string; compiled_html: string } | null;
-    accentColor: string;
   } = $props();
 </script>
 
 {#if announcement}
-  <div
-    class="announcement-banner"
-    style="background: linear-gradient(90deg, {accentColor}dd, {accentColor});"
-  >
-    <div class="announcement-marquee animate-marquee">
+  <div class="announcement-banner">
+    <div class="announcement-track">
       <span class="announcement-item">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
+          class="announcement-icon"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          width="24"
-          height="24"
+          aria-hidden="true"
         >
           <path
             stroke-linecap="round"
@@ -32,14 +26,14 @@
           />
         </svg>
         {announcement.title}
+      </span>
+      <span class="announcement-item" aria-hidden="true">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
+          class="announcement-icon"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          width="24"
-          height="24"
         >
           <path
             stroke-linecap="round"

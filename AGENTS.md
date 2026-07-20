@@ -3,10 +3,10 @@
 ## Current state (2026-07-20)
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 268 tests)
-- **Working TV frontend** (SvelteKit static, 21 tests — no Tailwind, hand-written CSS ~6 KB)
+- **Working TV frontend** (SvelteKit static, 25 tests — no Tailwind, hand-written CSS ~6 KB)
 - **Working consumer frontend** (SvelteKit static/SPA, 36 tests — 1 date-dependent failure)
 - **Working WhatsApp worker** (Stages 1-3 complete — webhook + session + LLM agent, 179 tests)
-- **468 tests passing** (268 API + 21 TV + 179 WhatsApp; 1 pre-existing consumer failure: heading label mismatch)
+- **472 tests passing** (268 API + 25 TV + 179 WhatsApp; 1 pre-existing consumer failure: heading label mismatch)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
 
 ## How to start everything
@@ -25,7 +25,7 @@ npm run dev --workspace=@masjid/consumer     # port 5175
 ## How to test
 ```bash
 npm run test          # API-only, 268 tests (no external deps)
-npm run test:tv       # TV frontend, 21 tests (jsdom + testing-library)
+npm run test:tv       # TV frontend, 25 tests (jsdom + testing-library)
 npm run test:consumer # Consumer frontend, 36 tests (jsdom + testing-library)
 npm run test:whatsapp # WhatsApp worker, 179 tests (node, mocked D1 + fetch)
 npm run test:all      # everything
@@ -55,6 +55,7 @@ npm run test:all      # everything
 ```
 masjid/
   packages/schemas/          — Shared Zod types (Theme, Announcement, Jumuah, etc.)
+  packages/ui-utils/         — Shared UI helpers: theme presets, applyTheme, prayer-change utilities
   apps/api/                  — SvelteKit API + Drizzle ORM + Prayer engine
   apps/tv/                   — SvelteKit static, display-only (kiosk/TV)
   apps/consumer/              — SvelteKit static/SPA, PWA (user-facing)
@@ -80,8 +81,8 @@ masjid/
 ## Consumer frontend architecture (Phase 2 complete)
 
 ### Theme & display settings (extensible, per-masjid)
-- **`src/lib/theme/context.svelte.ts`**: `applyTheme(theme)` function sets CSS custom properties on `document.documentElement` from DB theme data
-- **`src/lib/theme/presets.ts`**: Two presets — `glass-dark` (dark glassmorphism) and `minimal-light` (light cards)
+- **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV.
+- **`src/lib/theme/context.svelte.ts`**: Thin re-export of `applyTheme` from `@masjid/ui-utils` for consumer-specific import paths.
 - **`layout_preset` field** in `masjid_themes` table switches presets. Current seed uses `"modern_minimal"` which falls through to `glass-dark` default.
 - **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerCard`, `PrayerList`, and the weekly prayer view.
 - **CSS custom properties** (16 total):
@@ -124,7 +125,7 @@ masjid/
 - **The `minimal-light` preset exists** but has no light-mode `.glass`/`.glass-card` equivalents — would need light variants for a true light theme.
 - **Only 1 admin per masjid** — the `admins` table has a UNIQUE FK on `masjid_id`.
 - **No admin UI exists** — all data management is via API only. This is intentional (Zero-UI ingestion path).
-- **TV frontend uses separate theming** — check `apps/tv/src/routes/display/[masjid_slug]/+page.svelte` for its CSS variable injection. All 15 theme fields (including `time_format` and `label_*`) are used.
+- **TV frontend shares theming with consumer** — both use `@masjid/ui-utils` for preset tokens and `applyTheme()`. All 15 theme fields (including `time_format` and `label_*`) are used.
 - **The `+error.svelte` page is basic** — shows a generic error message. Could be improved.
 
 ## TV frontend architecture
@@ -142,10 +143,13 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 
 ### Key design decisions
 - **No Tailwind** — replaced with ~300 lines of hand-written CSS in `app.css`. Tailwind v4 failed to emit CSS in the static build.
+- **Synced theming** — TV now shares theme preset tokens and `applyTheme()` with the consumer frontend via `@masjid/ui-utils`, so both apps honor `layout_preset` (`glass-dark`, `minimal-light`).
 - **Single API call** — `fetchBoardPayload()` hits the `/board` endpoint which returns today + 7 upcoming days in one response. No client-side waterfall.
+- **Board payload includes `state`** — the masjid block now exposes `state` so the header can render `City, ST` instead of a hardcoded `, IL`.
 - **Current prayer highlight** — highlights the prayer whose time window we're in. Fajr window ends at sunrise (not Dhuhr iqaamah).
 - **Flash signal** — CSS pulse animation on cells when `now` matches an adhaan/iqaamah minute. Replaces the old countdown-centric approach.
-- **Upcoming changes** — derived from `upcoming_days` in the board payload. Only shows iqaamah time diffs.
+- **Upcoming changes** — uses the shared `findNearestIqaamahChanges()` helper, capped to the nearest change per prayer (max 5 entries) from the board payload.
+- **Continuous marquee** — announcement banner uses two duplicated items, each `100vw` wide, for a smooth infinite scroll on older TVs.
 - **Non-blocking fonts** — Google Fonts loaded with `media="print" onload="this.media='all'"`, `<noscript>` fallback.
 - **`formatTime()` utility** — copied from consumer (`src/lib/time.ts`), handles 12h/24h from admin config.
 

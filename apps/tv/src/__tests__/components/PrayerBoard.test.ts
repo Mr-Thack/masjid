@@ -19,7 +19,6 @@ const defaultProps = {
   sunriseLabel: 'Sunrise',
   adhaanLabel: 'Adhaan',
   iqaamahLabel: 'Iqaamah',
-  key: 0,
 };
 
 describe('PrayerBoard', () => {
@@ -55,6 +54,14 @@ describe('PrayerBoard', () => {
       props: { ...defaultProps, times: [] },
     });
     expect(container.querySelector('.prayer-grid')).toBeTruthy();
+  });
+
+  it('is fully visible on first render (no SSR opacity flash)', () => {
+    const { container } = render(PrayerBoard, { props: defaultProps });
+    const grid = container.querySelector('.prayer-grid');
+    expect(grid).toBeTruthy();
+    const style = (grid as HTMLElement)?.style;
+    expect(style?.opacity).not.toBe('0');
   });
 
   it('shows sunrise in the Fajr column', () => {
