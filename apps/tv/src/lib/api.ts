@@ -1,6 +1,4 @@
-import type { DailyTimes } from '@masjid/schemas';
-
-export interface PagePayload {
+export interface BoardPayload {
   masjid: {
     slug: string;
     name: string;
@@ -13,23 +11,45 @@ export interface PagePayload {
     font_heading: string;
     font_body: string;
     layout_preset: string;
+    time_format: '12h' | '24h';
+    label_adhaan: string;
+    label_iqaamah: string;
+    label_jumuah: string;
+    label_sunrise: string;
+    label_fajr: string;
+    label_dhuhr: string;
+    label_asr: string;
+    label_maghrib: string;
+    label_isha: string;
   };
-  prayer_times: {
-    fajr: { adhaan: string; iqaamah: string };
-    sunrise: string;
-    dhuhr: { adhaan: string; iqaamah: string };
-    asr: { adhaan: string; iqaamah: string };
-    maghrib: { adhaan: string; iqaamah: string };
-    isha: { adhaan: string; iqaamah: string };
+  today: {
+    date: string;
+    times: {
+      fajr: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
+      sunrise: string;
+      dhuhr: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
+      asr: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
+      maghrib: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
+      isha: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
+    };
   };
+  upcoming_days: Array<{
+    date: string;
+    times: {
+      fajr: { adhaan: string; iqaamah: string };
+      sunrise: string;
+      dhuhr: { adhaan: string; iqaamah: string };
+      asr: { adhaan: string; iqaamah: string };
+      maghrib: { adhaan: string; iqaamah: string };
+      isha: { adhaan: string; iqaamah: string };
+    };
+  }>;
   jumuah: Array<{
     id: string;
     label: string;
     time: string;
     khateeb: string | null;
     language: string;
-    location: string | null;
-    is_active: boolean;
   }>;
   pinned_announcement: {
     title: string;
@@ -39,26 +59,13 @@ export interface PagePayload {
 
 const BASE = '/api/v1/masjids';
 
-export async function fetchPagePayload(
+export async function fetchBoardPayload(
   slug: string,
   customFetch: typeof fetch = globalThis.fetch,
-): Promise<PagePayload> {
-  const res = await customFetch(`${BASE}/${slug}`);
+): Promise<BoardPayload> {
+  const res = await customFetch(`${BASE}/${slug}/board`);
   if (!res.ok) {
-    throw new Error(`Failed to fetch page payload: ${res.status}`);
-  }
-  return res.json();
-}
-
-export async function fetchPrayerTimes(
-  slug: string,
-  date?: string,
-  customFetch: typeof fetch = globalThis.fetch,
-): Promise<DailyTimes> {
-  const params = date ? `?date=${date}` : '';
-  const res = await customFetch(`${BASE}/${slug}/prayer-times${params}`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch prayer times: ${res.status}`);
+    throw new Error(`Failed to fetch board: ${res.status}`);
   }
   return res.json();
 }

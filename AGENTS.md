@@ -5,7 +5,7 @@ The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 268 tests)
 - **Working TV frontend** (SvelteKit static, 21 tests)
 - **Working consumer frontend** (SvelteKit static/SPA, 36 tests — 1 date-dependent failure)
-- **Working WhatsApp worker** (Stages 1-2 complete — webhook + session mgmt)
+- **Working WhatsApp worker** (Stages 1-3 complete — webhook + session + LLM agent)
 - **325 tests passing** (1 pre-existing consumer failure: heading label mismatch)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
 
@@ -136,15 +136,49 @@ masjid/
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
-Stages 1-2 are complete. The worker handles Meta webhook verification, inbound message parsing,
-phone-to-tenant resolution, branch lifecycle (OPEN/MERGED/ABANDONED), and media file handling.
+Stages 1-3 are complete. The worker handles Meta webhook verification, inbound message parsing,
+phone-to-tenant resolution, branch lifecycle (OPEN/MERGED/ABANDONED), media file handling,
+and LLM-powered configuration via OpenAI-compatible API.
 
 ### Architecture
 - Worker receives WhatsApp webhooks from Meta, resolves tenant by `admins.whatsapp_phone`
 - All admin mutations are staged in `config_branches` → `config_mutations` (git-style branches)
 - Worker calls the *existing* SvelteKit admin API via JWT proxy (no business logic duplication)
-- Stage 3 (future): LLM agent interprets messages, calls MCP tools, presents diff receipts
+- Stage 3: LLM agent interprets messages, calls 20 MCP-style tools (theme, profile, prayer rules, jumu'ah, announcements), stores mutations, presents diff receipt, confirms on `/confirm`
 - Stage 4 (future): Vision LLM for timetable photos, time-travel rollback, RTL handling
+
+### Agent module (`src/agent/`)
+| File | Purpose |
+|------|---------|
+| `tools.ts` | 20 MCP-style tool definitions with JSON Schema parameters + API proxy handlers |
+| `prompt.ts` | System prompt builder with tenant context, domain guides, and examples |
+| `runner.ts` | LLM agent loop: send message → call LLM → execute tool calls → repeat → diff receipt |
+| `format.ts` | Human-readable diff receipt formatting for WhatsApp (grouped by domain) |
+
+### Agent tools (20 total)
+| Domain | Tools |
+|--------|-------|
+| THEME | `theme_get`, `theme_update` |
+| PROFILE | `profile_get`, `profile_update`, `prayer_config_get`, `prayer_config_update` |
+| PRAYER_RULES | `prayer_rules_list`, `prayer_rules_create`, `prayer_rules_update`, `prayer_rules_delete`, `prayer_rules_reorder` |
+| JUMUAH | `jumuah_list`, `jumuah_create`, `jumuah_update`, `jumuah_delete` |
+| ANNOUNCEMENTS | `announcements_list`, `announcements_create`, `announcements_update`, `announcements_delete`, `announcements_pin` |
+
+### LLM configuration
+Uses OpenAI-compatible chat completions API. Configurable via env vars:
+- `LLM_API_URL` — defaults to `https://api.openai.com/v1` (can use OpenRouter, Groq, etc.)
+- `LLM_API_KEY` — required; if not set, falls back to text-only acknowledgment mode
+- `LLM_MODEL` — defaults to `gpt-4o-mini`
+
+### Agent flow
+1. User sends WhatsApp message (e.g. "Make Dhuhr iqaamah 10 min after adhaan, Fridays at 1:30 PM")
+2. Agent fetches current masjid state via read tools
+3. LLM with system prompt + tool definitions returns function calls
+4. Tool handlers execute via JWT proxy to admin API (changes go live immediately)
+5. Mutations stored in `config_mutations` with sequence ordering
+6. Diff receipt formatted and sent to user via WhatsApp
+7. User types `/confirm` → snapshot created, branch transitions to MERGED
+8. User types `/cancel` → branch transitions to ABANDONED
 
 ### New DB tables (5 new + 1 column)
 - `config_branches` — staging branches (OPEN/MERGED/ABANDONED)

@@ -71,14 +71,17 @@ export function buildHelpMessage(): string {
   return [
     '*Masjid Platform — Zero-UI Admin*',
     '',
-    'Send me any text to start configuring your masjid.',
-    'I can help with prayer times, announcements, themes, and more.',
+    'Send me any text to configure your masjid using AI. I can:',
+    '• Update prayer timings (iqaamah rules)',
+    '• Change theme colors, fonts, and labels',
+    '• Create announcements and Jumu\'ah sessions',
+    '• Update masjid profile and contact info',
     '',
     'Commands:',
     '• `/help` — show this message',
-    '• `/status` — view your current configuration',
+    '• `/status` — view your session history',
+    '• `/confirm` — finalize pending changes',
     '• `/cancel` — discard pending changes',
-    '• `/confirm` — apply pending changes (future)',
   ].join('\n');
 }
 

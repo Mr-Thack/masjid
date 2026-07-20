@@ -7,15 +7,18 @@ import {
   touchBranch,
   abandonBranch,
   abandonExpiredBranches,
-  getBranchTimeoutWarning,
+  getMutationCount,
+  mergeBranch,
   listBranches,
 } from './session';
-import { sendReply, buildHelpMessage, buildSessionSummary } from './messaging';
+import { sendReply, buildHelpMessage } from './messaging';
 import {
   downloadWhatsAppMedia,
   uploadToR2,
   registerAsset,
 } from './media';
+import { runAgent } from './agent/runner';
+import { formatDiffReceipt, buildConfirmSuccessMessage } from './agent/format';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -84,6 +87,11 @@ async function processMessage(
     return;
   }
 
+  if (lower === '/status' || lower === 'status') {
+    await handleStatus(msg.from, admin.id, admin.masjid_id, env);
+    return;
+  }
+
   let branch = await getOpenBranch(admin.id, admin.masjid_id, env.DB);
 
   if (lower === '/cancel' || lower === 'cancel') {
@@ -96,17 +104,8 @@ async function processMessage(
     return;
   }
 
-  if (lower === '/status' || lower === 'status') {
-    await handleStatus(msg.from, admin.id, admin.masjid_id, env);
-    return;
-  }
-
   if (lower === '/confirm' || lower === 'confirm') {
-    await sendReply(
-      msg.from,
-      'The confirm feature is not yet available. Your changes are being tracked and will be applied once you confirm.\n\nFor now, the WhatsApp admin only records your intent — LLM-powered processing is coming in the next update.',
-      env,
-    );
+    await handleConfirm(msg.from, admin.id, admin.masjid_id, env, branch);
     return;
   }
 
@@ -114,27 +113,55 @@ async function processMessage(
     branch = await createBranch(admin.id, admin.masjid_id, env.DB);
     await sendReply(
       msg.from,
-      `*New Configuration Session Started*\n\n${buildSessionSummary(branch.branch_name, branch.created_at, 1)}\n\nSend me details of what you'd like to change — prayer times, announcements, colors, Jumu'ah times, etc.`,
+      [
+        '*New Configuration Session Started*',
+        `_Session: ${branch.branch_name}_`,
+        '',
+        "I'll process your request now...",
+      ].join('\n'),
       env,
     );
+  } else {
+    await touchBranch(branch.id, env.DB);
+  }
+
+  const response = await runAgent(text, admin, env, branch.id);
+
+  const diffReceipt = await formatDiffReceipt(branch.id, branch.branch_name, env.DB);
+  const mutationCount = await getMutationCount(branch.id, env.DB);
+
+  if (mutationCount > 0 && !response.includes('Type */confirm*')) {
+    await sendReply(msg.from, response + '\n\n' + diffReceipt, env);
+  } else {
+    await sendReply(msg.from, response, env);
+  }
+}
+
+async function handleConfirm(
+  phone: string,
+  adminId: string,
+  masjidId: string,
+  env: Env,
+  branch: { id: string; branch_name: string } | null,
+): Promise<void> {
+  if (!branch) {
+    await sendReply(phone, 'No active session to confirm. Send a message to start a new configuration session.', env);
     return;
   }
 
-  const timeoutWarning = await getBranchTimeoutWarning(branch.id, env.DB);
+  const mutationCount = await getMutationCount(branch.id, env.DB);
 
-  await touchBranch(branch.id, env.DB);
+  if (mutationCount === 0) {
+    await sendReply(phone, 'No pending changes to confirm in this session.', env);
+    return;
+  }
+
+  const summary = `WhatsApp session ${branch.branch_name}: ${mutationCount} change${mutationCount !== 1 ? 's' : ''}`;
+  await mergeBranch(branch.id, summary, masjidId, env.DB);
 
   await sendReply(
-    msg.from,
-    [
-      buildSessionSummary(branch.branch_name, branch.created_at, 0),
-      `*Last message:* "${text.slice(0, 100)}${text.length > 100 ? '...' : ''}"`,
-      '',
-      "I've recorded your message. Send more details or use `/status` to see your session. LLM-powered processing is coming soon.",
-      timeoutWarning
-        ? '\n_Note: Your session is about to expire. Reply to keep it active._'
-        : '',
-    ].join('\n'),
+    phone,
+    buildConfirmSuccessMessage(branch.branch_name, mutationCount),
     env,
   );
 }

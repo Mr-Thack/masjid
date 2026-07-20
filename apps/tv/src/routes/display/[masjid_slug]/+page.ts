@@ -1,7 +1,6 @@
 import type { PageLoad } from './$types';
-import { fetchPagePayload } from '$lib/api';
+import { fetchBoardPayload } from '$lib/api';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-  const payload = await fetchPagePayload(params.masjid_slug, fetch);
-  return payload;
+  return await fetchBoardPayload(params.masjid_slug, fetch);
 };

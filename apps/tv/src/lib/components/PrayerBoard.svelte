@@ -1,19 +1,30 @@
 <script lang="ts">
-  interface PrayerRow {
-    name: string;
+  interface PrayerEntry {
+    key: string;
+    label: string;
     adhaan: string;
     iqaamah: string;
   }
 
   let {
     times,
-    nextPrayerIndex = 0,
-    accentColor = '#10b981',
+    currentPrayerIndex,
+    flashAdhaan,
+    flashIqaamah,
+    sunrise,
+    sunriseLabel = 'Sunrise',
+    adhaanLabel = 'Adhaan',
+    iqaamahLabel = 'Iqaamah',
     key,
   }: {
-    times: PrayerRow[];
-    nextPrayerIndex: number;
-    accentColor: string;
+    times: PrayerEntry[];
+    currentPrayerIndex: number | null;
+    flashAdhaan: string | null;
+    flashIqaamah: string | null;
+    sunrise: string;
+    sunriseLabel: string;
+    adhaanLabel: string;
+    iqaamahLabel: string;
     key: number;
   } = $props();
 
@@ -21,54 +32,66 @@
 
   $effect(() => {
     visible = 1;
-    const t = setTimeout(() => {
-      visible = 2;
-    }, 300);
+    const t = setTimeout(() => (visible = 2), 300);
     return () => clearTimeout(t);
   });
 
   $effect(() => {
     key;
     visible = 0;
-    requestAnimationFrame(() => {
-      visible = 1;
-    });
+    requestAnimationFrame(() => (visible = 1));
   });
 </script>
 
-<div class="prayer-board">
-  {#each times as row, i}
-    {@const isNext = i === nextPrayerIndex}
-    <div
-      class="prayer-row {isNext ? 'prayer-row--next' : ''}"
-      style="border-color: {isNext ? accentColor : '#1f2937'};"
-    >
-      <div class="prayer-name">
-        <span
-          class="prayer-name-text {isNext ? 'prayer-name-text--next' : ''}"
-          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: opacity 0.6s ease-out {i * 80}ms, transform 0.6s ease-out {i * 80}ms;"
-        >
-          {row.name}
-        </span>
+<div
+  class="prayer-grid"
+  style="opacity: {visible >= 1 ? 1 : 0}; transition: opacity 0.5s ease-out;"
+>
+  <div class="prayer-grid-header">
+    <div class="prayer-grid-label"></div>
+    {#each times as entry}
+      <div
+        class="prayer-col-header {currentPrayerIndex === times.indexOf(entry) ? 'prayer-col-header--current' : ''}"
+      >
+        {entry.label}
       </div>
+    {/each}
+  </div>
 
-      <div class="prayer-adhaan">
-        <span
-          class="prayer-adhaan-text"
-          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: opacity 0.6s ease-out {i * 80 + 100}ms, transform 0.6s ease-out {i * 80 + 100}ms;"
-        >
-          {row.adhaan}
-        </span>
+  <div class="prayer-grid-row">
+    <div class="prayer-grid-label">{adhaanLabel}</div>
+    {#each times as entry}
+      {@const isFlashing = flashAdhaan === entry.key}
+      <div
+        class="prayer-cell {currentPrayerIndex === times.indexOf(entry) ? 'prayer-cell--current' : ''} {isFlashing ? 'prayer-cell--flash' : ''}"
+        style="transition: opacity 0.6s ease-out {times.indexOf(entry) * 80}ms, transform 0.6s ease-out {times.indexOf(entry) * 80}ms;"
+      >
+        {entry.adhaan}
       </div>
+    {/each}
+  </div>
 
-      <div class="prayer-iqaamah">
-        <span
-          class="prayer-iqaamah-text {isNext ? 'prayer-iqaamah-text--next' : ''}"
-          style="opacity: {visible >= 1 ? 1 : 0}; transform: translateY({visible >= 1 ? '0' : '8px'}); transition: opacity 0.6s ease-out {i * 80 + 200}ms, transform 0.6s ease-out {i * 80 + 200}ms;"
-        >
-          {row.iqaamah}
-        </span>
+  <div class="prayer-grid-row">
+    <div class="prayer-grid-label">{iqaamahLabel}</div>
+    {#each times as entry}
+      {@const isFlashing = flashIqaamah === entry.key}
+      <div
+        class="prayer-cell {currentPrayerIndex === times.indexOf(entry) ? 'prayer-cell--current' : ''} {isFlashing ? 'prayer-cell--flash' : ''}"
+        style="transition: opacity 0.6s ease-out {times.indexOf(entry) * 80 + 100}ms, transform 0.6s ease-out {times.indexOf(entry) * 80 + 100}ms;"
+      >
+        {entry.iqaamah}
       </div>
-    </div>
-  {/each}
+    {/each}
+  </div>
+
+  <div class="prayer-grid-row prayer-grid-row--sunrise">
+    <div class="prayer-grid-label prayer-grid-label--sunrise">{sunriseLabel}</div>
+    {#each times as entry}
+      <div class="prayer-cell prayer-cell--sunrise">
+        {#if entry.key === 'fajr'}
+          {sunrise}
+        {/if}
+      </div>
+    {/each}
+  </div>
 </div>

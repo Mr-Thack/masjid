@@ -62,6 +62,15 @@ export async function getMasjidProfile(
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+export async function getPrayerConfig(
+  env: Env,
+  adminId: string,
+  masjidId: string,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}/prayer`, null, env, adminId, masjidId);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
 export async function updateMasjidProfile(
   body: Record<string, unknown>,
   env: Env,
