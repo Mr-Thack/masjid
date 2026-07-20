@@ -8,4 +8,5 @@ build/
 .DS_Store
 wrangler.state.*
 .wrangler/
+.masjid/
 drizzle/
