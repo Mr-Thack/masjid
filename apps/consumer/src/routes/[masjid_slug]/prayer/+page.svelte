@@ -132,24 +132,37 @@
     <ErrorState message={error} />
   {:else}
     <div class="space-y-4">
-      {#each weekDates as date}
+      {#each weekDates as date, dayIndex}
         {@const dateStr = formatDate(date)}
         {@const dayTimes = weekData.get(dateStr)}
+        {@const prevDateStr = dayIndex > 0 ? formatDate(weekDates[dayIndex - 1]!) : null}
+        {@const prevTimes = prevDateStr ? weekData.get(prevDateStr) : null}
+        {@const prayerChanges = dayIndex > 0 && prevTimes && dayTimes
+          ? Object.fromEntries(
+              prayerNames.map((name) => {
+                const cur = dayTimes[name];
+                const prv = prevTimes[name];
+                if (!cur || !prv) return [name, { iqaamah: false, adhaan: false }];
+                return [name, {
+                  iqaamah: cur.iqaamah !== prv.iqaamah,
+                  adhaan: cur.adhaan !== prv.adhaan,
+                }];
+              }),
+            )
+          : null}
         <div
           class="glass-card overflow-hidden"
           class:ring-1={isToday(date)}
           style="border-color: {isToday(date) ? 'var(--color-accent)' : ''};"
         >
-          <div class="px-4 py-3 flex items-center justify-between" style="background: {isToday(date) ? 'rgba(255,255,255,0.03)' : 'transparent'};">
-            <div>
-              <span class="text-sm font-semibold" style="color: {isToday(date) ? 'var(--color-accent)' : 'var(--color-text-muted)'};">
-                {formatDayLabel(date)}
-              </span>
-              <span class="text-sm ml-2" style="color: var(--color-text-dim);">{formatDateLabel(date)}</span>
-              {#if isToday(date)}
-                <span class="ml-2 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded text-white bg-accent">Today</span>
-              {/if}
-            </div>
+          <div class="px-4 py-3 flex items-center" style="background: {isToday(date) ? 'rgba(255,255,255,0.03)' : 'transparent'};">
+            <span class="text-sm font-semibold" style="color: {isToday(date) ? 'var(--color-accent)' : 'var(--color-text-muted)'};">
+              {formatDayLabel(date)}
+            </span>
+            <span class="text-sm ml-2" style="color: var(--color-text-dim);">{formatDateLabel(date)}</span>
+            {#if isToday(date)}
+              <span class="ml-2 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded text-white bg-accent">Today</span>
+            {/if}
           </div>
 
           {#if dayTimes}
@@ -157,14 +170,22 @@
               {#each prayerNames as name}
                 {@const time = dayTimes[name]}
                 {#if time}
+                  {@const chg = prayerChanges?.[name]}
+                  {@const changed = chg && (chg.iqaamah || chg.adhaan)}
                   <div class="flex flex-col items-center text-center">
                     <span class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-dim);">
                       {prayerLabels[name]}
                     </span>
-                    <span class="text-sm font-bold tabular-nums mt-0.5" style="color: var(--color-text-muted);">
+                    <span
+                      class="text-sm font-bold tabular-nums mt-0.5"
+                      style="color: {changed && chg.iqaamah ? 'var(--color-accent)' : 'var(--color-text-muted)'}; opacity: {changed || dayIndex === 0 ? '1' : '0.3'};"
+                    >
                       {formatTime(time.iqaamah, timeFormat)}
                     </span>
-                    <span class="text-[10px] tabular-nums" style="color: var(--color-text-dim);">
+                    <span
+                      class="text-[10px] tabular-nums"
+                      style="color: {changed && chg.adhaan ? 'var(--color-accent)' : 'var(--color-text-dim)'}; opacity: {changed || dayIndex === 0 ? '1' : '0.3'};"
+                    >
                       {adhaanLabel}: {formatTime(time.adhaan, timeFormat)}
                     </span>
                   </div>
