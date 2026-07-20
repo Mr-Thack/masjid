@@ -121,12 +121,11 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         slug: a.slug,
         compiled_html: a.compiledHtml,
         status: a.status,
-        published_at: a.publishedAt?.toISOString() ?? null,
-        expires_at: a.expiresAt?.toISOString() ?? null,
+        published_at: a.publishedAt ? new Date(a.publishedAt).toISOString() : null,
+        expires_at: a.expiresAt ? new Date(a.expiresAt).toISOString() : null,
       })),
     });
-  } catch (err) {
-    console.error('Board endpoint error:', err);
+  } catch {
     return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to fetch board');
   }
 };
