@@ -1,0 +1,32 @@
+--- a/node_modules/svelte/src/internal/client/dom/operations.js
++++ b/node_modules/svelte/src/internal/client/dom/operations.js
+@@ -49,9 +49,27 @@
+ 	var text_prototype = Text.prototype;
+ 
+ 	// @ts-ignore
+-	first_child_getter = get_descriptor(node_prototype, 'firstChild').get;
++	var first_child_descriptor = get_descriptor(node_prototype, 'firstChild');
++	first_child_getter =
++		first_child_descriptor && first_child_descriptor.get
++			? first_child_descriptor.get
++			: function () {
++					return /** @type {Node} */ (this).childNodes[0] ?? null;
++				};
+ 	// @ts-ignore
+-	next_sibling_getter = get_descriptor(node_prototype, 'nextSibling').get;
++	var next_sibling_descriptor = get_descriptor(node_prototype, 'nextSibling');
++	next_sibling_getter =
++		next_sibling_descriptor && next_sibling_descriptor.get
++			? next_sibling_descriptor.get
++			: function () {
++					var parent = /** @type {Node} */ (this).parentNode;
++					if (!parent) return null;
++					var nodes = parent.childNodes;
++					for (var i = 0; i < nodes.length - 1; i++) {
++						if (nodes[i] === this) return nodes[i + 1];
++					}
++					return null;
++				};
+ 
+ 	if (is_extensible(element_prototype)) {
+ 		// the following assignments improve perf of lookups on DOM nodes

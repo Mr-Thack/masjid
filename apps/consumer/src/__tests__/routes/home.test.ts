@@ -148,7 +148,7 @@ describe('homepage', () => {
     expect(screen.getByText('05:15')).toBeInTheDocument();
 
     expect(
-      screen.getByRole('heading', { name: "Friday Jumu'ah" }),
+      screen.getByRole('heading', { name: "Jumu'ah Timings" }),
     ).toBeInTheDocument();
     expect(screen.getByText('First Khutbah')).toBeInTheDocument();
     expect(screen.getByText('13:30')).toBeInTheDocument();
@@ -203,7 +203,7 @@ describe('homepage', () => {
     expect(screen.getByText('05:30')).toBeInTheDocument();
 
     expect(
-      screen.queryByRole('heading', { name: "Friday Jumu'ah" }),
+      screen.queryByRole('heading', { name: "Jumu'ah Timings" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('heading', { name: 'Announcement' }),

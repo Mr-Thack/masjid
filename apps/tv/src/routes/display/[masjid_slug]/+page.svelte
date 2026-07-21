@@ -271,7 +271,7 @@
 
         {#if upcomingChanges.length > 0}
           <div class="tv-coming-up-strip">
-            <p class="tv-coming-up-heading">Upcoming Changes</p>
+  <p class="tv-coming-up-heading">Upcoming <br> Changes</p>
             <div class="tv-coming-up-grid">
               {#each upcomingChanges as change}
                 <div class="tv-coming-up-card">

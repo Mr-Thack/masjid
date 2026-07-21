@@ -8,6 +8,7 @@
     "workers/*"
   ],
   "scripts": {
+    "postinstall": "patch-package",
     "dev": "npm run dev -w @masjid/api",
     "dev:tv": "npm run dev -w @masjid/tv",
     "dev:consumer": "npm run dev -w @masjid/consumer",
@@ -31,6 +32,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.4.2",
     "jsdom": "^29.1.1",
+    "patch-package": "^8.0.1",
     "prettier": "^3.4.2",
     "tsx": "^4.23.1",
     "typescript": "^5.7.2",

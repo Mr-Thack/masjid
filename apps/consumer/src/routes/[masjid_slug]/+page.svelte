@@ -152,7 +152,7 @@
     return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
-  async function loadUpcomingChanges() {
+  async function loadUpcomingChanges(reference: Date = new Date()) {
     if (!masjid?.slug || !prayerTimes) return;
     loadingChanges = true;
     changesError = '';
@@ -166,7 +166,7 @@
       const futureDays: Array<{ date: string; times: Record<string, { iqaamah: string }> }> = [];
 
       for (let offset = 1; offset <= 6; offset++) {
-        const date = addDays(now, offset);
+        const date = addDays(reference, offset);
         const iso = formatDate(date);
         const result: DailyTimes = await fetchPrayerTimes(masjid.slug, iso);
         const dayTimes = result.times as unknown as PrayerTimes;
@@ -197,6 +197,7 @@
   }
 
   $effect(() => {
+    if (!masjid?.slug || !prayerTimes) return;
     loadUpcomingChanges();
   });
 </script>

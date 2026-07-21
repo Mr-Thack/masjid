@@ -16,11 +16,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Ignore non-browser schemes (chrome-extension://, etc.) and non-GET requests.
+  // The Cache API only supports http/https URLs.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+  if (event.request.method !== 'GET') return;
+
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/@')) {
     return;
   }
-
-  if (event.request.method !== 'GET') return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

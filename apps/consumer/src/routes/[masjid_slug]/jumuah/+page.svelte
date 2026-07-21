@@ -11,7 +11,7 @@
   let theme = $derived(data.theme);
 
   let timeFormat = $derived(theme?.time_format ?? '24h');
-  let sessions = $state<JumuahSession[]>(data.jumuah ?? []);
+  let sessions = $state<JumuahSession[]>([]);
   let loading = $state(false);
   let error = $state('');
 
@@ -30,6 +30,7 @@
   }
 
   $effect(() => {
+    if (!masjid?.slug) return;
     load();
   });
 </script>

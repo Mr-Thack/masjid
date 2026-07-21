@@ -9,7 +9,7 @@
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
 
-  let announcements = $state(data.recent_announcements ?? []);
+  let announcements = $state<Announcement[]>([]);
   let loading = $state(false);
   let error = $state('');
 
@@ -28,6 +28,7 @@
   }
 
   $effect(() => {
+    if (!masjid?.slug) return;
     load();
   });
 </script>
