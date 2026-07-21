@@ -20,7 +20,6 @@ export interface JumuahSession {
   label: string;
   time: string;
   khateeb: string | null;
-  language: string;
 }
 
 export interface PagePayload {

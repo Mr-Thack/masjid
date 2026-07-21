@@ -330,14 +330,13 @@ Higher execution_order runs later (chains with previous actions). Multiple condi
     },
     {
       name: 'jumuah_create',
-      description: "Create a new Jumu'ah session. Time format: HH:MM (24-hour). Language codes: 'en', 'ar', 'ur', 'so', 'bn', 'tr', etc.",
+      description: "Create a new Jumu'ah session. Time format: HH:MM (24-hour).",
       parameters: {
         type: 'object',
         properties: {
           label: stringProp("Session label (e.g. 'First Session', 'Main Jumu\\'ah')"),
           time: timeProp("Session time in 24-hour format (e.g. '13:30')"),
           khateeb: stringProp('Name of the khateeb (optional)'),
-          language: stringProp("Language code (e.g. 'en', 'ar', 'ur'), default 'en'"),
           location: stringProp('Location within the masjid (optional)'),
         },
         required: ['label', 'time'],
@@ -360,7 +359,6 @@ Higher execution_order runs later (chains with previous actions). Multiple condi
           label: stringProp('New label (optional)'),
           time: timeProp('New time (optional)'),
           khateeb: nullableProp(stringProp('Khateeb name (optional)')),
-          language: stringProp('Language code (optional)'),
           location: nullableProp(stringProp('Location (optional)')),
           is_active: { type: 'boolean', description: 'Whether the session is active (optional)' },
         },

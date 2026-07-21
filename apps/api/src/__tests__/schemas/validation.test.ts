@@ -601,7 +601,6 @@ describe('CreateJumuahSchema', () => {
     label: '1st Session (English)',
     time: '13:30',
     khateeb: 'Imam Abdullah',
-    language: 'en',
     location: 'Main Hall',
   };
 
@@ -613,11 +612,6 @@ describe('CreateJumuahSchema', () => {
     expect(() =>
       CreateJumuahSchema.parse({ label: 'Jumuah', time: '13:00' }),
     ).not.toThrow();
-  });
-
-  it('uses default language = en', () => {
-    const parsed = CreateJumuahSchema.parse({ label: 'Test', time: '14:00' });
-    expect(parsed.language).toBe('en');
   });
 
   // Rejections

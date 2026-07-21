@@ -104,7 +104,6 @@ CREATE TABLE jumuah_sessions (
     label TEXT NOT NULL,
     time TEXT NOT NULL,                 -- "13:30" — fixed, not calculated
     khateeb TEXT,
-    language TEXT DEFAULT 'en',
     location TEXT,                      -- "Main Hall" / "Gymnasium Overflow"
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE

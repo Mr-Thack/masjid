@@ -76,7 +76,6 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         label: s.label,
         time: s.time,
         khateeb: s.khateeb,
-        language: s.language,
       }));
 
     return JsonResponse({

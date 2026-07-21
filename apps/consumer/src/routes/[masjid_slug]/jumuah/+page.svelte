@@ -76,13 +76,6 @@
                 </div>
               {/if}
 
-              {#if session.language && session.language !== 'en'}
-                <div class="mt-3">
-                  <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded" style="background: var(--color-border); color: var(--color-text-muted);">
-                    {session.language}
-                  </span>
-                </div>
-              {/if}
             </div>
           </div>
         </div>

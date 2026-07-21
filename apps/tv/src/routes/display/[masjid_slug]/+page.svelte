@@ -94,14 +94,17 @@
     return null;
   });
 
-  let nextIqaamah = $derived.by(() => {
+  let nextIqaamahRaw = $derived.by(() => {
     const nowMins = now.getHours() * 60 + now.getMinutes();
     for (let i = 0; i < prayerNames.length; i++) {
       const t = times[i]!;
       const im = t.iqaamahHM[0] * 60 + t.iqaamahHM[1];
-      if (im > nowMins) return t.iqaamah;
+      if (im > nowMins) {
+        return `${String(t.iqaamahHM[0]).padStart(2, '0')}:${String(t.iqaamahHM[1]).padStart(2, '0')}`;
+      }
     }
-    return times[0]!.iqaamah;
+    const t0 = times[0]!;
+    return `${String(t0.iqaamahHM[0]).padStart(2, '0')}:${String(t0.iqaamahHM[1]).padStart(2, '0')}`;
   });
 
   let nextIqaamahLabel = $derived.by(() => {
@@ -190,6 +193,15 @@
     });
   });
 
+  let formattedJumuahSessions = $derived.by(() => {
+    return payload.jumuah.map((session) => ({
+      id: session.id,
+      label: session.label,
+      time: formatTime(session.time, timeFormat),
+      khateeb: session.khateeb,
+    }));
+  });
+
   async function refresh() {
     try {
       const res = await fetch(`/api/v1/masjids/${payload.masjid.slug}/board`);
@@ -239,8 +251,12 @@
         <p class="tv-digital-time">{digitalTime}</p>
         <p class="tv-sunrise">{theme.label_sunrise}: {sunrise}</p>
         <p class="tv-countdown-label">
-          {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamah} />
+          {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamahRaw} />
         </p>
+
+        <div class="tv-jumuah-wrapper">
+          <JumuahNotice sessions={formattedJumuahSessions} label={theme.label_jumuah} />
+        </div>
       </aside>
 
       <section class="tv-grid-section">
@@ -255,24 +271,24 @@
 
         {#if upcomingChanges.length > 0}
           <div class="tv-coming-up-strip">
-            <p class="tv-coming-up-heading">Coming up</p>
+            <p class="tv-coming-up-heading">Upcoming Changes</p>
             <div class="tv-coming-up-grid">
               {#each upcomingChanges as change}
                 <div class="tv-coming-up-card">
                   <span class="tv-coming-up-date">{change.date}</span>
-                  <span class="tv-coming-up-prayer">{change.label}</span>
-                  <span class="tv-coming-up-from">{change.from}</span>
-                  <span class="tv-coming-up-arrow">→</span>
-                  <span class="tv-coming-up-to">{change.to}</span>
+                  <div class="tv-coming-up-line">
+                    <span class="tv-coming-up-prayer">{change.label}</span>
+                    <span class="tv-coming-up-times">
+                      <span class="tv-coming-up-from">{change.from}</span>
+                      <span class="tv-coming-up-arrow">→</span>
+                      <span class="tv-coming-up-to">{change.to}</span>
+                    </span>
+                  </div>
                 </div>
               {/each}
             </div>
           </div>
         {/if}
-
-        <div class="tv-jumuah-wrapper">
-          <JumuahNotice sessions={payload.jumuah} label={theme.label_jumuah} />
-        </div>
       </section>
     </div>
   </main>

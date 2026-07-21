@@ -67,12 +67,13 @@ describe('PrayerBoard', () => {
     expect(screen.queryByText('Sunrise')).toBeNull();
   });
 
-  it('highlights current prayer column', () => {
+  it('highlights the current prayer row', () => {
     const { container } = render(PrayerBoard, {
       props: { ...defaultProps, currentPrayerIndex: 2 },
     });
-    expect(container.querySelector('.prayer-col-header--current')).toBeTruthy();
-    expect(container.querySelectorAll('.prayer-cell--current').length).toBeGreaterThan(0);
+    const currentCells = container.querySelectorAll('.prayer-cell--current');
+    expect(container.querySelector('.prayer-name--current')).toBeTruthy();
+    expect(currentCells.length).toBe(2);
   });
 
   it('flashes adhaan cells', () => {

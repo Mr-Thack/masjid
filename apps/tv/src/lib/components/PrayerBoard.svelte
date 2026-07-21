@@ -24,38 +24,27 @@
 </script>
 
 <div class="prayer-grid">
-  <div class="prayer-grid-header">
-    <div class="prayer-grid-label"></div>
-    {#each times as entry}
-      <div
-        class="prayer-col-header {currentPrayerIndex === times.indexOf(entry) ? 'prayer-col-header--current' : ''}"
-      >
-        {entry.label}
-      </div>
-    {/each}
-  </div>
+  <div class="prayer-board-header-cell prayer-board-header-cell--left">Prayer</div>
+  <div class="prayer-board-header-cell">{adhaanLabel}</div>
+  <div class="prayer-board-header-cell">{iqaamahLabel}</div>
 
-  <div class="prayer-grid-row">
-    <div class="prayer-grid-label">{adhaanLabel}</div>
-    {#each times as entry}
-      {@const isFlashing = flashAdhaan === entry.key}
-      <div
-        class="prayer-cell {currentPrayerIndex === times.indexOf(entry) ? 'prayer-cell--current' : ''} {isFlashing ? 'prayer-cell--flash' : ''}"
-      >
-        {entry.adhaan}
-      </div>
-    {/each}
-  </div>
+  {#each times as entry, rowIndex}
+    {@const isCurrent = currentPrayerIndex === rowIndex}
+    {@const isAdhaanFlashing = flashAdhaan === entry.key}
+    {@const isIqaamahFlashing = flashIqaamah === entry.key}
 
-  <div class="prayer-grid-row">
-    <div class="prayer-grid-label">{iqaamahLabel}</div>
-    {#each times as entry}
-      {@const isFlashing = flashIqaamah === entry.key}
-      <div
-        class="prayer-cell {currentPrayerIndex === times.indexOf(entry) ? 'prayer-cell--current' : ''} {isFlashing ? 'prayer-cell--flash' : ''}"
-      >
-        {entry.iqaamah}
-      </div>
-    {/each}
-  </div>
+    <div class="prayer-name {isCurrent ? 'prayer-name--current' : ''}">
+      {entry.label}
+    </div>
+    <div
+      class="prayer-cell {isCurrent ? 'prayer-cell--current' : ''} {isAdhaanFlashing ? 'prayer-cell--flash' : ''}"
+    >
+      {entry.adhaan}
+    </div>
+    <div
+      class="prayer-cell {isCurrent ? 'prayer-cell--current' : ''} {isIqaamahFlashing ? 'prayer-cell--flash' : ''}"
+    >
+      {entry.iqaamah}
+    </div>
+  {/each}
 </div>

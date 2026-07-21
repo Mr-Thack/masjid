@@ -102,7 +102,6 @@ function ensureTables(sqlite: Database.Database) {
       label TEXT NOT NULL,
       time TEXT NOT NULL,
       khateeb TEXT,
-      language TEXT DEFAULT 'en',
       location TEXT,
       is_active INTEGER NOT NULL DEFAULT 1
     );

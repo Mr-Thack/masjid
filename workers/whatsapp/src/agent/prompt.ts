@@ -24,7 +24,7 @@ Round increment must be: 1, 5, 10, 15, 20, 30, or 60.
 Day of week: 0=Sunday, 5=Friday, 6=Saturday.
 
 ### JUMUAH
-Friday prayer sessions with label, time (HH:MM 24h), khateeb, language, location.
+Friday prayer sessions with label, time (HH:MM 24h), khateeb, location.
 
 ### ANNOUNCEMENTS
 News/updates with title, markdown content, status (draft/published/archived), pin flag.

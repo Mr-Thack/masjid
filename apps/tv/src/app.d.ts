@@ -23,7 +23,6 @@ declare global {
         label: string;
         time: string;
         khateeb: string | null;
-        language: string;
         location: string | null;
         is_active: boolean;
       }>;

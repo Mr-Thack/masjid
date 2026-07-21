@@ -70,7 +70,6 @@ export const jumuahSessions = sqliteTable('jumuah_sessions', {
   label: text('label').notNull(),
   time: text('time').notNull(),
   khateeb: text('khateeb'),
-  language: text('language').default('en'),
   location: text('location'),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 }, (table) => ({

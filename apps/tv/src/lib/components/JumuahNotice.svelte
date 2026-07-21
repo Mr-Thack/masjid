@@ -4,7 +4,6 @@
     label: string;
     time: string;
     khateeb: string | null;
-    language: string;
   }
 
   let {
@@ -16,21 +15,21 @@
   } = $props();
 </script>
 
-<div class="jumuah-line">
-  <span class="jumuah-asterisk">*</span>
-  <span class="jumuah-heading">{label}:</span>
-  {#each sessions as session, i}
-    <span class="jumuah-session">
-      {session.time}
-      {#if session.khateeb}
-        <span class="jumuah-khateeb">({session.khateeb})</span>
-      {/if}
-      {#if session.language}
-        <span class="jumuah-lang">[{session.language}]</span>
-      {/if}
-      {#if i < sessions.length - 1}
-        <span class="jumuah-sep">·</span>
-      {/if}
-    </span>
-  {/each}
+<div class="tv-jumuah-panel">
+  <p class="tv-jumuah-heading">{label}</p>
+  <div class="tv-jumuah-list">
+    {#each sessions as session}
+      <div class="tv-jumuah-session">
+        <span class="tv-jumuah-time">{session.time}</span>
+        <div class="tv-jumuah-details">
+          {#if session.label}
+            <span class="tv-jumuah-label">{session.label}</span>
+          {/if}
+          {#if session.khateeb}
+            <span class="tv-jumuah-khateeb">{session.khateeb}</span>
+          {/if}
+        </div>
+      </div>
+    {/each}
+  </div>
 </div>

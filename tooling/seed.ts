@@ -175,7 +175,6 @@ async function seed() {
       label: '1st Session (English)',
       time: '13:30',
       khateeb: 'Imam Abdullah',
-      language: 'en',
       isActive: true,
     },
     {
@@ -184,7 +183,6 @@ async function seed() {
       label: '2nd Session (Arabic)',
       time: '14:30',
       khateeb: 'Sheikh Ahmad',
-      language: 'ar',
       isActive: true,
     },
   ]).run();
@@ -378,7 +376,6 @@ async function seed() {
       label: '1st Jummah Khutbah (English)',
       time: '13:30',
       khateeb: 'Imam Yusuf',
-      language: 'en',
       isActive: true,
     },
     {
@@ -387,7 +384,6 @@ async function seed() {
       label: '2nd Jummah Khutbah (Urdu)',
       time: '14:30',
       khateeb: 'Maulana Tariq',
-      language: 'ur',
       isActive: true,
     },
     {
@@ -396,7 +392,6 @@ async function seed() {
       label: '3rd Jummah Khutbah (Arabic)',
       time: '15:30',
       khateeb: 'Sheikh Khalid',
-      language: 'ar',
       isActive: true,
     },
   ]).run();

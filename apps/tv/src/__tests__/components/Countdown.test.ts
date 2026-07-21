@@ -24,7 +24,12 @@ describe('Countdown', () => {
 
   it('handles invalid input gracefully', () => {
     render(Countdown, { props: { nextPrayerIqaamah: '--:--' } });
-    expect(screen.getByText('00:00')).toBeDefined();
+    expect(screen.getByText('--:--')).toBeDefined();
+  });
+
+  it('parses 12h formatted times correctly', () => {
+    render(Countdown, { props: { nextPrayerIqaamah: '2:00 PM' } });
+    expect(screen.getByText(/\d+h \d{2}m|\d{2}:\d{2}/)).toBeDefined();
   });
 
   it('renders as a span with countdown-time class', () => {

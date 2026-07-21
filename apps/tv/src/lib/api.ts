@@ -50,7 +50,6 @@ export interface BoardPayload {
     label: string;
     time: string;
     khateeb: string | null;
-    language: string;
   }>;
   pinned_announcement: {
     title: string;

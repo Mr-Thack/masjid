@@ -119,7 +119,7 @@ html, body {
   flex-wrap: wrap; justify-content: center;
 }
 
-/* === Prayer grid (right/center column) === */
+/* === Prayer board (right/center column) === */
 .tv-grid-section {
   flex: 1 1 0%;
   display: flex; flex-direction: column; gap: 0.75rem;
@@ -128,45 +128,50 @@ html, body {
 
 .prayer-grid {
   display: grid;
-  grid-template-columns: minmax(55px, 75px) repeat(5, minmax(0, 1fr));
-  gap: 0.5rem; width: 100%;
+  grid-template-columns: minmax(110px, 0.8fr) repeat(2, minmax(0, 1.6fr));
+  gap: 0.75rem 1rem; width: 100%;
 }
 
-.prayer-grid-header,
-.prayer-grid-row {
-  display: contents;
-}
-
-.prayer-grid-label {
-  display: flex; align-items: center; justify-content: flex-end;
-  padding-right: 0.5rem; font-size: 0.8rem;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--color-text-dim, #4b5563); font-weight: 700;
-}
-
-.prayer-col-header {
+.prayer-board-header-cell {
   display: flex; align-items: center; justify-content: center;
-  font-size: clamp(0.85rem, 1.4vw, 1.15rem); font-weight: 800; letter-spacing: 0.12em;
-  text-transform: uppercase; color: var(--color-text-muted, #6b7280);
+  font-size: clamp(0.85rem, 1.5vw, 1.15rem); font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--color-text-muted, #9ca3af);
   font-family: var(--font-heading, 'Inter'), sans-serif;
-  padding: 0.25rem 0; border-bottom: 2px solid var(--color-border, rgba(31, 41, 55, 0.5));
+  padding: 0.45rem 0.5rem;
+  border-bottom: 2px solid var(--color-border, rgba(55, 65, 81, 0.7));
   white-space: nowrap;
 }
 
-.prayer-col-header--current {
+.prayer-board-header-cell--left {
+  justify-content: flex-start;
+  padding-left: 0.75rem;
+}
+
+.prayer-name {
+  display: flex; align-items: center;
+  padding: clamp(0.45rem, 1.25vh, 0.8rem) 0.75rem;
+  font-size: clamp(1.35rem, 2.4vw, 2.5rem); font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-text-muted, #9ca3af);
+  font-family: var(--font-heading, 'Inter'), sans-serif;
+  border-radius: 0.65rem;
+  line-height: 1;
+}
+
+.prayer-name--current {
   color: var(--color-accent, #10b981);
-  border-bottom-color: var(--color-accent, #10b981);
+  background-color: var(--color-current-highlight, rgba(255, 255, 255, 0.08));
+  font-weight: 900;
 }
 
 .prayer-cell {
   display: flex; align-items: center; justify-content: center;
-  font-size: clamp(1.5rem, 2.2vw, 2.75rem); font-weight: 700;
+  font-size: clamp(1.75rem, 3vw, 3.75rem); font-weight: 700;
   font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   color: var(--color-text, #d1d5db);
-  padding: clamp(0.4rem, 1vh, 0.85rem) 0.25rem;
+  padding: clamp(0.45rem, 1.25vh, 0.8rem);
   border-radius: 0.65rem;
   transition: background-color 0.3s, color 0.3s;
-  white-space: normal;
+  white-space: nowrap;
   line-height: 1.05;
   text-align: center;
 }
@@ -175,7 +180,7 @@ html, body {
   color: var(--color-accent, #10b981);
   background-color: var(--color-current-highlight, rgba(255, 255, 255, 0.08));
   font-weight: 800;
-  font-size: clamp(1.5rem, 2.5vw, 3rem);
+  font-size: clamp(2rem, 3.4vw, 4rem);
 }
 
 .prayer-cell--flash {
@@ -214,18 +219,25 @@ html, body {
 }
 
 .tv-coming-up-card {
-  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.3rem;
+  display: flex; flex-direction: column; gap: 0.1rem;
   font-size: 0.9rem; color: var(--color-text-muted, #9ca3af);
 }
 
 .tv-coming-up-date {
-  width: 100%; display: block;
   font-size: 0.75rem; color: var(--color-text-dim, #4b5563);
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 
+.tv-coming-up-line {
+  display: flex; flex-direction: column; gap: 0.05rem;
+}
+
 .tv-coming-up-prayer {
-  color: var(--color-text, #e5e7eb); font-weight: 700;
+  color: var(--color-text, #e5e7eb); font-weight: 700; font-size: 0.95rem;
+}
+
+.tv-coming-up-times {
+  display: flex; align-items: center; gap: 0.35rem;
 }
 
 .tv-coming-up-from,
@@ -249,28 +261,42 @@ html, body {
 
 /* === Jumuah === */
 .tv-jumuah-wrapper {
-  display: flex; justify-content: center;
-  padding-top: 0.25rem;
+  width: 100%; margin-top: 1rem;
 }
 
-.jumuah-line {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  flex-wrap: wrap; font-size: 0.95rem;
-  color: var(--color-text-dim, #6b7280);
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-border, rgba(31, 41, 55, 0.3));
-  border-radius: 999px;
-  background-color: var(--color-surface, transparent);
+.tv-jumuah-panel {
+  width: 100%; text-align: center;
 }
 
-.jumuah-asterisk { color: var(--color-accent, #10b981); font-weight: 800; }
-.jumuah-heading { font-weight: 700; color: var(--color-text-muted, #9ca3af); }
-.jumuah-session { display: inline-flex; align-items: center; gap: 0.25rem;
-  color: var(--color-text-muted, #9ca3af); font-variant-numeric: tabular-nums; }
-.jumuah-khateeb { font-size: 0.8rem; color: var(--color-text-dim, #6b7280); }
-.jumuah-lang { font-size: 0.7rem; color: var(--color-text-dim, #4b5563);
-  text-transform: uppercase; font-weight: 700; }
-.jumuah-sep { color: var(--color-text-dim, #4b5563); margin: 0 0.2rem; }
+.tv-jumuah-heading {
+  font-size: 0.75rem; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--color-text-muted, #6b7280);
+  font-weight: 700; margin-bottom: 0.4rem;
+}
+
+.tv-jumuah-list {
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+
+.tv-jumuah-session {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0.4rem 0.5rem; border-radius: 0.5rem;
+  background-color: var(--color-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border, rgba(75, 85, 99, 0.3));
+}
+
+.tv-jumuah-time {
+  font-size: clamp(1.1rem, 1.6vw, 1.5rem); font-weight: 700; font-variant-numeric: tabular-nums;
+  color: var(--color-accent, #10b981);
+}
+
+.tv-jumuah-details {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 0.5rem;
+  font-size: 0.8rem; color: var(--color-text-muted, #9ca3af);
+}
+
+.tv-jumuah-label { font-weight: 600; }
+.tv-jumuah-khateeb { color: var(--color-text-dim, #6b7280); }
 
 /* === Announcement Banner === */
 .announcement-banner {

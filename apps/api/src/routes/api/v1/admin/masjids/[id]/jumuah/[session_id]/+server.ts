@@ -35,7 +35,6 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (body.label !== undefined) updateData.label = body.label;
     if (body.time !== undefined) updateData.time = body.time;
     if (body.khateeb !== undefined) updateData.khateeb = body.khateeb;
-    if (body.language !== undefined) updateData.language = body.language;
     if (body.location !== undefined) updateData.location = body.location;
     if (body.is_active !== undefined) updateData.isActive = body.is_active;
 
@@ -63,7 +62,6 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       label: updated?.label,
       time: updated?.time,
       khateeb: updated?.khateeb,
-      language: updated?.language,
       location: updated?.location,
       is_active: updated?.isActive,
     });

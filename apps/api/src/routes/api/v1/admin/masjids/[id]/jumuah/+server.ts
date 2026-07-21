@@ -31,7 +31,6 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
         label: s.label,
         time: s.time,
         khateeb: s.khateeb,
-        language: s.language,
         location: s.location,
         is_active: s.isActive,
       })),
@@ -70,7 +69,6 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       label: body.label,
       time: body.time,
       khateeb: body.khateeb ?? null,
-      language: body.language,
       location: body.location ?? null,
     });
 
@@ -82,7 +80,6 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       label: body.label,
       time: body.time,
       khateeb: body.khateeb ?? null,
-      language: body.language,
       location: body.location ?? null,
       is_active: true,
     }, 201);
