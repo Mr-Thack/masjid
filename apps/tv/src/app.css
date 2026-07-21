@@ -32,19 +32,19 @@ html, body {
   user-select: none; overflow: hidden;
   background-color: var(--color-bg, #030712);
   color: var(--color-text, #f9fafb);
-  font-family: var(--font-body, 'Inter', sans-serif);
+  font-family: var(--font-body, 'Inter'), sans-serif;
 }
 
 .tv-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem 3rem;
+  padding: 0.75rem 2.5rem;
   border-bottom: 1px solid var(--color-border, rgba(31, 41, 55, 0.5));
   flex-shrink: 0;
   background-color: var(--color-surface, transparent);
 }
 
 .tv-header-name {
-  font-size: clamp(2.25rem, 3.5vw, 3.5rem);
+  font-size: clamp(1.75rem, 2.8vw, 3rem);
   line-height: 1;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -53,29 +53,29 @@ html, body {
 }
 
 .tv-header-city {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: var(--color-text-muted, #9ca3af);
-  margin-top: 0.35rem;
+  margin-top: 0.25rem;
 }
 
 .tv-header-date-block { text-align: right; }
 
 .tv-header-date {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   color: var(--color-text, #f9fafb);
   font-weight: 500;
 }
 
 .tv-header-hijri {
-  font-size: 1.05rem;
+  font-size: 0.95rem;
   color: var(--color-text-dim, #6b7280);
-  margin-top: 0.25rem;
+  margin-top: 0.2rem;
 }
 
 .tv-main {
   flex: 1 1 0%;
   display: flex;
-  padding: 2rem 3rem;
+  padding: 1.25rem 2.5rem;
   overflow: hidden;
   min-height: 0;
 }
@@ -83,89 +83,53 @@ html, body {
 .tv-columns {
   display: flex;
   width: 100%;
-  gap: 3rem;
+  gap: 1.5rem;
   min-height: 0;
 }
 
 /* === Info panel (left column) === */
 .tv-info-panel {
-  width: 320px; flex-shrink: 0;
+  width: 260px; flex-shrink: 0;
   display: flex; flex-direction: column; align-items: center;
-  padding-top: 0.5rem; overflow: hidden;
+  text-align: center;
+  overflow: hidden;
 }
 
 .tv-digital-time {
-  font-size: clamp(1.75rem, 2.5vw, 2.5rem);
+  font-size: clamp(1.5rem, 2vw, 2.25rem);
   font-weight: 300;
   color: var(--color-text-muted, #9ca3af);
   font-family: var(--font-heading, 'Inter'), sans-serif;
-  margin-top: 0.75rem;
+  margin-top: 0.4rem;
   letter-spacing: 0.05em;
+}
+
+.tv-sunrise {
+  font-size: 1rem;
+  color: var(--color-text-dim, #6b7280);
+  margin-top: 0.25rem;
 }
 
 .tv-countdown-label {
-  font-size: 1rem;
+  font-size: 0.95rem;
   color: var(--color-text-dim, #6b7280);
-  margin-top: 1rem;
+  margin-top: 0.75rem;
   letter-spacing: 0.05em;
   display: flex; align-items: center; gap: 0.4rem;
+  flex-wrap: wrap; justify-content: center;
 }
 
-.tv-divider {
-  width: 80%; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-border, rgba(75, 85, 99, 0.5)), transparent);
-  margin: 1.25rem 0;
-}
-
-.tv-changes {
-  width: 100%; font-size: 0.85rem;
-  color: var(--color-text-dim, #6b7280);
-  overflow-y: auto; flex: 1 1 0%;
-}
-
-.tv-changes-heading {
-  font-size: 0.8rem; text-transform: uppercase;
-  letter-spacing: 0.2em; color: var(--color-text-muted, #4b5563);
-  margin-bottom: 0.5rem; text-align: center; font-weight: 700;
-}
-
-.tv-change-line {
-  display: flex; align-items: center; gap: 0.4rem;
-  padding: 0.3rem 0.5rem; flex-wrap: wrap; justify-content: center;
-}
-
-.tv-change-date {
-  color: var(--color-text-dim, #4b5563); font-size: 0.75rem;
-}
-
-.tv-change-prayer {
-  color: var(--color-text-muted, #9ca3af); font-weight: 700; font-size: 0.8rem;
-}
-
-.tv-change-from {
-  color: var(--color-text-dim, #6b7280); font-family: monospace;
-}
-
-.tv-change-arrow {
-  color: var(--color-accent, #10b981); font-weight: 700;
-}
-
-.tv-change-to {
-  color: var(--color-accent, #10b981);
-  font-family: monospace; font-weight: 700;
-}
-
-/* === Prayer grid (right column) === */
+/* === Prayer grid (right/center column) === */
 .tv-grid-section {
   flex: 1 1 0%;
-  display: flex; flex-direction: column; gap: 1.5rem;
+  display: flex; flex-direction: column; gap: 0.75rem;
   min-height: 0; justify-content: center;
 }
 
 .prayer-grid {
   display: grid;
-  grid-template-columns: 80px repeat(5, 1fr);
-  gap: 0.75rem; width: 100%;
+  grid-template-columns: minmax(55px, 75px) repeat(5, minmax(0, 1fr));
+  gap: 0.5rem; width: 100%;
 }
 
 .prayer-grid-header,
@@ -175,21 +139,18 @@ html, body {
 
 .prayer-grid-label {
   display: flex; align-items: center; justify-content: flex-end;
-  padding-right: 1rem; font-size: 0.9rem;
-  text-transform: uppercase; letter-spacing: 0.12em;
+  padding-right: 0.5rem; font-size: 0.8rem;
+  text-transform: uppercase; letter-spacing: 0.1em;
   color: var(--color-text-dim, #4b5563); font-weight: 700;
-}
-
-.prayer-grid-label--sunrise {
-  color: var(--color-text-dim, #374151); font-size: 0.8rem;
 }
 
 .prayer-col-header {
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.1rem; font-weight: 800; letter-spacing: 0.12em;
+  font-size: clamp(0.85rem, 1.4vw, 1.15rem); font-weight: 800; letter-spacing: 0.12em;
   text-transform: uppercase; color: var(--color-text-muted, #6b7280);
   font-family: var(--font-heading, 'Inter'), sans-serif;
-  padding: 0.5rem 0; border-bottom: 2px solid var(--color-border, rgba(31, 41, 55, 0.5));
+  padding: 0.25rem 0; border-bottom: 2px solid var(--color-border, rgba(31, 41, 55, 0.5));
+  white-space: nowrap;
 }
 
 .prayer-col-header--current {
@@ -199,25 +160,22 @@ html, body {
 
 .prayer-cell {
   display: flex; align-items: center; justify-content: center;
-  font-size: clamp(2rem, 3.2vw, 3.5rem); font-weight: 700;
+  font-size: clamp(1.5rem, 2.2vw, 2.75rem); font-weight: 700;
   font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
   color: var(--color-text, #d1d5db);
-  padding: clamp(0.75rem, 1.5vh, 1.25rem) 0.5rem;
-  border-radius: 0.75rem;
+  padding: clamp(0.4rem, 1vh, 0.85rem) 0.25rem;
+  border-radius: 0.65rem;
   transition: background-color 0.3s, color 0.3s;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.05;
+  text-align: center;
 }
 
 .prayer-cell--current {
   color: var(--color-accent, #10b981);
   background-color: var(--color-current-highlight, rgba(255, 255, 255, 0.08));
   font-weight: 800;
-  font-size: clamp(2.2rem, 3.5vw, 3.75rem);
-}
-
-.prayer-cell--sunrise {
-  font-size: 1rem; color: var(--color-text-dim, #4b5563);
-  font-weight: 500; padding: 0.35rem;
+  font-size: clamp(1.5rem, 2.5vw, 3rem);
 }
 
 .prayer-cell--flash {
@@ -231,9 +189,58 @@ html, body {
                       0 0 24px var(--color-accent, #10b981); }
 }
 
+/* === Coming Up strip === */
+.tv-coming-up-strip {
+  display: flex; align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-surface, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--color-border, rgba(75, 85, 99, 0.4));
+  flex-wrap: wrap;
+}
+
+.tv-coming-up-heading {
+  font-size: 0.75rem; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--color-text-muted, #6b7280);
+  font-weight: 700; white-space: nowrap; flex-shrink: 0;
+}
+
+.tv-coming-up-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  flex: 1 1 0%;
+}
+
+.tv-coming-up-card {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.3rem;
+  font-size: 0.9rem; color: var(--color-text-muted, #9ca3af);
+}
+
+.tv-coming-up-date {
+  width: 100%; display: block;
+  font-size: 0.75rem; color: var(--color-text-dim, #4b5563);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+
+.tv-coming-up-prayer {
+  color: var(--color-text, #e5e7eb); font-weight: 700;
+}
+
+.tv-coming-up-from,
+.tv-coming-up-to {
+  font-variant-numeric: tabular-nums;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.tv-coming-up-from { color: var(--color-text-dim, #6b7280); }
+.tv-coming-up-arrow { color: var(--color-accent, #10b981); font-weight: 700; }
+.tv-coming-up-to { color: var(--color-accent, #10b981); font-weight: 700; }
+
 /* === Countdown === */
 .countdown-time {
-  font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums;
   font-family: 'Courier New', Courier, monospace;
   color: var(--color-text-muted, #d1d5db);
 }
@@ -243,14 +250,14 @@ html, body {
 /* === Jumuah === */
 .tv-jumuah-wrapper {
   display: flex; justify-content: center;
-  padding-top: 0.5rem;
+  padding-top: 0.25rem;
 }
 
 .jumuah-line {
   display: inline-flex; align-items: center; gap: 0.5rem;
-  flex-wrap: wrap; font-size: 1rem;
+  flex-wrap: wrap; font-size: 0.95rem;
   color: var(--color-text-dim, #6b7280);
-  padding: 0.6rem 1.25rem;
+  padding: 0.5rem 1rem;
   border: 1px solid var(--color-border, rgba(31, 41, 55, 0.3));
   border-radius: 999px;
   background-color: var(--color-surface, transparent);
@@ -260,8 +267,8 @@ html, body {
 .jumuah-heading { font-weight: 700; color: var(--color-text-muted, #9ca3af); }
 .jumuah-session { display: inline-flex; align-items: center; gap: 0.25rem;
   color: var(--color-text-muted, #9ca3af); font-variant-numeric: tabular-nums; }
-.jumuah-khateeb { font-size: 0.85rem; color: var(--color-text-dim, #6b7280); }
-.jumuah-lang { font-size: 0.75rem; color: var(--color-text-dim, #4b5563);
+.jumuah-khateeb { font-size: 0.8rem; color: var(--color-text-dim, #6b7280); }
+.jumuah-lang { font-size: 0.7rem; color: var(--color-text-dim, #4b5563);
   text-transform: uppercase; font-weight: 700; }
 .jumuah-sep { color: var(--color-text-dim, #4b5563); margin: 0 0.2rem; }
 

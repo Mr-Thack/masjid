@@ -11,8 +11,6 @@
     currentPrayerIndex,
     flashAdhaan,
     flashIqaamah,
-    sunrise,
-    sunriseLabel = 'Sunrise',
     adhaanLabel = 'Adhaan',
     iqaamahLabel = 'Iqaamah',
   }: {
@@ -20,8 +18,6 @@
     currentPrayerIndex: number | null;
     flashAdhaan: string | null;
     flashIqaamah: string | null;
-    sunrise: string;
-    sunriseLabel: string;
     adhaanLabel: string;
     iqaamahLabel: string;
   } = $props();
@@ -59,17 +55,6 @@
         class="prayer-cell {currentPrayerIndex === times.indexOf(entry) ? 'prayer-cell--current' : ''} {isFlashing ? 'prayer-cell--flash' : ''}"
       >
         {entry.iqaamah}
-      </div>
-    {/each}
-  </div>
-
-  <div class="prayer-grid-row prayer-grid-row--sunrise">
-    <div class="prayer-grid-label prayer-grid-label--sunrise">{sunriseLabel}</div>
-    {#each times as entry}
-      <div class="prayer-cell prayer-cell--sunrise">
-        {#if entry.key === 'fajr'}
-          {sunrise}
-        {/if}
       </div>
     {/each}
   </div>

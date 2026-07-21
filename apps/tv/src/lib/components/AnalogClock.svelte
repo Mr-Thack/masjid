@@ -14,6 +14,7 @@
   viewBox="0 0 200 200"
   class="analog-clock"
   xmlns="http://www.w3.org/2000/svg"
+  shape-rendering="geometricPrecision"
   aria-label="Analog clock showing {hours}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}"
 >
   <circle cx="100" cy="100" r="95" class="clock-face" />
@@ -66,7 +67,8 @@
     height: auto;
     display: block;
     margin: 0 auto;
-    max-width: 280px;
+    max-width: 220px;
+    overflow: visible;
   }
 
   .clock-face {
@@ -87,7 +89,6 @@
 
   .clock-hand {
     stroke-linecap: round;
-    transform-origin: 100px 100px;
   }
 
   .clock-hand--hour {

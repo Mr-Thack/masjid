@@ -237,25 +237,10 @@
       <aside class="tv-info-panel">
         <AnalogClock {now} />
         <p class="tv-digital-time">{digitalTime}</p>
+        <p class="tv-sunrise">{theme.label_sunrise}: {sunrise}</p>
         <p class="tv-countdown-label">
           {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamah} />
         </p>
-
-        {#if upcomingChanges.length > 0}
-          <div class="tv-divider"></div>
-          <div class="tv-changes">
-            <p class="tv-changes-heading">Coming up</p>
-            {#each upcomingChanges as change}
-              <p class="tv-change-line">
-                <span class="tv-change-date">{change.date}</span>
-                <span class="tv-change-prayer">{change.label}</span>
-                <span class="tv-change-from">{change.from}</span>
-                <span class="tv-change-arrow">→</span>
-                <span class="tv-change-to">{change.to}</span>
-              </p>
-            {/each}
-          </div>
-        {/if}
       </aside>
 
       <section class="tv-grid-section">
@@ -264,11 +249,26 @@
           currentPrayerIndex={currentPrayerIndex}
           {flashAdhaan}
           {flashIqaamah}
-          {sunrise}
-          sunriseLabel={theme.label_sunrise}
           adhaanLabel={theme.label_adhaan}
           iqaamahLabel={theme.label_iqaamah}
         />
+
+        {#if upcomingChanges.length > 0}
+          <div class="tv-coming-up-strip">
+            <p class="tv-coming-up-heading">Coming up</p>
+            <div class="tv-coming-up-grid">
+              {#each upcomingChanges as change}
+                <div class="tv-coming-up-card">
+                  <span class="tv-coming-up-date">{change.date}</span>
+                  <span class="tv-coming-up-prayer">{change.label}</span>
+                  <span class="tv-coming-up-from">{change.from}</span>
+                  <span class="tv-coming-up-arrow">→</span>
+                  <span class="tv-coming-up-to">{change.to}</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         <div class="tv-jumuah-wrapper">
           <JumuahNotice sessions={payload.jumuah} label={theme.label_jumuah} />

@@ -15,8 +15,6 @@ const defaultProps = {
   currentPrayerIndex: null,
   flashAdhaan: null,
   flashIqaamah: null,
-  sunrise: '06:00',
-  sunriseLabel: 'Sunrise',
   adhaanLabel: 'Adhaan',
   iqaamahLabel: 'Iqaamah',
 };
@@ -64,9 +62,9 @@ describe('PrayerBoard', () => {
     expect(style?.opacity).not.toBe('0');
   });
 
-  it('shows sunrise in the Fajr column', () => {
+  it('does not render a sunrise row inside the board', () => {
     render(PrayerBoard, { props: defaultProps });
-    expect(screen.getByText('06:00')).toBeDefined();
+    expect(screen.queryByText('Sunrise')).toBeNull();
   });
 
   it('highlights current prayer column', () => {
