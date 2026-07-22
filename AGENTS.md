@@ -1,12 +1,12 @@
 # AGENTS.md
 
-## Current state (2026-07-20)
+## Current state (2026-07-21)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 268 tests)
-- **Working TV frontend** (SvelteKit static, 25 tests — no Tailwind, hand-written CSS ~6 KB)
-- **Working consumer frontend** (SvelteKit static/SPA, 36 tests — 1 date-dependent failure)
+- **Working API** (SvelteKit + D1, 267 tests)
+- **Working TV frontend** (SvelteKit static, 27 tests — no Tailwind, hand-written CSS ~6 KB)
+- **Working consumer frontend** (SvelteKit static/SPA, 36 tests)
 - **Working WhatsApp worker** (Stages 1-3 complete — webhook + session + LLM agent, 179 tests)
-- **472 tests passing** (268 API + 25 TV + 179 WhatsApp; 1 pre-existing consumer failure: heading label mismatch)
+- **535 tests passing** (267 API + 27 TV + 179 WhatsApp + 36 consumer + 26 SW integration)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
 
 ## How to start everything
@@ -24,11 +24,12 @@ npm run dev --workspace=@masjid/consumer     # port 5175
 
 ## How to test
 ```bash
-npm run test          # API-only, 268 tests (no external deps)
-npm run test:tv       # TV frontend, 25 tests (jsdom + testing-library)
+npm run test          # API-only, 267 tests (no external deps)
+npm run test:tv       # TV frontend, 27 tests (jsdom + testing-library)
 npm run test:consumer # Consumer frontend, 36 tests (jsdom + testing-library)
 npm run test:whatsapp # WhatsApp worker, 179 tests (node, mocked D1 + fetch)
-npm run test:all      # everything
+npm run test:sw       # Service worker integration, 26 tests (Playwright, requires running dev servers)
+npm run test:all      # everything (excluding test:sw since it needs servers running)
 ```
 
 ## Seed data
@@ -78,7 +79,28 @@ masjid/
 - **Admin routes**: Moved under `admin/masjids/[id]/...` to avoid route conflict with public `masjids/[slug]`.
 - **Board endpoint**: `GET /api/v1/masjids/{slug}/board` returns today + 7 upcoming days of prayer times, theme, jumuah, and announcements in a single request. The TV frontend uses this instead of 8 separate API calls.
 
-## Consumer frontend architecture (Phase 2 complete)
+## Consumer service worker (`static/sw.js`)
+
+Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md`).
+
+### Key hardening features
+- **Versioned cache**: `CACHE_NAME = 'masjid-consumer-__BUILD_HASH__'` replaced at build time via Vite plugin (dev) or `scripts/sw-hash.js` postbuild script
+- **Scheme guard**: Early return for non-`http:`/`https:` URLs (prevents `chrome-extension://` crash)
+- **Method guard**: Only intercepts `GET` requests
+- **Navigation guard**: Skips `navigate` mode requests (prevents index.html caching)
+- **Origin guard**: Only caches same-origin assets (no third-party CDN pollution)
+- **Opaque guard**: Skips opaque responses (status 0, can't be cached)
+- **Cache limit**: Trims to MAX_CACHE_ENTRIES (100) to prevent unbounded growth
+- **`/sw-kill` self-destruct**: `fetch('/sw-kill')` unregisters SW and clears all caches
+- **Error surfacing**: Cache failures are `postMessage`d to controlled clients
+- **Health check**: Page can send `{ type: 'health-check' }` to get cache stats
+- **Update detection**: `app.html` listens for new SW version via `updatefound` event
+- **SW bypass on kill path**: `app.html` skips registration when URL contains `/sw-kill`
+
+### Build pipeline
+- **Dev**: Vite plugin middleware intercepts `/sw.js`, replaces `__BUILD_HASH__` with random string
+- **Build**: `closeBundle` hook replaces hash in `build/sw.js`, then `postbuild` script (`scripts/sw-hash.js`) does it again as a safety net
+- **Integration tests**: `apps/consumer/tests/sw-integration.test.js` (Playwright, 26 tests)
 
 ### Theme & display settings (extensible, per-masjid)
 - **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV.
