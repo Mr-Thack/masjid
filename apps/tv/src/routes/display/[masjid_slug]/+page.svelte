@@ -12,6 +12,16 @@
 
   let payload = $state(data);
   let now = $state(new Date());
+  let compact = $state(false);
+
+  $effect(() => {
+    function check() {
+      compact = window.innerHeight < screen.height * 0.88;
+    }
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  });
 
   let theme = $derived(payload.theme);
   let timeFormat = $derived(theme.time_format);
@@ -229,7 +239,7 @@
   });
 </script>
 
-<div class="tv-page" style={themeStyle}>
+<div class="tv-page" class:tv-page--compact={compact} style={themeStyle}>
   <header class="tv-header">
     <div class="flex flex-col">
       <h1 class="tv-header-name">{payload.masjid.name}</h1>

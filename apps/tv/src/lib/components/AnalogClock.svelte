@@ -67,7 +67,7 @@
     height: auto;
     display: block;
     margin: 0 auto;
-    max-width: 220px;
+    max-width: 210px;
     overflow: visible;
   }
 
