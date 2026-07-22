@@ -87,14 +87,13 @@ describe('formatDiffReceipt', () => {
     expect(result).toContain('rule updated');
   });
 
-  it('shows CREATE Jumuah session with label and time', async () => {
+  it('shows CREATE Jumuah session with Khutbah time', async () => {
     const result = await formatWith([mutation({
       domain: 'JUMUAH', action_type: 'CREATE',
       payload_json: JSON.stringify({ label: 'First Session', time: '13:15' }),
     })]);
     expect(result).toContain('*+ Jumu\'ah*');
-    expect(result).toContain('First Session');
-    expect(result).toContain('13:15');
+    expect(result).toContain('Khutbah: 13:15');
   });
 
   it('shows DELETE Jumuah session', async () => {

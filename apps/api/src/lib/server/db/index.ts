@@ -76,6 +76,7 @@ function ensureTables(sqlite: Database.Database) {
       label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
       label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
       label_jumuah TEXT NOT NULL DEFAULT "Jumu'ah",
+      label_speech TEXT NOT NULL DEFAULT 'Speech',
       label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
       label_fajr TEXT NOT NULL DEFAULT 'Fajr',
       label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
@@ -103,6 +104,7 @@ function ensureTables(sqlite: Database.Database) {
       time TEXT NOT NULL,
       khateeb TEXT,
       location TEXT,
+      speech_time TEXT,
       is_active INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX IF NOT EXISTS idx_jumuah_masjid ON jumuah_sessions(masjid_id);
@@ -226,6 +228,7 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'label_speech', "TEXT NOT NULL DEFAULT 'Speech'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'");
@@ -233,6 +236,7 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'");
   addColumnIfMissing(sqlite, 'admins', 'whatsapp_phone', 'TEXT');
+  addColumnIfMissing(sqlite, 'jumuah_sessions', 'speech_time', 'TEXT');
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {

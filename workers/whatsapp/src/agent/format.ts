@@ -48,7 +48,8 @@ function formatMutation(m: MutationRecord, index: number): string {
       }
       case 'JUMUAH': {
         if (m.action_type === 'CREATE') {
-          return `${index}. *${action} ${domain}*\n  Label: ${payload.label || '?'}\n  Time: ${payload.time || '?'}`;
+          const speech = payload.speech_time ? `\n  Speech: ${payload.speech_time}` : '';
+          return `${index}. *${action} ${domain}*\n  Khutbah: ${payload.time || '?'}${speech}`;
         }
         if (m.action_type === 'DELETE') {
           return `${index}. *${action} ${domain}* (session deleted)`;

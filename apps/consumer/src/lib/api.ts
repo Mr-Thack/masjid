@@ -20,6 +20,7 @@ export interface JumuahSession {
   label: string;
   time: string;
   khateeb: string | null;
+  speech_time: string | null;
 }
 
 export interface PagePayload {
@@ -50,6 +51,7 @@ export interface PagePayload {
     label_adhaan: string;
     label_iqaamah: string;
     label_jumuah: string;
+    label_speech: string;
     label_sunrise: string;
     label_fajr: string;
     label_dhuhr: string;

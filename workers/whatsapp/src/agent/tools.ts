@@ -330,14 +330,15 @@ Higher execution_order runs later (chains with previous actions). Multiple condi
     },
     {
       name: 'jumuah_create',
-      description: "Create a new Jumu'ah session. Time format: HH:MM (24-hour).",
+      description: "Create a new Jumu'ah session. time is the Khutbah start time (mandatory). speech_time is an optional pre-khutbah lecture/speech start time. Time format: HH:MM (24-hour).",
       parameters: {
         type: 'object',
         properties: {
-          label: stringProp("Session label (e.g. 'First Session', 'Main Jumu\\'ah')"),
-          time: timeProp("Session time in 24-hour format (e.g. '13:30')"),
+          label: stringProp("Session label for admin reference (e.g. 'First Session', 'Main Jumu\\'ah')"),
+          time: timeProp("Khutbah start time in 24-hour format (e.g. '13:30')"),
           khateeb: stringProp('Name of the khateeb (optional)'),
           location: stringProp('Location within the masjid (optional)'),
+          speech_time: timeProp('Optional pre-khutbah speech/lecture start time (e.g. "13:00")'),
         },
         required: ['label', 'time'],
       },
@@ -357,9 +358,10 @@ Higher execution_order runs later (chains with previous actions). Multiple condi
         properties: {
           session_id: stringProp('ID of the session to update'),
           label: stringProp('New label (optional)'),
-          time: timeProp('New time (optional)'),
+          time: timeProp('New Khutbah time (optional)'),
           khateeb: nullableProp(stringProp('Khateeb name (optional)')),
           location: nullableProp(stringProp('Location (optional)')),
+          speech_time: nullableProp(timeProp('Pre-khutbah speech start time (optional)')),
           is_active: { type: 'boolean', description: 'Whether the session is active (optional)' },
         },
         required: ['session_id'],

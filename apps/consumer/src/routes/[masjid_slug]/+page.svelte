@@ -96,6 +96,7 @@
 
   let hasJumuah = $derived((jumuah?.length ?? 0) > 0);
   let jumuahLabel = $derived(theme?.label_jumuah ?? "Jumu'ah");
+  let speechLabel = $derived(theme?.label_speech ?? 'Speech');
   let timeFormat = $derived(theme?.time_format ?? '24h');
 
   let hijriDate = $derived(
@@ -310,13 +311,15 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
           {#each jumuah ?? [] as session}
             <div class="glass-card p-4">
-              <p class="text-sm font-semibold" style="color: var(--color-text-muted);">{session.label}</p>
-              <p class="text-2xl font-bold tabular-nums mt-1 text-accent">
-                {formatTime(session.time, timeFormat)}
-              </p>
-              {#if session.khateeb}
-                <p class="text-sm mt-1" style="color: var(--color-text-muted);">{session.khateeb}</p>
+              {#if session.speech_time}
+                <p class="text-xs" style="color: var(--color-text-dim);">{speechLabel} {formatTime(session.speech_time, timeFormat)}</p>
               {/if}
+              <p class="text-xl font-bold tabular-nums mt-1 text-accent">
+                {formatTime(session.time, timeFormat)}
+                {#if session.khateeb}
+                  <span class="text-base font-normal ml-2" style="color: var(--color-text-muted);">{session.khateeb}</span>
+                {/if}
+              </p>
             </div>
           {/each}
         </div>

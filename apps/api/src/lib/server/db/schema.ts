@@ -43,6 +43,7 @@ export const masjidThemes = sqliteTable('masjid_themes', {
   labelAdhaan: text('label_adhaan').notNull().default('Adhaan'),
   labelIqaamah: text('label_iqaamah').notNull().default('Iqaamah'),
   labelJumuah: text('label_jumuah').notNull().default("Jumu'ah"),
+  labelSpeech: text('label_speech').notNull().default('Speech'),
   labelSunrise: text('label_sunrise').notNull().default('Sunrise'),
   labelFajr: text('label_fajr').notNull().default('Fajr'),
   labelDhuhr: text('label_dhuhr').notNull().default('Dhuhr'),
@@ -71,6 +72,7 @@ export const jumuahSessions = sqliteTable('jumuah_sessions', {
   time: text('time').notNull(),
   khateeb: text('khateeb'),
   location: text('location'),
+  speechTime: text('speech_time'),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 }, (table) => ({
   masjidIdx: index('idx_jumuah_masjid').on(table.masjidId),

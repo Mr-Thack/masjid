@@ -76,6 +76,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         label: s.label,
         time: s.time,
         khateeb: s.khateeb,
+        speech_time: s.speechTime,
       }));
 
     return JsonResponse({
@@ -96,6 +97,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         label_adhaan: theme?.labelAdhaan ?? 'Adhaan',
         label_iqaamah: theme?.labelIqaamah ?? 'Iqaamah',
         label_jumuah: theme?.labelJumuah ?? "Jumu'ah",
+        label_speech: theme?.labelSpeech ?? 'Speech',
         label_sunrise: theme?.labelSunrise ?? 'Sunrise',
         label_fajr: theme?.labelFajr ?? 'Fajr',
         label_dhuhr: theme?.labelDhuhr ?? 'Dhuhr',

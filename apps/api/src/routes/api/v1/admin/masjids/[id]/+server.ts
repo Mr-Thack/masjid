@@ -70,6 +70,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
             label_adhaan: theme.labelAdhaan,
             label_iqaamah: theme.labelIqaamah,
             label_jumuah: theme.labelJumuah,
+            label_speech: theme.labelSpeech,
             label_sunrise: theme.labelSunrise,
             label_fajr: theme.labelFajr,
             label_dhuhr: theme.labelDhuhr,
@@ -143,6 +144,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       if (themeUpdate.data.label_adhaan !== undefined) themeData.labelAdhaan = themeUpdate.data.label_adhaan;
       if (themeUpdate.data.label_iqaamah !== undefined) themeData.labelIqaamah = themeUpdate.data.label_iqaamah;
       if (themeUpdate.data.label_jumuah !== undefined) themeData.labelJumuah = themeUpdate.data.label_jumuah;
+      if (themeUpdate.data.label_speech !== undefined) themeData.labelSpeech = themeUpdate.data.label_speech;
       if (themeUpdate.data.label_sunrise !== undefined) themeData.labelSunrise = themeUpdate.data.label_sunrise;
       if (themeUpdate.data.label_fajr !== undefined) themeData.labelFajr = themeUpdate.data.label_fajr;
       if (themeUpdate.data.label_dhuhr !== undefined) themeData.labelDhuhr = themeUpdate.data.label_dhuhr;

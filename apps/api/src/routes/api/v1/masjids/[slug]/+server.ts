@@ -101,6 +101,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             label_adhaan: theme.labelAdhaan,
             label_iqaamah: theme.labelIqaamah,
             label_jumuah: theme.labelJumuah,
+            label_speech: theme.labelSpeech,
             label_sunrise: theme.labelSunrise,
             label_fajr: theme.labelFajr,
             label_dhuhr: theme.labelDhuhr,
@@ -126,6 +127,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           label: s.label,
           time: s.time,
           khateeb: s.khateeb,
+          speech_time: s.speechTime,
         })),
       pinned_announcement: pinnedAnnouncement
         ? {

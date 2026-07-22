@@ -27,6 +27,7 @@ type JumuahSession = {
   time: string;
   khateeb?: string;
   location?: string;
+  speech_time?: string;
 };
 
 type PinnedAnnouncement = {
@@ -150,10 +151,8 @@ describe('homepage', () => {
     expect(
       screen.getByRole('heading', { name: "Jumu'ah Timings" }),
     ).toBeInTheDocument();
-    expect(screen.getByText('First Khutbah')).toBeInTheDocument();
     expect(screen.getByText('13:30')).toBeInTheDocument();
     expect(screen.getByText('Sh. Ahmed')).toBeInTheDocument();
-    expect(screen.getByText('Second Khutbah')).toBeInTheDocument();
     expect(screen.getByText('14:00')).toBeInTheDocument();
     expect(screen.getByText('Sh. Yusuf')).toBeInTheDocument();
     expect(

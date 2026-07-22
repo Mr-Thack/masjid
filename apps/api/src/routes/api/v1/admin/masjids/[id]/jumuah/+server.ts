@@ -32,6 +32,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
         time: s.time,
         khateeb: s.khateeb,
         location: s.location,
+        speech_time: s.speechTime,
         is_active: s.isActive,
       })),
     });
@@ -70,6 +71,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       time: body.time,
       khateeb: body.khateeb ?? null,
       location: body.location ?? null,
+      speechTime: body.speech_time ?? null,
     });
 
     await invalidatePageCache(platform?.env?.CACHE, masjid.slug);
@@ -81,6 +83,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       time: body.time,
       khateeb: body.khateeb ?? null,
       location: body.location ?? null,
+      speech_time: body.speech_time ?? null,
       is_active: true,
     }, 201);
   } catch (e: unknown) {

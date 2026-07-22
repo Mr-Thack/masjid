@@ -34,6 +34,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           time: s.time,
           khateeb: s.khateeb,
           location: s.location,
+          speech_time: s.speechTime,
           is_active: s.isActive,
         })),
     });

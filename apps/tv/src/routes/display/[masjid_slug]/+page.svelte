@@ -199,6 +199,7 @@
       label: session.label,
       time: formatTime(session.time, timeFormat),
       khateeb: session.khateeb,
+      speech_time: session.speech_time ? formatTime(session.speech_time, timeFormat) : null,
     }));
   });
 
@@ -255,7 +256,7 @@
         </p>
 
         <div class="tv-jumuah-wrapper">
-          <JumuahNotice sessions={formattedJumuahSessions} label={theme.label_jumuah} />
+          <JumuahNotice sessions={formattedJumuahSessions} label={theme.label_jumuah} speechLabel={theme.label_speech} />
         </div>
       </aside>
 

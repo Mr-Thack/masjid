@@ -36,6 +36,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (body.time !== undefined) updateData.time = body.time;
     if (body.khateeb !== undefined) updateData.khateeb = body.khateeb;
     if (body.location !== undefined) updateData.location = body.location;
+    if (body.speech_time !== undefined) updateData.speechTime = body.speech_time;
     if (body.is_active !== undefined) updateData.isActive = body.is_active;
 
     if (Object.keys(updateData).length > 0) {
@@ -63,6 +64,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       time: updated?.time,
       khateeb: updated?.khateeb,
       location: updated?.location,
+      speech_time: updated?.speechTime,
       is_active: updated?.isActive,
     });
   } catch (e: unknown) {

@@ -5,6 +5,7 @@ export const CreateJumuahSchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   khateeb: z.string().max(200).optional().nullable(),
   location: z.string().max(200).optional().nullable(),
+  speech_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().nullable(),
 });
 
 export const UpdateJumuahSchema = z.object({
@@ -15,6 +16,7 @@ export const UpdateJumuahSchema = z.object({
     .optional(),
   khateeb: z.string().max(200).optional().nullable(),
   location: z.string().max(200).optional().nullable(),
+  speech_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().nullable(),
   is_active: z.boolean().optional(),
 });
 
@@ -25,6 +27,7 @@ export const JumuahSessionSchema = z.object({
   time: z.string(),
   khateeb: z.string().nullable(),
   location: z.string().nullable(),
+  speech_time: z.string().nullable(),
   is_active: z.boolean(),
 });
 export type JumuahSession = z.infer<typeof JumuahSessionSchema>;

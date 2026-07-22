@@ -286,17 +286,18 @@ html, body {
 }
 
 .tv-jumuah-time {
-  font-size: clamp(1.1rem, 1.6vw, 1.5rem); font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: clamp(1rem, 1.4vw, 1.3rem); font-weight: 700; font-variant-numeric: tabular-nums;
   color: var(--color-accent, #10b981);
 }
 
-.tv-jumuah-details {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 0.5rem;
-  font-size: 0.8rem; color: var(--color-text-muted, #9ca3af);
+.tv-jumuah-speech {
+  font-size: 0.7rem; color: var(--color-text-dim, #6b7280);
+  margin-bottom: 0.1rem;
 }
 
-.tv-jumuah-label { font-weight: 600; }
-.tv-jumuah-khateeb { color: var(--color-text-dim, #6b7280); }
+.tv-jumuah-khateeb {
+  margin-left: 0.35em; font-size: 0.85em; font-weight: 400; color: var(--color-text-muted, #9ca3af);
+}
 
 /* === Announcement Banner === */
 .announcement-banner {

@@ -51,6 +51,7 @@ export const ThemeSchema = z.object({
   label_adhaan: z.string().min(1).default('Adhaan'),
   label_iqaamah: z.string().min(1).default('Iqaamah'),
   label_jumuah: z.string().min(1).default("Jumu'ah"),
+  label_speech: z.string().min(1).default('Speech'),
   label_sunrise: z.string().min(1).default('Sunrise'),
   label_fajr: z.string().min(1).default('Fajr'),
   label_dhuhr: z.string().min(1).default('Dhuhr'),

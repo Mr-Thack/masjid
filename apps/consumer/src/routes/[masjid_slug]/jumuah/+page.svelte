@@ -11,6 +11,7 @@
   let theme = $derived(data.theme);
 
   let timeFormat = $derived(theme?.time_format ?? '24h');
+  let speechLabel = $derived(theme?.label_speech ?? 'Speech');
   let sessions = $state<JumuahSession[]>([]);
   let loading = $state(false);
   let error = $state('');
@@ -65,18 +66,15 @@
             </div>
 
             <div class="flex-1 min-w-0">
-              <h3 class="text-base font-semibold" style="color: var(--color-text);">{session.label}</h3>
-              <p class="text-3xl font-extrabold tabular-nums mt-2 text-accent">
-                {formatTime(session.time, timeFormat)}
-              </p>
-
-              {#if session.khateeb}
-                <div class="mt-3 pt-3 border-t" style="border-color: var(--color-border);">
-                  <p class="text-xs uppercase tracking-wider" style="color: var(--color-text-dim);">Khateeb</p>
-                  <p class="text-sm font-medium mt-0.5" style="color: var(--color-text-muted);">{session.khateeb}</p>
-                </div>
+              {#if session.speech_time}
+                <p class="text-xs" style="color: var(--color-text-dim);">{speechLabel} {formatTime(session.speech_time, timeFormat)}</p>
               {/if}
-
+              <p class="text-2xl font-extrabold tabular-nums mt-1 text-accent">
+                {formatTime(session.time, timeFormat)}
+                {#if session.khateeb}
+                  <span class="text-base font-medium ml-2" style="color: var(--color-text-muted);">{session.khateeb}</span>
+                {/if}
+              </p>
             </div>
           </div>
         </div>

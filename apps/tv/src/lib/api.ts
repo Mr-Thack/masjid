@@ -16,6 +16,7 @@ export interface BoardPayload {
     label_adhaan: string;
     label_iqaamah: string;
     label_jumuah: string;
+    label_speech: string;
     label_sunrise: string;
     label_fajr: string;
     label_dhuhr: string;
@@ -50,6 +51,7 @@ export interface BoardPayload {
     label: string;
     time: string;
     khateeb: string | null;
+    speech_time: string | null;
   }>;
   pinned_announcement: {
     title: string;

@@ -82,6 +82,7 @@ async function seed() {
     accentColor: '#10b981',
     fontHeading: 'Inter',
     fontBody: 'Roboto',
+    labelSpeech: 'Speech',
   }).run();
 
   db.insert(schema.admins).values({
@@ -175,6 +176,7 @@ async function seed() {
       label: '1st Session (English)',
       time: '13:30',
       khateeb: 'Imam Abdullah',
+      speechTime: '13:00',
       isActive: true,
     },
     {
@@ -263,6 +265,7 @@ async function seed() {
     labelAdhaan: 'Azaan',
     labelIqaamah: 'Iqamah',
     labelJumuah: 'Jummah',
+    labelSpeech: 'Bayaan',
     labelSunrise: 'Sunrise',
     labelFajr: 'Fajr',
     labelDhuhr: 'Zuhr',
@@ -376,6 +379,7 @@ async function seed() {
       label: '1st Jummah Khutbah (English)',
       time: '13:30',
       khateeb: 'Imam Yusuf',
+      speechTime: '13:00',
       isActive: true,
     },
     {
@@ -391,7 +395,7 @@ async function seed() {
       masjidId: JABAL_MASJID_ID,
       label: '3rd Jummah Khutbah (Arabic)',
       time: '15:30',
-      khateeb: 'Sheikh Khalid',
+      khateeb: null,
       isActive: true,
     },
   ]).run();
