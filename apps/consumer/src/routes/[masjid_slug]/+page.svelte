@@ -269,7 +269,6 @@
                 </span>
                 <p class="text-sm font-medium mt-0.5" style="color: var(--color-text);">
                   <strong class="text-accent">{change.prayerLabel}</strong>
-                  Iqamah changing
                 </p>
               </div>
               <div class="text-sm tabular-nums" style="color: var(--color-text-muted);">
@@ -312,12 +311,12 @@
           {#each jumuah ?? [] as session}
             <div class="glass-card p-4">
               {#if session.speech_time}
-                <p class="text-xs" style="color: var(--color-text-dim);">{speechLabel} {formatTime(session.speech_time, timeFormat)}</p>
+                <p class="text-xs" style="color: var(--color-text-dim);">{speechLabel} @ {formatTime(session.speech_time, timeFormat)}</p>
               {/if}
               <p class="text-xl font-bold tabular-nums mt-1 text-accent">
                 {formatTime(session.time, timeFormat)}
                 {#if session.khateeb}
-                  <span class="text-base font-normal ml-2" style="color: var(--color-text-muted);">{session.khateeb}</span>
+                  <span class="text-base font-normal ml-2" style="color: var(--color-text-muted);">— {session.khateeb}</span>
                 {/if}
               </p>
             </div>

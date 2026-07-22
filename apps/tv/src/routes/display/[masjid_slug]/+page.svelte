@@ -260,7 +260,7 @@
       <aside class="tv-info-panel">
         <AnalogClock {now} />
         <p class="tv-digital-time">{digitalTime}</p>
-        <p class="tv-sunrise">{theme.label_sunrise}: {sunrise}</p>
+        <p class="tv-sunrise">{theme.label_sunrise} @ {sunrise}</p>
         <p class="tv-countdown-label">
           {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamahRaw} />
         </p>
