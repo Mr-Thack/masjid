@@ -2,6 +2,11 @@ import type { Env } from './types';
 
 const WHATSAPP_API_BASE = 'https://graph.facebook.com/v22.0';
 
+export function bufferToDataUri(buffer: ArrayBuffer, contentType: string): string {
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  return `data:${contentType};base64,${base64}`;
+}
+
 export async function downloadWhatsAppMedia(
   mediaId: string,
   env: Env,

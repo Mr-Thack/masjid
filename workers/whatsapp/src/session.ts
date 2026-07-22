@@ -195,6 +195,7 @@ export async function mergeBranch(
       domain: m.domain,
       action: m.action_type,
       target: m.target_key,
+      payload: JSON.parse(m.payload_json),
     })),
   });
 
@@ -210,4 +211,49 @@ export async function mergeBranch(
     .prepare('UPDATE config_branches SET status = ?, updated_at = ? WHERE id = ?')
     .bind('MERGED', now, branchId)
     .run();
+}
+
+export async function listSnapshots(
+  masjidId: string,
+  db: D1Database,
+): Promise<Array<{
+  id: string;
+  summary: string;
+  mutation_count: number;
+  created_at: string;
+}>> {
+  const result = await db
+    .prepare(
+      'SELECT id, summary, full_state_json, created_at FROM config_snapshots WHERE masjid_id = ? ORDER BY created_at DESC LIMIT 20',
+    )
+    .bind(masjidId)
+    .all<{ id: string; summary: string; full_state_json: string; created_at: string }>();
+
+  return result.results.map(r => {
+    let mutationCount = 0;
+    try {
+      const state = JSON.parse(r.full_state_json);
+      mutationCount = state.mutation_count || 0;
+    } catch { /* ignore */ }
+    return {
+      id: r.id,
+      summary: r.summary,
+      mutation_count: mutationCount,
+      created_at: r.created_at,
+    };
+  });
+}
+
+export async function getSnapshot(
+  snapshotId: string,
+  db: D1Database,
+): Promise<{ id: string; masjid_id: string; summary: string; full_state_json: string; created_at: string } | null> {
+  const result = await db
+    .prepare(
+      'SELECT id, masjid_id, summary, full_state_json, created_at FROM config_snapshots WHERE id = ?',
+    )
+    .bind(snapshotId)
+    .first<{ id: string; masjid_id: string; summary: string; full_state_json: string; created_at: string }>();
+
+  return result || null;
 }

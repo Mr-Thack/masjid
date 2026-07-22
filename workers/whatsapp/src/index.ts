@@ -16,8 +16,10 @@ import {
   downloadWhatsAppMedia,
   uploadToR2,
   registerAsset,
+  bufferToDataUri,
 } from './media';
 import { runAgent } from './agent/runner';
+import { runVisionAgent } from './agent/runner';
 import { formatDiffReceipt, buildConfirmSuccessMessage } from './agent/format';
 
 export default {
@@ -181,14 +183,26 @@ async function handleMediaMessage(
     const { buffer, contentType } = await downloadWhatsAppMedia(msg.mediaId, env);
 
     const ext = contentType.split('/')[1] || 'bin';
+    const cdnBase = env.CDN_BASE_URL || 'https://cdn.example.com';
     const r2Key = `masjids/${masjidId}/inbox/${crypto.randomUUID()}.${ext}`;
-    const publicUrl = `https://cdn.example.com/${r2Key}`;
+    const publicUrl = `${cdnBase}/${r2Key}`;
 
     await uploadToR2(buffer, r2Key, contentType, env);
 
-    const domain =
-      msg.type === 'document' ? 'ANNOUNCEMENTS' :
-      msg.type === 'image' && msg.mediaMimeType?.startsWith('image/') ? 'TIMETABLE_PARSER' : 'ANNOUNCEMENTS';
+    const isImage = contentType.startsWith('image/');
+    const isDocument = msg.type === 'document';
+    const isSpreadsheet = isDocument && (
+      contentType.includes('spreadsheet') ||
+      contentType.includes('excel') ||
+      contentType.includes('csv') ||
+      msg.mediaMimeType?.includes('spreadsheet') ||
+      msg.mediaMimeType?.includes('excel') ||
+      msg.mediaMimeType?.includes('csv') ||
+      msg.mediaFilename?.endsWith('.csv') ||
+      msg.mediaFilename?.endsWith('.xlsx')
+    );
+
+    const domain = isImage ? 'TIMETABLE_PARSER' : 'ANNOUNCEMENTS';
 
     await registerAsset(
       masjidId,
@@ -200,14 +214,80 @@ async function handleMediaMessage(
       env.DB,
     );
 
+    const admin = await resolveTenant(msg.from, env.DB);
+    if (!admin) {
+      await sendReply(msg.from, "I've saved your file but couldn't process it further.", env);
+      return;
+    }
+
+    let branch = await getOpenBranch(adminId, masjidId, env.DB);
+    if (!branch) {
+      branch = await createBranch(adminId, masjidId, env.DB);
+    } else {
+      await touchBranch(branch.id, env.DB);
+    }
+
+    if (isImage) {
+      const dataUri = bufferToDataUri(buffer, contentType);
+      const response = await runVisionAgent(dataUri, contentType, admin, env, branch.id);
+
+      const diffReceipt = await formatDiffReceipt(branch.id, branch.branch_name, env.DB);
+      const mutationCount = await getMutationCount(branch.id, env.DB);
+
+      if (mutationCount > 0 && !response.includes('Type */confirm*')) {
+        await sendReply(msg.from, response + '\n\n' + diffReceipt, env);
+      } else {
+        await sendReply(msg.from, response, env);
+      }
+      return;
+    }
+
+    if (isSpreadsheet) {
+      const text = new TextDecoder().decode(buffer);
+      const preview = text.slice(0, 500);
+      await sendReply(
+        msg.from,
+        [
+          '*Spreadsheet received*',
+          `File: ${msg.mediaFilename || 'unnamed'} (${contentType})`,
+          '',
+          'CSV data preview:',
+          '```',
+          preview,
+          text.length > 500 ? '...' : '',
+          '```',
+          '',
+          'Processing spreadsheet data for timetable extraction...',
+        ].join('\n'),
+        env,
+      );
+
+      const response = await runAgent(
+        `Parse this CSV/tabular prayer timetable data and create prayer rules:\n\n${text}`,
+        admin,
+        env,
+        branch.id,
+      );
+
+      const diffReceipt = await formatDiffReceipt(branch.id, branch.branch_name, env.DB);
+      const mutationCount = await getMutationCount(branch.id, env.DB);
+
+      if (mutationCount > 0 && !response.includes('Type */confirm*')) {
+        await sendReply(msg.from, response + '\n\n' + diffReceipt, env);
+      } else {
+        await sendReply(msg.from, response, env);
+      }
+      return;
+    }
+
     await sendReply(
       msg.from,
       [
-        "I've received your media file.",
+        "I've received your file.",
         `Type: ${msg.type} (${contentType})`,
         msg.mediaFilename ? `File: ${msg.mediaFilename}` : '',
         '',
-        'Image and document processing (OCR, timetable parsing) will be available in a future update.',
+        'This file type will be processed in a future update (PDF/DOCX parsing coming soon).',
       ]
         .filter(Boolean)
         .join('\n'),

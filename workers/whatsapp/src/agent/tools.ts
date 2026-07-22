@@ -1,5 +1,5 @@
 import type { ToolDefinition, ToolContext } from '../types';
-import { storeMutation } from '../session';
+import { storeMutation, listSnapshots, getSnapshot } from '../session';
 import {
   getMasjidProfile,
   updateMasjidProfile,
@@ -19,6 +19,7 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   pinAnnouncement,
+  dryRunPrayerTimes,
 } from '../proxy';
 
 const NOWHERE = 'nowhere';
@@ -483,6 +484,60 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
         const summary = describeMutation('ANNOUNCEMENTS', 'PIN', args);
         await storeMutation(ctx.branchId, 'ANNOUNCEMENTS', 'PIN', `announcement:${args.slug}`, args, ctx.env.DB);
         return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'timetable_preview',
+      description: 'Preview what prayer times would look like given proposed rule changes, without committing them. Useful for verifying timetable parsing before confirming. Accepts a date and optional rule overrides.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date: stringProp('Date to preview in YYYY-MM-DD format (defaults to today)'),
+          rule_overrides: { type: 'array', items: { type: 'object' }, description: 'Array of proposed rule objects to simulate on top of existing rules (optional)' },
+        },
+        required: [],
+      },
+      handler: async (args, ctx) => {
+        const body: Record<string, unknown> = {};
+        if (args.date) body.date = args.date;
+        if (args.rule_overrides) body.rule_overrides = args.rule_overrides;
+        const data = await dryRunPrayerTimes(body, ctx.env, ctx.adminId, ctx.masjidId);
+        return { success: true, data };
+      },
+    },
+    {
+      name: 'rollback_list_snapshots',
+      description: 'List recent configuration snapshots (point-in-time rollback states). Each snapshot was created when a session was confirmed. Useful before using rollback_restore.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const snapshots = await listSnapshots(ctx.masjidId, ctx.env.DB);
+        return { success: true, data: snapshots };
+      },
+    },
+    {
+      name: 'rollback_restore',
+      description: 'EXPERIMENTAL: Request a rollback to a previous snapshot. This is a high-risk operation — it will attempt to restore the masjid configuration to a previous state. Currently provides the snapshot data for manual review.',
+      parameters: {
+        type: 'object',
+        properties: {
+          snapshot_id: stringProp('ID of the snapshot to restore (from rollback_list_snapshots)'),
+        },
+        required: ['snapshot_id'],
+      },
+      handler: async (args, ctx) => {
+        const snapshot = await getSnapshot(args.snapshot_id as string, ctx.env.DB);
+        if (!snapshot) {
+          return { success: false, error: 'Snapshot not found. Use rollback_list_snapshots to see available snapshots.' };
+        }
+        return {
+          success: true,
+          data: snapshot,
+          mutationSummary: `Snapshot ${snapshot.id} retrieved. Full state available for review. Restore functionality requires admin API support (coming soon).`,
+        };
       },
     },
   ];

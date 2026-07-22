@@ -239,3 +239,13 @@ export async function pinAnnouncement(
   const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}/announcements/${slug}/pin`, {}, env, adminId, masjidId);
   return res.json() as Promise<Record<string, unknown>>;
 }
+
+export async function dryRunPrayerTimes(
+  body: Record<string, unknown>,
+  env: Env,
+  adminId: string,
+  masjidId: string,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('POST', `/api/v1/admin/masjids/${masjidId}/prayer/dry-run`, body, env, adminId, masjidId);
+  return res.json() as Promise<Record<string, unknown>>;
+}

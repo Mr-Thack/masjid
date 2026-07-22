@@ -5,8 +5,8 @@ The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 267 tests)
 - **Working TV frontend** (SvelteKit static, 28 tests — no Tailwind, hand-written CSS ~6 KB)
 - **Working consumer frontend** (SvelteKit static/SPA, 36 tests)
-- **Working WhatsApp worker** (Stages 1-3 complete — webhook + session + LLM agent, 179 tests)
-- **535 tests passing** (267 API + 28 TV + 179 WhatsApp + 36 consumer + 26 SW integration)
+- **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 213 tests)
+- **569 tests passing** (267 API + 28 TV + 213 WhatsApp + 36 consumer + 26 SW integration)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
 
 ## How to start everything
@@ -27,7 +27,7 @@ npm run dev --workspace=@masjid/consumer     # port 5175
 npm run test          # API-only, 267 tests (no external deps)
 npm run test:tv       # TV frontend, 28 tests (jsdom + testing-library)
 npm run test:consumer # Consumer frontend, 36 tests (jsdom + testing-library)
-npm run test:whatsapp # WhatsApp worker, 179 tests (node, mocked D1 + fetch)
+npm run test:whatsapp # WhatsApp worker, 213 tests (node, mocked D1 + fetch)
 npm run test:sw       # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:all      # everything (excluding test:sw since it needs servers running)
 ```

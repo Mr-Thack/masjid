@@ -260,6 +260,6 @@ describe('runAgent — defaults when env vars absent', () => {
     await runAgent('test', testAdmin, env, 'branch-1');
 
     const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
-    expect(body.model).toBe('gpt-4o-mini');
+    expect(body.model).toBe('google/gemma-4-31b-it');
   });
 });

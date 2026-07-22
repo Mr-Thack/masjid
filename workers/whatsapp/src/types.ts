@@ -9,6 +9,7 @@ export interface Env {
   LLM_API_URL?: string;
   LLM_API_KEY?: string;
   LLM_MODEL?: string;
+  CDN_BASE_URL?: string;
 }
 
 export interface AdminRecord {
@@ -75,9 +76,21 @@ export interface ToolResult {
   mutationSummary?: string;
 }
 
+export interface LLMTextPart {
+  type: 'text';
+  text: string;
+}
+
+export interface LLMImagePart {
+  type: 'image_url';
+  image_url: { url: string };
+}
+
+export type LLMContentPart = LLMTextPart | LLMImagePart;
+
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: string | LLMContentPart[] | null;
   name?: string;
   tool_call_id?: string;
   tool_calls?: LLMToolCall[];

@@ -2,6 +2,25 @@ import type { Env } from './types';
 
 const WHATSAPP_API_BASE = 'https://graph.facebook.com/v22.0';
 
+const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const URDU_RE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]|\u0679|\u0688|\u0691|\u0698|\u06A9|\u06AF/;
+
+export function isRtlText(text: string): boolean {
+  return ARABIC_RE.test(text) || URDU_RE.test(text);
+}
+
+export function wrapRtl(text: string): string {
+  if (!isRtlText(text)) return text;
+
+  const lines = text.split('\n');
+  return lines.map(line => {
+    if (isRtlText(line)) {
+      return '\u200F' + line;
+    }
+    return line;
+  }).join('\n');
+}
+
 export async function sendReply(
   to: string,
   text: string,
@@ -14,7 +33,7 @@ export async function sendReply(
     recipient_type: 'individual',
     to,
     type: 'text',
-    text: { body: text },
+    text: { body: wrapRtl(text) },
   };
 
   const response = await fetch(url, {

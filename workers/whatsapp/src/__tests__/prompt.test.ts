@@ -142,3 +142,68 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('*bold*');
   });
 });
+
+describe('buildVisionPrompt', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('includes masjid name from state', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const state = { masjid: { name: 'Masjid Al-Huda' } };
+    const prompt = buildVisionPrompt(testAdmin, state as Record<string, unknown>, testEnv);
+    expect(prompt).toContain('Masjid Al-Huda');
+  });
+
+  it('falls back to admin email when name is absent', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('admin@test.org');
+  });
+
+  it('includes timetable extraction guide', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('Timetable Extraction Guide');
+    expect(prompt).toContain('fajr');
+    expect(prompt).toContain('dhuhr');
+    expect(prompt).toContain('asr');
+    expect(prompt).toContain('maghrib');
+    expect(prompt).toContain('isha');
+  });
+
+  it('includes guidance about prayer name mapping', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('Zuhr');
+    expect(prompt).toContain('Fajer');
+    expect(prompt).toContain('Ishaa');
+  });
+
+  it('includes rules about checking current state', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('profile_get first');
+    expect(prompt).toContain('prayer_rules_list');
+  });
+
+  it('includes guidance about multiple date ranges', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('date ranges');
+  });
+
+  it('includes Jumuah/Friday guidance', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('Friday');
+    expect(prompt).toContain('Jumu\'ah');
+  });
+
+  it('includes domain guide for reference', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('THEME');
+    expect(prompt).toContain('PRAYER_RULES');
+  });
+});

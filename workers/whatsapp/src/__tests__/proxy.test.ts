@@ -200,4 +200,21 @@ describe('proxy function URLs', () => {
     const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
     expect(body).toEqual({});
   });
+
+  it('dryRunPrayerTimes calls POST with body', async () => {
+    mockFetch.mockResolvedValue(new Response('{"fajr":{"adhaan":"05:00","iqaamah":"05:30"}}', { status: 200 }));
+    const { dryRunPrayerTimes } = await import('../proxy');
+    const result = await dryRunPrayerTimes({ date: '2026-07-21' }, testEnv, 'admin-1', 'masjid-1');
+    expect(mockFetch.mock.calls[0]?.[1]?.method).toBe('POST');
+    expect(mockFetch.mock.calls[0]?.[0]).toContain('/prayer/dry-run');
+    expect(result).toHaveProperty('fajr');
+  });
+
+  it('dryRunPrayerTimes passes Content-Type header', async () => {
+    mockFetch.mockResolvedValue(new Response('{}', { status: 200 }));
+    const { dryRunPrayerTimes } = await import('../proxy');
+    await dryRunPrayerTimes({ date: '2026-07-21', rule_overrides: [] }, testEnv, 'admin-1', 'masjid-1');
+    const headers = mockFetch.mock.calls[0]?.[1]?.headers;
+    expect(headers['Content-Type']).toBe('application/json');
+  });
 });

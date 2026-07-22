@@ -149,3 +149,56 @@ describe('buildSessionSummary', () => {
     expect(msg).toContain('What would you like to change');
   });
 });
+
+describe('isRtlText', () => {
+  it('detects Arabic text', async () => {
+    const { isRtlText } = await loadModule();
+    expect(isRtlText('السلام عليكم')).toBe(true);
+  });
+
+  it('detects Urdu text', async () => {
+    const { isRtlText } = await loadModule();
+    expect(isRtlText('نماز کا وقت')).toBe(true);
+  });
+
+  it('returns false for English text', async () => {
+    const { isRtlText } = await loadModule();
+    expect(isRtlText('As-salamu alaykum')).toBe(false);
+  });
+
+  it('returns false for empty string', async () => {
+    const { isRtlText } = await loadModule();
+    expect(isRtlText('')).toBe(false);
+  });
+
+  it('detects mixed Arabic in text', async () => {
+    const { isRtlText } = await loadModule();
+    expect(isRtlText('Prayer: الفجر')).toBe(true);
+  });
+});
+
+describe('wrapRtl', () => {
+  it('wraps Arabic text with RTL mark', async () => {
+    const { wrapRtl } = await loadModule();
+    const result = wrapRtl('السلام عليكم');
+    expect(result).toBe('\u200Fالسلام عليكم');
+  });
+
+  it('wraps each RTL line independently', async () => {
+    const { wrapRtl } = await loadModule();
+    const result = wrapRtl('English header\nالسلام عليكم\nMore English');
+    expect(result).toBe('English header\n\u200Fالسلام عليكم\nMore English');
+  });
+
+  it('does not wrap English-only text', async () => {
+    const { wrapRtl } = await loadModule();
+    const result = wrapRtl('Hello World');
+    expect(result).toBe('Hello World');
+  });
+
+  it('wraps Urdu text with RTL mark', async () => {
+    const { wrapRtl } = await loadModule();
+    const result = wrapRtl('نماز کا وقت ہے');
+    expect(result).toContain('\u200F');
+  });
+});

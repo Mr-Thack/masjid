@@ -104,6 +104,7 @@ beforeEach(() => {
     downloadWhatsAppMedia: vi.fn().mockResolvedValue({ buffer: new ArrayBuffer(0), contentType: 'image/jpeg' }),
     uploadToR2: vi.fn().mockResolvedValue(undefined),
     registerAsset: vi.fn().mockResolvedValue('asset-1'),
+    bufferToDataUri: vi.fn().mockReturnValue('data:image/jpeg;base64,abc123'),
   }));
 
   vi.mock('../webhook', () => ({

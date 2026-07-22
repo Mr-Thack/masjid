@@ -39,11 +39,14 @@ vi.mock('../proxy', () => ({
   updateAnnouncement: vi.fn().mockResolvedValue(defaultProxyResponse),
   deleteAnnouncement: vi.fn().mockResolvedValue(defaultProxyResponse),
   pinAnnouncement: vi.fn().mockResolvedValue(defaultProxyResponse),
+  dryRunPrayerTimes: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../session', () => ({
   storeMutation: vi.fn().mockResolvedValue('mut-uuid-123'),
   getMutationCount: vi.fn().mockResolvedValue(0),
+  listSnapshots: vi.fn().mockResolvedValue([]),
+  getSnapshot: vi.fn().mockResolvedValue(null),
 }));
 
 beforeEach(() => {
@@ -54,7 +57,7 @@ describe('getToolDefinitions', () => {
   it('returns 20 tools', async () => {
     const { getToolDefinitions } = await import('../agent/tools');
     const tools = getToolDefinitions();
-    expect(tools).toHaveLength(20);
+    expect(tools).toHaveLength(23);
   });
 
   it('all tools have name, description, parameters, handler', async () => {
@@ -343,5 +346,225 @@ describe('tool handlers — write tools', () => {
     expect(session.storeMutation).toHaveBeenCalledWith(
       testCtx.branchId, 'ANNOUNCEMENTS', 'CREATE', 'announcement:nowhere', expect.any(Object), testCtx.env.DB,
     );
+  });
+});
+
+describe('Stage 4 tools', () => {
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  it('timetable_preview calls dryRunPrayerTimes', async () => {
+    vi.doMock('../proxy', () => ({
+      getMasjidProfile: vi.fn().mockResolvedValue({ theme: {}, masjid: { name: 'Test' } }),
+      updateMasjidProfile: vi.fn().mockResolvedValue({}),
+      getPrayerConfig: vi.fn().mockResolvedValue({}),
+      updatePrayerConfig: vi.fn().mockResolvedValue({}),
+      getPrayerRulesList: vi.fn().mockResolvedValue([]),
+      createPrayerRule: vi.fn().mockResolvedValue({}),
+      updatePrayerRule: vi.fn().mockResolvedValue({}),
+      deletePrayerRule: vi.fn().mockResolvedValue({}),
+      reorderPrayerRules: vi.fn().mockResolvedValue({}),
+      getJumuahSessions: vi.fn().mockResolvedValue([]),
+      createJumuahSession: vi.fn().mockResolvedValue({}),
+      updateJumuahSession: vi.fn().mockResolvedValue({}),
+      deleteJumuahSession: vi.fn().mockResolvedValue({}),
+      getAnnouncements: vi.fn().mockResolvedValue([]),
+      createAnnouncement: vi.fn().mockResolvedValue({}),
+      updateAnnouncement: vi.fn().mockResolvedValue({}),
+      deleteAnnouncement: vi.fn().mockResolvedValue({}),
+      pinAnnouncement: vi.fn().mockResolvedValue({}),
+      dryRunPrayerTimes: vi.fn().mockResolvedValue({ fajr: { adhaan: '05:00', iqaamah: '05:30' } }),
+    }));
+
+    vi.doMock('../session', () => ({
+      storeMutation: vi.fn().mockResolvedValue('m1'),
+      getMutationCount: vi.fn().mockResolvedValue(0),
+      listSnapshots: vi.fn().mockResolvedValue([]),
+      getSnapshot: vi.fn().mockResolvedValue(null),
+    }));
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const proxy = await import('../proxy');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'timetable_preview')!;
+    const result = await tool.handler({ date: '2026-07-21' }, testCtx);
+
+    expect(result.success).toBe(true);
+    expect(proxy.dryRunPrayerTimes).toHaveBeenCalledWith(
+      { date: '2026-07-21' }, testCtx.env, testCtx.adminId, testCtx.masjidId,
+    );
+  });
+
+  it('timetable_preview passes rule_overrides', async () => {
+    vi.doMock('../proxy', () => ({
+      getMasjidProfile: vi.fn().mockResolvedValue({ theme: {}, masjid: { name: 'Test' } }),
+      updateMasjidProfile: vi.fn().mockResolvedValue({}),
+      getPrayerConfig: vi.fn().mockResolvedValue({}),
+      updatePrayerConfig: vi.fn().mockResolvedValue({}),
+      getPrayerRulesList: vi.fn().mockResolvedValue([]),
+      createPrayerRule: vi.fn().mockResolvedValue({}),
+      updatePrayerRule: vi.fn().mockResolvedValue({}),
+      deletePrayerRule: vi.fn().mockResolvedValue({}),
+      reorderPrayerRules: vi.fn().mockResolvedValue({}),
+      getJumuahSessions: vi.fn().mockResolvedValue([]),
+      createJumuahSession: vi.fn().mockResolvedValue({}),
+      updateJumuahSession: vi.fn().mockResolvedValue({}),
+      deleteJumuahSession: vi.fn().mockResolvedValue({}),
+      getAnnouncements: vi.fn().mockResolvedValue([]),
+      createAnnouncement: vi.fn().mockResolvedValue({}),
+      updateAnnouncement: vi.fn().mockResolvedValue({}),
+      deleteAnnouncement: vi.fn().mockResolvedValue({}),
+      pinAnnouncement: vi.fn().mockResolvedValue({}),
+      dryRunPrayerTimes: vi.fn().mockResolvedValue({}),
+    }));
+
+    vi.doMock('../session', () => ({
+      storeMutation: vi.fn().mockResolvedValue('m1'),
+      getMutationCount: vi.fn().mockResolvedValue(0),
+      listSnapshots: vi.fn().mockResolvedValue([]),
+      getSnapshot: vi.fn().mockResolvedValue(null),
+    }));
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const proxy = await import('../proxy');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'timetable_preview')!;
+    await tool.handler({
+      date: '2026-07-21',
+      rule_overrides: [{ prayer_name: 'fajr', execution_order: 0, conditions_json: [{ type: 'always' }], action_json: { type: 'add_minutes', minutes: 20 } }],
+    }, testCtx);
+
+    expect(proxy.dryRunPrayerTimes).toHaveBeenCalledWith(
+      expect.objectContaining({ rule_overrides: expect.any(Array) }),
+      testCtx.env, testCtx.adminId, testCtx.masjidId,
+    );
+  });
+
+  it('rollback_list_snapshots calls listSnapshots', async () => {
+    vi.doMock('../proxy', () => ({
+      getMasjidProfile: vi.fn().mockResolvedValue({ theme: {}, masjid: { name: 'Test' } }),
+      updateMasjidProfile: vi.fn().mockResolvedValue({}),
+      getPrayerConfig: vi.fn().mockResolvedValue({}),
+      updatePrayerConfig: vi.fn().mockResolvedValue({}),
+      getPrayerRulesList: vi.fn().mockResolvedValue([]),
+      createPrayerRule: vi.fn().mockResolvedValue({}),
+      updatePrayerRule: vi.fn().mockResolvedValue({}),
+      deletePrayerRule: vi.fn().mockResolvedValue({}),
+      reorderPrayerRules: vi.fn().mockResolvedValue({}),
+      getJumuahSessions: vi.fn().mockResolvedValue([]),
+      createJumuahSession: vi.fn().mockResolvedValue({}),
+      updateJumuahSession: vi.fn().mockResolvedValue({}),
+      deleteJumuahSession: vi.fn().mockResolvedValue({}),
+      getAnnouncements: vi.fn().mockResolvedValue([]),
+      createAnnouncement: vi.fn().mockResolvedValue({}),
+      updateAnnouncement: vi.fn().mockResolvedValue({}),
+      deleteAnnouncement: vi.fn().mockResolvedValue({}),
+      pinAnnouncement: vi.fn().mockResolvedValue({}),
+      dryRunPrayerTimes: vi.fn().mockResolvedValue({}),
+    }));
+
+    vi.doMock('../session', () => ({
+      storeMutation: vi.fn().mockResolvedValue('m1'),
+      getMutationCount: vi.fn().mockResolvedValue(0),
+      listSnapshots: vi.fn().mockResolvedValue([
+        { id: 'snap-1', summary: 'Test', mutation_count: 3, created_at: '2026-07-20T12:00:00Z' },
+      ]),
+      getSnapshot: vi.fn().mockResolvedValue(null),
+    }));
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const session = await import('../session');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rollback_list_snapshots')!;
+    const result = await tool.handler({}, testCtx);
+
+    expect(result.success).toBe(true);
+    expect(session.listSnapshots).toHaveBeenCalledWith(testCtx.masjidId, testCtx.env.DB);
+  });
+
+  it('rollback_restore returns snapshot data on success', async () => {
+    vi.doMock('../proxy', () => ({
+      getMasjidProfile: vi.fn().mockResolvedValue({ theme: {}, masjid: { name: 'Test' } }),
+      updateMasjidProfile: vi.fn().mockResolvedValue({}),
+      getPrayerConfig: vi.fn().mockResolvedValue({}),
+      updatePrayerConfig: vi.fn().mockResolvedValue({}),
+      getPrayerRulesList: vi.fn().mockResolvedValue([]),
+      createPrayerRule: vi.fn().mockResolvedValue({}),
+      updatePrayerRule: vi.fn().mockResolvedValue({}),
+      deletePrayerRule: vi.fn().mockResolvedValue({}),
+      reorderPrayerRules: vi.fn().mockResolvedValue({}),
+      getJumuahSessions: vi.fn().mockResolvedValue([]),
+      createJumuahSession: vi.fn().mockResolvedValue({}),
+      updateJumuahSession: vi.fn().mockResolvedValue({}),
+      deleteJumuahSession: vi.fn().mockResolvedValue({}),
+      getAnnouncements: vi.fn().mockResolvedValue([]),
+      createAnnouncement: vi.fn().mockResolvedValue({}),
+      updateAnnouncement: vi.fn().mockResolvedValue({}),
+      deleteAnnouncement: vi.fn().mockResolvedValue({}),
+      pinAnnouncement: vi.fn().mockResolvedValue({}),
+      dryRunPrayerTimes: vi.fn().mockResolvedValue({}),
+    }));
+
+    vi.doMock('../session', () => ({
+      storeMutation: vi.fn().mockResolvedValue('m1'),
+      getMutationCount: vi.fn().mockResolvedValue(0),
+      listSnapshots: vi.fn().mockResolvedValue([]),
+      getSnapshot: vi.fn().mockResolvedValue({
+        id: 'snap-1',
+        masjid_id: 'masjid-1',
+        summary: 'First merge',
+        full_state_json: '{}',
+        created_at: '2026-07-20T12:00:00Z',
+      }),
+    }));
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const session = await import('../session');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rollback_restore')!;
+    const result = await tool.handler({ snapshot_id: 'snap-1' }, testCtx);
+
+    expect(result.success).toBe(true);
+    expect(session.getSnapshot).toHaveBeenCalledWith('snap-1', testCtx.env.DB);
+  });
+
+  it('rollback_restore returns error for nonexistent snapshot', async () => {
+    vi.doMock('../proxy', () => ({
+      getMasjidProfile: vi.fn().mockResolvedValue({ theme: {}, masjid: { name: 'Test' } }),
+      updateMasjidProfile: vi.fn().mockResolvedValue({}),
+      getPrayerConfig: vi.fn().mockResolvedValue({}),
+      updatePrayerConfig: vi.fn().mockResolvedValue({}),
+      getPrayerRulesList: vi.fn().mockResolvedValue([]),
+      createPrayerRule: vi.fn().mockResolvedValue({}),
+      updatePrayerRule: vi.fn().mockResolvedValue({}),
+      deletePrayerRule: vi.fn().mockResolvedValue({}),
+      reorderPrayerRules: vi.fn().mockResolvedValue({}),
+      getJumuahSessions: vi.fn().mockResolvedValue([]),
+      createJumuahSession: vi.fn().mockResolvedValue({}),
+      updateJumuahSession: vi.fn().mockResolvedValue({}),
+      deleteJumuahSession: vi.fn().mockResolvedValue({}),
+      getAnnouncements: vi.fn().mockResolvedValue([]),
+      createAnnouncement: vi.fn().mockResolvedValue({}),
+      updateAnnouncement: vi.fn().mockResolvedValue({}),
+      deleteAnnouncement: vi.fn().mockResolvedValue({}),
+      pinAnnouncement: vi.fn().mockResolvedValue({}),
+      dryRunPrayerTimes: vi.fn().mockResolvedValue({}),
+    }));
+
+    vi.doMock('../session', () => ({
+      storeMutation: vi.fn().mockResolvedValue('m1'),
+      getMutationCount: vi.fn().mockResolvedValue(0),
+      listSnapshots: vi.fn().mockResolvedValue([]),
+      getSnapshot: vi.fn().mockResolvedValue(null),
+    }));
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rollback_restore')!;
+    const result = await tool.handler({ snapshot_id: 'nonexistent' }, testCtx);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('not found');
   });
 });

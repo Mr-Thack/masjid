@@ -1,12 +1,12 @@
-import type { Env, AdminRecord, ToolContext, ToolResult, LLMMessage } from '../types';
+import type { Env, AdminRecord, ToolContext, ToolResult, LLMMessage, LLMContentPart } from '../types';
 import { getToolDefinitions } from './tools';
-import { buildSystemPrompt } from './prompt';
+import { buildSystemPrompt, buildVisionPrompt } from './prompt';
 import { formatDiffReceipt, buildNoChangesMessage } from './format';
 import { getMutationCount } from '../session';
 import { getMasjidProfile } from '../proxy';
 
-const DEFAULT_LLM_URL = 'https://api.openai.com/v1';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const DEFAULT_LLM_URL = 'https://openrouter.ai/api/v1';
+const DEFAULT_MODEL = 'google/gemma-4-31b-it';
 
 function getLLMConfig(env: Env): { url: string; key: string; model: string } {
   return {
@@ -83,6 +83,133 @@ async function callLLM(
     content: (message.content as string) || null,
     tool_calls: toolCalls,
   };
+}
+
+export async function runVisionAgent(
+  dataUri: string,
+  contentType: string,
+  admin: AdminRecord,
+  env: Env,
+  branchId: string,
+): Promise<string> {
+  if (!env.LLM_API_KEY) {
+    return [
+      '*Image received*',
+      '',
+      'I received your image but LLM-powered processing is not configured (LLM_API_KEY not set).',
+      'Your admin needs to add an LLM_API_KEY environment variable.',
+    ].join('\n');
+  }
+
+  try {
+    const profileData = await getMasjidProfile(env, admin.id, admin.masjid_id);
+    const state = profileData as Record<string, unknown>;
+
+    const tools = getToolDefinitions();
+    const systemPrompt = buildVisionPrompt(admin, state, env);
+
+    const toolSchemas = tools.map(t => ({
+      name: t.name,
+      description: t.description,
+      parameters: t.parameters,
+    }));
+
+    const userContent: LLMContentPart[] = [
+      { type: 'text', text: 'Please analyze this prayer timetable image and extract all prayer times and rules. Create prayer rules for the iqaamah times you find. If you see multiple columns (e.g. different months or day types), create rules with appropriate conditions.' },
+      { type: 'image_url', image_url: { url: dataUri } },
+    ];
+
+    const messages: LLMMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ];
+
+    const ctx: ToolContext = {
+      adminId: admin.id,
+      masjidId: admin.masjid_id,
+      branchId,
+      env,
+    };
+
+    const toolMap = new Map(tools.map(t => [t.name, t]));
+
+    for (let iteration = 0; iteration < 5; iteration++) {
+      const response = await callLLM(messages, toolSchemas, env);
+
+      if (response.tool_calls.length === 0) {
+        const mutationCount = await getMutationCount(branchId, env.DB);
+
+        if (mutationCount > 0) {
+          const diffReceipt = await formatDiffReceipt(branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`, env.DB);
+          return [response.content || 'Prayer rules extracted from timetable.', '', diffReceipt].join('\n');
+        }
+
+        return response.content || 'I analyzed the image but could not extract any prayer rules. Please try sending a clearer photo of the timetable.';
+      }
+
+      const assistantMsg: LLMMessage = {
+        role: 'assistant',
+        content: response.content || null,
+        tool_calls: response.tool_calls.map(tc => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      };
+      messages.push(assistantMsg);
+
+      for (const tc of response.tool_calls) {
+        const tool = toolMap.get(tc.name);
+        let result: ToolResult;
+
+        if (!tool) {
+          result = { success: false, error: `Unknown tool: ${tc.name}` };
+        } else {
+          try {
+            const args = JSON.parse(tc.arguments);
+            result = await tool.handler(args, ctx);
+          } catch (err) {
+            result = {
+              success: false,
+              error: `Tool execution error: ${err instanceof Error ? err.message : String(err)}`,
+            };
+          }
+        }
+
+        messages.push({
+          role: 'tool',
+          content: JSON.stringify(result),
+          tool_call_id: tc.id,
+          name: tc.name,
+        });
+      }
+    }
+
+    const mutationCount = await getMutationCount(branchId, env.DB);
+    if (mutationCount > 0) {
+      const diffReceipt = await formatDiffReceipt(branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`, env.DB);
+      return ['*Timetable processing complete*', '', diffReceipt].join('\n');
+    }
+
+    return 'I analyzed the image but could not extract any prayer rules. Please try sending a clearer photo of the timetable.';
+  } catch (err) {
+    console.error('Vision agent error:', err);
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (message.includes('LLM_API_KEY not configured')) {
+      return [
+        '*Image received*',
+        '',
+        'I received your image but LLM-powered processing is not configured.',
+      ].join('\n');
+    }
+
+    return [
+      '*Image processing failed*',
+      '',
+      'I encountered an error while analyzing the image. Please try again.',
+    ].join('\n');
+  }
 }
 
 export async function runAgent(

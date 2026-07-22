@@ -192,6 +192,112 @@ describe('getMutationCount', () => {
   });
 });
 
+describe('listSnapshots', () => {
+  it('returns snapshots with mutation counts', async () => {
+    const { listSnapshots } = await import('../session');
+
+    const snapshots = [
+      {
+        id: 'snap-1',
+        summary: 'First merge',
+        full_state_json: JSON.stringify({ mutation_count: 3, mutations: [] }),
+        created_at: '2026-07-20T12:00:00Z',
+      },
+      {
+        id: 'snap-2',
+        summary: 'Second merge',
+        full_state_json: JSON.stringify({ mutation_count: 1, mutations: [] }),
+        created_at: '2026-07-21T12:00:00Z',
+      },
+    ];
+
+    const responses: Record<string, unknown> = {
+      [selectSnapshots('masjid-1')]: snapshots,
+    };
+
+    const db = makeDb(responses);
+    const result = await listSnapshots('masjid-1', db);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]?.id).toBe('snap-1');
+    expect(result[0]?.mutation_count).toBe(3);
+    expect(result[1]?.id).toBe('snap-2');
+    expect(result[1]?.mutation_count).toBe(1);
+  });
+
+  it('returns empty array when no snapshots', async () => {
+    const { listSnapshots } = await import('../session');
+
+    const responses: Record<string, unknown> = {
+      [selectSnapshots('masjid-1')]: [],
+    };
+
+    const db = makeDb(responses);
+    const result = await listSnapshots('masjid-1', db);
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('handles malformed JSON in full_state_json gracefully', async () => {
+    const { listSnapshots } = await import('../session');
+
+    const snapshots = [
+      {
+        id: 'snap-3',
+        summary: 'Bad JSON',
+        full_state_json: 'not-valid-json',
+        created_at: '2026-07-20T12:00:00Z',
+      },
+    ];
+
+    const responses: Record<string, unknown> = {
+      [selectSnapshots('masjid-1')]: snapshots,
+    };
+
+    const db = makeDb(responses);
+    const result = await listSnapshots('masjid-1', db);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.mutation_count).toBe(0);
+  });
+});
+
+describe('getSnapshot', () => {
+  it('returns full snapshot by ID', async () => {
+    const { getSnapshot } = await import('../session');
+
+    const snapshot = {
+      id: 'snap-1',
+      masjid_id: 'masjid-1',
+      summary: 'First merge',
+      full_state_json: JSON.stringify({ mutation_count: 3 }),
+      created_at: '2026-07-20T12:00:00Z',
+    };
+
+    const responses: Record<string, unknown> = {
+      [getSnapshotKey('snap-1')]: snapshot,
+    };
+
+    const db = makeDb(responses);
+    const result = await getSnapshot('snap-1', db);
+
+    expect(result).not.toBeNull();
+    expect(result?.id).toBe('snap-1');
+    expect(result?.summary).toBe('First merge');
+    expect(result?.masjid_id).toBe('masjid-1');
+  });
+
+  it('returns null for non-existent snapshot', async () => {
+    const { getSnapshot } = await import('../session');
+
+    const responses: Record<string, unknown> = {};
+    const db = makeDb(responses);
+    const result = await getSnapshot('nonexistent', db);
+
+    expect(result).toBeNull();
+  });
+});
+
 function selectAdmins(phone: string) {
   return `SELECT id, masjid_id, email, display_name, whatsapp_phone FROM admins WHERE whatsapp_phone = ?|[${JSON.stringify(phone)}]`;
 }
@@ -210,4 +316,12 @@ function countMutations(branchId: string) {
 
 function listBranchesKey(masjidId: string) {
   return `SELECT id, masjid_id, admin_id, branch_name, status, created_at, updated_at FROM config_branches WHERE masjid_id = ? ORDER BY updated_at DESC LIMIT 10|[${JSON.stringify(masjidId)}]`;
+}
+
+function selectSnapshots(masjidId: string) {
+  return `SELECT id, summary, full_state_json, created_at FROM config_snapshots WHERE masjid_id = ? ORDER BY created_at DESC LIMIT 20|[${JSON.stringify(masjidId)}]`;
+}
+
+function getSnapshotKey(snapshotId: string) {
+  return `SELECT id, masjid_id, summary, full_state_json, created_at FROM config_snapshots WHERE id = ?|[${JSON.stringify(snapshotId)}]`;
 }
