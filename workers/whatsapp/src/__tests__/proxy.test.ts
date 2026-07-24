@@ -217,4 +217,15 @@ describe('proxy function URLs', () => {
     const headers = mockFetch.mock.calls[0]?.[1]?.headers;
     expect(headers['Content-Type']).toBe('application/json');
   });
+
+  it('rollbackRestore calls POST with snapshot_id', async () => {
+    mockFetch.mockResolvedValue(new Response('{"success":true,"restored":["profile"]}', { status: 200 }));
+    const { rollbackRestore } = await import('../proxy');
+    const result = await rollbackRestore('snap-1', testEnv, 'admin-1', 'masjid-1');
+    expect(mockFetch.mock.calls[0]?.[1]?.method).toBe('POST');
+    expect(mockFetch.mock.calls[0]?.[0]).toContain('/rollback');
+    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    expect(body.snapshot_id).toBe('snap-1');
+    expect(result).toHaveProperty('restored');
+  });
 });

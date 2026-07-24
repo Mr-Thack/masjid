@@ -1,13 +1,15 @@
 # AGENTS.md
 
-## Current state (2026-07-21)
+## Current state (2026-07-23)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 267 tests)
+- **Working API** (SvelteKit + D1, 269 tests)
 - **Working TV frontend** (SvelteKit static, 28 tests — no Tailwind, hand-written CSS ~6 KB)
 - **Working consumer frontend** (SvelteKit static/SPA, 36 tests)
-- **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 213 tests)
-- **569 tests passing** (267 API + 28 TV + 213 WhatsApp + 36 consumer + 26 SW integration)
-- **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175
+- **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
+- **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
+- **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 8 settings pages, bot chat panel — tests pending)
+- **484 tests passing** (269 API + 215 WhatsApp)
+- **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 
 ## How to start everything
 ```bash
@@ -20,16 +22,21 @@ npm run dev --workspace=@masjid/tv           # port 5174
 
 # Terminal 3 — consumer PWA
 npm run dev --workspace=@masjid/consumer     # port 5175
+
+# Terminal 4 — admin dashboard
+npm run dev --workspace=@masjid/admin        # port 5176
 ```
 
 ## How to test
 ```bash
-npm run test          # API-only, 267 tests (no external deps)
+npm run test          # API-only, 269 tests (no external deps)
 npm run test:tv       # TV frontend, 28 tests (jsdom + testing-library)
 npm run test:consumer # Consumer frontend, 36 tests (jsdom + testing-library)
-npm run test:whatsapp # WhatsApp worker, 213 tests (node, mocked D1 + fetch)
+npm run test:whatsapp # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw       # Service worker integration, 26 tests (Playwright, requires running dev servers)
-npm run test:all      # everything (excluding test:sw since it needs servers running)
+npm run test:agent    # Agent package tests (pending: ~175 expected)
+npm run test:admin    # Admin app tests (pending: ~202 expected)
+npm run test:all      # everything (excluding test:sw and test:admin since they need servers running)
 ```
 
 ## Seed data
@@ -57,15 +64,18 @@ npm run test:all      # everything (excluding test:sw since it needs servers run
 masjid/
   packages/schemas/          — Shared Zod types (Theme, Announcement, Jumuah, etc.)
   packages/ui-utils/         — Shared UI helpers: theme presets, applyTheme, prayer-change utilities
+  packages/agent/            — Shared bot logic: LLM runner, 22 MCP tools, prompts, api-client, session, media
   apps/api/                  — SvelteKit API + Drizzle ORM + Prayer engine
   apps/tv/                   — SvelteKit static, display-only (kiosk/TV)
   apps/consumer/              — SvelteKit static/SPA, PWA (user-facing)
+  apps/admin/                — SvelteKit static/SPA, admin dashboard (settings + AI bot chat)
   workers/push/              — Cloudflare Worker for push notifications (skeleton)
-  workers/whatsapp/          — Cloudflare Worker for WhatsApp Zero-UI (Stages 1-2 complete)
+  workers/whatsapp/          — Cloudflare Worker for WhatsApp Zero-UI (imports bot logic from @masjid/agent)
   tooling/seed.ts            — DB seed script
   vitest.config.ts           — Root vitest (API only, node)
   vitest.tv.config.ts        — TV vitest (jsdom, svelte plugin)
   vitest.consumer.config.ts   — Consumer vitest (jsdom, svelte plugin)
+  vitest.agent.config.ts     — Agent vitest (node)
 ```
 
 ## Key architectural decisions
@@ -184,6 +194,10 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - `docs/mcp-integration.md` — MCP/Zod strategy
 - `docs/zero-ui.md` — Native MCP / Agentic config setup for admins strategy
 - `docs/whatsapp-zero-ui.md` — Implementation plan + architecture for WhatsApp worker
+- `docs/bot-abstraction.md` — How to extract core agent logic from WhatsApp worker into `@masjid/agent`
+- `docs/admin-manual-settings.md` — Admin microservice manual settings UI (profile, theme, prayer rules, jumu'ah, announcements, domains, snapshots, account)
+- `docs/admin-ai-capabilities.md` — Admin AI bot chat panel design (DiffReceiptCard, vision, SSE streaming)
+- `docs/admin-tests.md` — Admin app test strategy (~202 tests: unit + integration + E2E)
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
@@ -196,17 +210,17 @@ and LLM-powered configuration via OpenAI-compatible API.
 - All admin mutations are staged in `config_branches` → `config_mutations` (git-style branches)
 - Worker calls the *existing* SvelteKit admin API via JWT proxy (no business logic duplication)
 - Stage 3: LLM agent interprets messages, calls 20 MCP-style tools (theme, profile, prayer rules, jumu'ah, announcements), stores mutations, presents diff receipt, confirms on `/confirm`
-- Stage 4 (future): Vision LLM for timetable photos, time-travel rollback, RTL handling
+- Stage 4 (completed): Vision LLM for timetable photos, time-travel rollback, RTL handling
 
 ### Agent module (`src/agent/`)
 | File | Purpose |
 |------|---------|
-| `tools.ts` | 20 MCP-style tool definitions with JSON Schema parameters + API proxy handlers |
-| `prompt.ts` | System prompt builder with tenant context, domain guides, and examples |
-| `runner.ts` | LLM agent loop: send message → call LLM → execute tool calls → repeat → diff receipt |
-| `format.ts` | Human-readable diff receipt formatting for WhatsApp (grouped by domain) |
+| `tools.ts` | Thin re-export from `@masjid/agent` |
+| `prompt.ts` | Thin wrapper converting `Env` → `BotContext`, delegates to `@masjid/agent` |
+| `runner.ts` | Wrapper converting `Env` → `BotContext`, formats structured diff receipt as WhatsApp markdown |
+| `format.ts` | WhatsApp markdown renderer on top of `@masjid/agent` structured diff data |
 
-### Agent tools (20 total)
+### Agent tools (22 total)
 | Domain | Tools |
 |--------|-------|
 | THEME | `theme_get`, `theme_update` |
@@ -217,9 +231,9 @@ and LLM-powered configuration via OpenAI-compatible API.
 
 ### LLM configuration
 Uses OpenAI-compatible chat completions API. Configurable via env vars:
-- `LLM_API_URL` — defaults to `https://api.openai.com/v1` (can use OpenRouter, Groq, etc.)
+- `LLM_API_URL` — defaults to `https://openrouter.ai/api/v1` (can use OpenAI, Groq, etc.)
 - `LLM_API_KEY` — required; if not set, falls back to text-only acknowledgment mode
-- `LLM_MODEL` — defaults to `gpt-4o-mini`
+- `LLM_MODEL` — defaults to `google/gemma-4-31b-it`
 
 ### Agent flow
 1. User sends WhatsApp message (e.g. "Make Dhuhr iqaamah 10 min after adhaan, Fridays at 1:30 PM")
@@ -250,9 +264,68 @@ Uses OpenAI-compatible chat completions API. Configurable via env vars:
 | API_URL | SvelteKit API base URL |
 | JWT_SECRET | Same secret as the API (for signing JWTs) |
 
+## @masjid/agent package (`packages/agent/`)
+The core bot logic extracted from WhatsApp worker. Used by both WhatsApp worker and admin app.
+
+### Exports
+| Module | Purpose |
+|--------|---------|
+| `getToolDefinitions()` | 22 MCP tool definitions (theme, profile, prayer rules, jumu'ah, announcements, vision, rollback) |
+| `runAgent()` | LLM agent loop: send message → call LLM → execute tool calls → repeat → return structured `AgentResult` |
+| `runVisionAgent()` | Vision LLM agent for timetable photo extraction |
+| `buildSystemPrompt()` | System prompt builder with domain guides and examples |
+| `buildVisionPrompt()` | Vision-specific system prompt for timetable extraction |
+| `buildDiffReceipt()` | Returns structured `DiffReceipt` data (not rendered) |
+| `api-client.ts` | 18 JWT-authenticated API proxy functions |
+| `session.ts` | Branch/mutation/snapshot lifecycle (no tenant resolution) |
+| `media.ts` | `bufferToDataUri`, `uploadToR2`, `registerAsset` |
+
+### Key types
+- `BotContext` — unified context: `{ adminId, masjidId, branchId, db, apiUrl, jwtSecret, llmConfig, assets? }`
+- `AgentResult` — `{ textResponse, diffReceipt }` where diffReceipt is structured `DiffReceipt`
+- `ToolDefinition`, `ToolResult`, `LLMMessage`, `LLMContentPart`
+
+## Admin app (`apps/admin/`)
+SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bot chat.
+
+### Routes
+| Route | Description |
+|-------|-------------|
+| `/login` | Admin login (email + password) |
+| `/admin/[slug]` | Dashboard (stats, status, quick actions) |
+| `/admin/[slug]/settings/profile` | Masjid profile (18 fields) |
+| `/admin/[slug]/settings/theme` | Theme settings (presets, colors, fonts, labels) |
+| `/admin/[slug]/settings/prayer` | Prayer rules table + dry-run simulator |
+| `/admin/[slug]/settings/jumuah` | Jumu'ah sessions management |
+| `/admin/[slug]/settings/announcements` | Announcements with markdown editor |
+| `/admin/[slug]/settings/domain` | Custom domain management |
+| `/admin/[slug]/settings/snapshots` | Configuration snapshots + rollback |
+| `/admin/[slug]/settings/account` | Password change |
+| `/admin/[slug]/bot` | AI bot chat panel |
+
+### Key components
+| Component | Purpose |
+|-----------|---------|
+| `AdminShell` | Navigation shell (desktop sidebar + mobile hamburger) |
+| `BotChat` | Full chat interface with messages, thinking indicator, diff receipts |
+| `ChatInput` | Textarea input with auto-resize, file upload, send |
+| `DiffReceiptCard` | Structured diff card with domain-color badges, action icons |
+| `ErrorCard` | Error display with retry button |
+| `ConfirmDialog` | Modal confirmation with backdrop |
+| `SkeletonForm` | Loading placeholder |
+
+### Architecture
+- **Auth**: `auth.svelte.ts` rune store manages JWT login/logout, localStorage persistence
+- **API client**: `api.ts` wraps 28 endpoints, auto-attaches JWT, handles 401 → logout
+- **All LLM calls go through the API server** — the project's single API key is used server-side
+- **Tailwind v4** CSS-first config in `app.css`
+- **svelte-sonner** for toast notifications, **lucide-svelte** for icons
+- **No service worker** — browser cache is sufficient
+
 ## Quick dev tips
 - DB goes missing? Re-run `npx tsx tooling/seed.ts`
 - Consumer page returning 500? API might be down or DB empty — check `curl http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Frontend tests fail? Make sure `conditions: ['browser']` is in the vitest config — this is required for `@testing-library/svelte` to work with Svelte 5
 - Need to inspect the running page? `curl http://localhost:5175/masjid-al-noor` gives the SSR output
 - The CSS is served at `http://localhost:5175/src/app.css` — contains the full compiled Tailwind v4 output
+- To start admin: `npm run dev --workspace=@masjid/admin` (port 5176)

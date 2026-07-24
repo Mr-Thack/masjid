@@ -1,5 +1,6 @@
-import type { MutationRecord } from '../types';
-import { getMutations, getMutationCount } from '../session';
+import type { MutationData } from '@masjid/agent';
+import { buildDiffReceipt as coreBuildDiffReceipt, buildNoChangesResult } from '@masjid/agent';
+import { getMutations } from '../session';
 
 const DOMAIN_LABELS: Record<string, string> = {
   THEME: 'Theme',
@@ -13,66 +14,60 @@ function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max - 3) + '...' : s;
 }
 
-function formatMutation(m: MutationRecord, index: number): string {
+function formatMutationAsWhatsApp(m: MutationData, index: number): string {
   const domain = DOMAIN_LABELS[m.domain] || m.domain;
-  const action = m.action_type === 'CREATE' ? '+' : m.action_type === 'DELETE' ? '-' : '~';
+  const action = m.action === 'CREATE' ? '+' : m.action === 'DELETE' ? '-' : '~';
 
-  try {
-    const payload = JSON.parse(m.payload_json);
-
-    switch (m.domain) {
-      case 'THEME': {
-        const changes = Object.keys(payload)
-          .filter(k => !['masjid_id'].includes(k))
-          .map(k => `  ${k}: ${truncate(String(payload[k]), 30)}`);
-        return `${index}. *${action} ${domain}* ${changes.length ? '\n' + changes.join('\n') : ''}`;
-      }
-      case 'PROFILE': {
-        const changes = Object.keys(payload)
-          .filter(k => !['masjid_id'].includes(k))
-          .map(k => `  ${k}: ${truncate(String(payload[k]), 30)}`);
-        return `${index}. *${action} ${domain}* ${changes.length ? '\n' + changes.join('\n') : ''}`;
-      }
-      case 'PRAYER_RULES': {
-        if (m.action_type === 'CREATE') {
-          const rule = payload;
-          return `${index}. *${action} ${domain}*\n  Rule: ${rule.rule_name || 'untitled'}\n  Prayer: ${rule.prayer_name || '?'}`;
-        }
-        if (m.action_type === 'REORDER') {
-          return `${index}. *${action} Reorder ${domain}*`;
-        }
-        if (m.action_type === 'DELETE') {
-          return `${index}. *${action} ${domain}* (rule deleted)`;
-        }
-        return `${index}. *${action} ${domain}* (rule updated)`;
-      }
-      case 'JUMUAH': {
-        if (m.action_type === 'CREATE') {
-          const speech = payload.speech_time ? `\n  Speech: ${payload.speech_time}` : '';
-          return `${index}. *${action} ${domain}*\n  Khutbah: ${payload.time || '?'}${speech}`;
-        }
-        if (m.action_type === 'DELETE') {
-          return `${index}. *${action} ${domain}* (session deleted)`;
-        }
-        return `${index}. *${action} ${domain}* (session updated)`;
-      }
-      case 'ANNOUNCEMENTS': {
-        if (m.action_type === 'CREATE') {
-          return `${index}. *${action} ${domain}*\n  Title: ${truncate(payload.title || '?', 40)}`;
-        }
-        if (m.action_type === 'PIN') {
-          return `${index}. *Pin/Unpin* announcement`;
-        }
-        if (m.action_type === 'DELETE') {
-          return `${index}. *${action} ${domain}* (archived)`;
-        }
-        return `${index}. *${action} ${domain}* (updated)`;
-      }
-      default:
-        return `${index}. *${action} ${domain}*`;
+  switch (m.domain) {
+    case 'THEME': {
+      const changes = Object.keys(m.payload)
+        .filter(k => !['masjid_id'].includes(k))
+        .map(k => `  ${k}: ${truncate(String(m.payload[k]), 30)}`);
+      return `${index}. *${action} ${domain}* ${changes.length ? '\n' + changes.join('\n') : ''}`;
     }
-  } catch {
-    return `${index}. *${action} ${domain}*`;
+    case 'PROFILE': {
+      const changes = Object.keys(m.payload)
+        .filter(k => !['masjid_id'].includes(k))
+        .map(k => `  ${k}: ${truncate(String(m.payload[k]), 30)}`);
+      return `${index}. *${action} ${domain}* ${changes.length ? '\n' + changes.join('\n') : ''}`;
+    }
+    case 'PRAYER_RULES': {
+      if (m.action === 'CREATE') {
+        const rule = m.payload;
+        return `${index}. *${action} ${domain}*\n  Rule: ${rule.rule_name || 'untitled'}\n  Prayer: ${rule.prayer_name || '?'}`;
+      }
+      if (m.action === 'REORDER') {
+        return `${index}. *${action} Reorder ${domain}*`;
+      }
+      if (m.action === 'DELETE') {
+        return `${index}. *${action} ${domain}* (rule deleted)`;
+      }
+      return `${index}. *${action} ${domain}* (rule updated)`;
+    }
+    case 'JUMUAH': {
+      if (m.action === 'CREATE') {
+        const speech = m.payload.speech_time ? `\n  Speech: ${m.payload.speech_time}` : '';
+        return `${index}. *${action} ${domain}*\n  Khutbah: ${m.payload.time || '?'}${speech}`;
+      }
+      if (m.action === 'DELETE') {
+        return `${index}. *${action} ${domain}* (session deleted)`;
+      }
+      return `${index}. *${action} ${domain}* (session updated)`;
+    }
+    case 'ANNOUNCEMENTS': {
+      if (m.action === 'CREATE') {
+        return `${index}. *${action} ${domain}*\n  Title: ${truncate(m.payload.title as string || '?', 40)}`;
+      }
+      if (m.action === 'PIN') {
+        return `${index}. *Pin/Unpin* announcement`;
+      }
+      if (m.action === 'DELETE') {
+        return `${index}. *${action} ${domain}* (archived)`;
+      }
+      return `${index}. *${action} ${domain}* (updated)`;
+    }
+    default:
+      return `${index}. *${action} ${domain}*`;
   }
 }
 
@@ -98,10 +93,23 @@ export async function formatDiffReceipt(
     '',
   ];
 
-  for (let i = 0; i < mutations.length; i++) {
-    const m = mutations[i];
-    if (!m) continue;
-    lines.push(formatMutation(m, i + 1));
+  const parsed: MutationData[] = mutations.map((m, i) => {
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = JSON.parse(m.payload_json);
+    } catch { /* ignore */ }
+    return {
+      domain: m.domain,
+      action: m.action_type,
+      entityKey: m.target_key,
+      summary: '',
+      payload,
+    };
+  });
+
+  for (let i = 0; i < parsed.length; i++) {
+    const m = parsed[i]!;
+    lines.push(formatMutationAsWhatsApp(m, i + 1));
     lines.push('');
   }
 

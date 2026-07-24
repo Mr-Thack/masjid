@@ -137,9 +137,9 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('admin@test.org');
   });
 
-  it('includes WhatsApp formatting guidance', () => {
+  it('includes plain text formatting guidance', () => {
     const prompt = buildSystemPrompt(testAdmin, {}, testEnv);
-    expect(prompt).toContain('*bold*');
+    expect(prompt).toContain('plain text');
   });
 });
 

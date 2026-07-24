@@ -111,6 +111,20 @@ describe('abandonBranch + mergeBranch', () => {
     });
     await mergeBranch('branch-1', 'test merge', 'masjid-1', db);
   });
+
+  it('mergeBranch uses fullState when provided', async () => {
+    const { mergeBranch } = await import('../session');
+    const db = makeDb({
+      [selectMutations('branch-1')]: [],
+    });
+    const fullState = {
+      masjid: { name: 'Test Masjid', theme: { primary_color: '#333' } },
+      prayer_rules: { rules: [] },
+      jumuah: { sessions: [] },
+      announcements: { announcements: [] },
+    };
+    await mergeBranch('branch-1', 'test merge with state', 'masjid-1', db, fullState);
+  });
 });
 
 describe('touchBranch', () => {

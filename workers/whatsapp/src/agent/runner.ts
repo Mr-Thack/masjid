@@ -1,87 +1,30 @@
-import type { Env, AdminRecord, ToolContext, ToolResult, LLMMessage, LLMContentPart } from '../types';
-import { getToolDefinitions } from './tools';
-import { buildSystemPrompt, buildVisionPrompt } from './prompt';
-import { formatDiffReceipt, buildNoChangesMessage } from './format';
+import type { Env, AdminRecord } from '../types';
+import type { BotContext } from '@masjid/agent';
+import {
+  runAgent as coreRunAgent,
+  runVisionAgent as coreRunVisionAgent,
+  buildDiffReceipt,
+  type DiffReceipt,
+  type MutationData,
+} from '@masjid/agent';
 import { getMutationCount } from '../session';
-import { getMasjidProfile } from '../proxy';
 
-const DEFAULT_LLM_URL = 'https://openrouter.ai/api/v1';
-const DEFAULT_MODEL = 'google/gemma-4-31b-it';
-
-function getLLMConfig(env: Env): { url: string; key: string; model: string } {
+function toBotContext(env: Env, adminId: string, masjidId: string, branchId: string, branchName: string): BotContext {
   return {
-    url: env.LLM_API_URL || DEFAULT_LLM_URL,
-    key: env.LLM_API_KEY || '',
-    model: env.LLM_MODEL || DEFAULT_MODEL,
-  };
-}
-
-async function callLLM(
-  messages: LLMMessage[],
-  tools: { name: string; description: string; parameters: Record<string, unknown> }[],
-  env: Env,
-): Promise<{ content: string | null; tool_calls: Array<{ id: string; name: string; arguments: string }> }> {
-  const config = getLLMConfig(env);
-
-  if (!config.key) {
-    throw new Error('LLM_API_KEY not configured. Set LLM_API_KEY in wrangler.toml or environment variables.');
-  }
-
-  const body: Record<string, unknown> = {
-    model: config.model,
-    messages,
-    temperature: 0.2,
-    max_tokens: 2048,
-  };
-
-  if (tools.length > 0) {
-    body.tools = tools.map(t => ({
-      type: 'function' as const,
-      function: {
-        name: t.name,
-        description: t.description,
-        parameters: t.parameters,
-      },
-    }));
-    body.tool_choice = 'auto';
-  }
-
-  const response = await fetch(`${config.url}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${config.key}`,
+    adminId,
+    masjidId,
+    branchId,
+    branchName,
+    db: env.DB,
+    apiUrl: env.API_URL,
+    jwtSecret: env.JWT_SECRET,
+    llmConfig: {
+      url: env.LLM_API_URL || 'https://openrouter.ai/api/v1',
+      key: env.LLM_API_KEY || '',
+      model: env.LLM_MODEL || 'google/gemma-4-31b-it',
     },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM API error (${response.status}): ${errorText.slice(0, 200)}`);
-  }
-
-  const data = await response.json() as Record<string, unknown>;
-  const choices = data.choices as Array<Record<string, unknown>> | undefined;
-
-  if (!choices || choices.length === 0) {
-    throw new Error('LLM returned no choices');
-  }
-
-  const message = choices[0]?.message as Record<string, unknown> | undefined;
-  if (!message) {
-    throw new Error('LLM returned no message');
-  }
-
-  const rawToolCalls = message.tool_calls as Array<Record<string, unknown>> | undefined;
-  const toolCalls = rawToolCalls?.map(tc => ({
-    id: (tc.id as string) || '',
-    name: ((tc.function as Record<string, string>)?.name) || '',
-    arguments: ((tc.function as Record<string, string>)?.arguments) || '{}',
-  })) || [];
-
-  return {
-    content: (message.content as string) || null,
-    tool_calls: toolCalls,
+    assets: env.ASSETS,
+    cdnBaseUrl: env.CDN_BASE_URL,
   };
 }
 
@@ -92,6 +35,8 @@ export async function runVisionAgent(
   env: Env,
   branchId: string,
 ): Promise<string> {
+  const ctx = toBotContext(env, admin.id, admin.masjid_id, branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`);
+
   if (!env.LLM_API_KEY) {
     return [
       '*Image received*',
@@ -102,96 +47,16 @@ export async function runVisionAgent(
   }
 
   try {
-    const profileData = await getMasjidProfile(env, admin.id, admin.masjid_id);
-    const state = profileData as Record<string, unknown>;
+    const result = await coreRunVisionAgent(dataUri, contentType, admin, ctx);
 
-    const tools = getToolDefinitions();
-    const systemPrompt = buildVisionPrompt(admin, state, env);
+    const textResponse = result.textResponse ? formatAsWhatsApp(result.textResponse) : '';
 
-    const toolSchemas = tools.map(t => ({
-      name: t.name,
-      description: t.description,
-      parameters: t.parameters,
-    }));
-
-    const userContent: LLMContentPart[] = [
-      { type: 'text', text: 'Please analyze this prayer timetable image and extract all prayer times and rules. Create prayer rules for the iqaamah times you find. If you see multiple columns (e.g. different months or day types), create rules with appropriate conditions.' },
-      { type: 'image_url', image_url: { url: dataUri } },
-    ];
-
-    const messages: LLMMessage[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent },
-    ];
-
-    const ctx: ToolContext = {
-      adminId: admin.id,
-      masjidId: admin.masjid_id,
-      branchId,
-      env,
-    };
-
-    const toolMap = new Map(tools.map(t => [t.name, t]));
-
-    for (let iteration = 0; iteration < 5; iteration++) {
-      const response = await callLLM(messages, toolSchemas, env);
-
-      if (response.tool_calls.length === 0) {
-        const mutationCount = await getMutationCount(branchId, env.DB);
-
-        if (mutationCount > 0) {
-          const diffReceipt = await formatDiffReceipt(branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`, env.DB);
-          return [response.content || 'Prayer rules extracted from timetable.', '', diffReceipt].join('\n');
-        }
-
-        return response.content || 'I analyzed the image but could not extract any prayer rules. Please try sending a clearer photo of the timetable.';
-      }
-
-      const assistantMsg: LLMMessage = {
-        role: 'assistant',
-        content: response.content || null,
-        tool_calls: response.tool_calls.map(tc => ({
-          id: tc.id,
-          type: 'function' as const,
-          function: { name: tc.name, arguments: tc.arguments },
-        })),
-      };
-      messages.push(assistantMsg);
-
-      for (const tc of response.tool_calls) {
-        const tool = toolMap.get(tc.name);
-        let result: ToolResult;
-
-        if (!tool) {
-          result = { success: false, error: `Unknown tool: ${tc.name}` };
-        } else {
-          try {
-            const args = JSON.parse(tc.arguments);
-            result = await tool.handler(args, ctx);
-          } catch (err) {
-            result = {
-              success: false,
-              error: `Tool execution error: ${err instanceof Error ? err.message : String(err)}`,
-            };
-          }
-        }
-
-        messages.push({
-          role: 'tool',
-          content: JSON.stringify(result),
-          tool_call_id: tc.id,
-          name: tc.name,
-        });
-      }
+    if (result.diffReceipt && result.diffReceipt.totalCount > 0) {
+      const whatsappDiff = formatDiffReceiptAsWhatsApp(result.diffReceipt);
+      return [textResponse || '*Prayer rules extracted from timetable.*', '', whatsappDiff].join('\n');
     }
 
-    const mutationCount = await getMutationCount(branchId, env.DB);
-    if (mutationCount > 0) {
-      const diffReceipt = await formatDiffReceipt(branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`, env.DB);
-      return ['*Timetable processing complete*', '', diffReceipt].join('\n');
-    }
-
-    return 'I analyzed the image but could not extract any prayer rules. Please try sending a clearer photo of the timetable.';
+    return textResponse || 'I analyzed the image but could not extract any prayer rules. Please try sending a clearer photo of the timetable.';
   } catch (err) {
     console.error('Vision agent error:', err);
     const message = err instanceof Error ? err.message : String(err);
@@ -218,106 +83,23 @@ export async function runAgent(
   env: Env,
   branchId: string,
 ): Promise<string> {
+  const ctx = toBotContext(env, admin.id, admin.masjid_id, branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`);
+
   if (!env.LLM_API_KEY) {
     return buildFallbackResponse(userMessage, branchId, env);
   }
 
   try {
-    const existingMutations = await getMutationCount(branchId, env.DB);
+    const result = await coreRunAgent(userMessage, admin, ctx);
 
-    const profileData = await getMasjidProfile(env, admin.id, admin.masjid_id);
-    const state = profileData as Record<string, unknown>;
+    const textResponse = result.textResponse ? formatAsWhatsApp(result.textResponse) : '';
 
-    const tools = getToolDefinitions();
-    const systemPrompt = buildSystemPrompt(admin, state, env);
-
-    const toolSchemas = tools.map(t => ({
-      name: t.name,
-      description: t.description,
-      parameters: t.parameters,
-    }));
-
-    const messages: LLMMessage[] = [
-      { role: 'system', content: systemPrompt },
-    ];
-
-    if (existingMutations > 0) {
-      messages.push({
-        role: 'system',
-        content: `Note: This session already has ${existingMutations} unconfirmed change(s). The user may want to /confirm or /cancel before making more changes.`,
-      });
+    if (result.diffReceipt && result.diffReceipt.totalCount > 0) {
+      const whatsappDiff = formatDiffReceiptAsWhatsApp(result.diffReceipt);
+      return [textResponse || '*Changes have been prepared.*', '', whatsappDiff].join('\n');
     }
 
-    messages.push({ role: 'user', content: userMessage });
-
-    const ctx: ToolContext = {
-      adminId: admin.id,
-      masjidId: admin.masjid_id,
-      branchId,
-      env,
-    };
-
-    const toolMap = new Map(tools.map(t => [t.name, t]));
-
-    for (let iteration = 0; iteration < 5; iteration++) {
-      const response = await callLLM(messages, toolSchemas, env);
-
-      if (response.tool_calls.length === 0) {
-        const mutationCount = await getMutationCount(branchId, env.DB);
-
-        if (mutationCount > 0) {
-          const diffReceipt = await formatDiffReceipt(branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`, env.DB);
-          return [response.content || 'Changes have been prepared.', '', diffReceipt].join('\n');
-        }
-
-        return response.content || buildNoChangesMessage();
-      }
-
-      const assistantMsg: LLMMessage = {
-        role: 'assistant',
-        content: response.content || null,
-        tool_calls: response.tool_calls.map(tc => ({
-          id: tc.id,
-          type: 'function' as const,
-          function: { name: tc.name, arguments: tc.arguments },
-        })),
-      };
-      messages.push(assistantMsg);
-
-      for (const tc of response.tool_calls) {
-        const tool = toolMap.get(tc.name);
-        let result: ToolResult;
-
-        if (!tool) {
-          result = { success: false, error: `Unknown tool: ${tc.name}` };
-        } else {
-          try {
-            const args = JSON.parse(tc.arguments);
-            result = await tool.handler(args, ctx);
-          } catch (err) {
-            result = {
-              success: false,
-              error: `Tool execution error: ${err instanceof Error ? err.message : String(err)}`,
-            };
-          }
-        }
-
-        messages.push({
-          role: 'tool',
-          content: JSON.stringify(result),
-          tool_call_id: tc.id,
-          name: tc.name,
-        });
-      }
-    }
-
-    const mutationCount = await getMutationCount(branchId, env.DB);
-    if (mutationCount > 0) {
-      const diffReceipt = await formatDiffReceipt(branchId, `whatsapp-${new Date().toISOString().slice(0, 10)}`, env.DB);
-      return ['*Processing complete*', '', diffReceipt].join('\n');
-    }
-
-    return buildNoChangesMessage();
+    return textResponse || formatNoChangesMessage();
   } catch (err) {
     console.error('Agent error:', err);
     const message = err instanceof Error ? err.message : String(err);
@@ -332,6 +114,101 @@ export async function runAgent(
       'I encountered an error while processing your request. Please try again or use `/help` for available commands.',
     ].join('\n');
   }
+}
+
+function formatAsWhatsApp(text: string): string {
+  return text;
+}
+
+function formatDiffReceiptAsWhatsApp(diff: DiffReceipt): string {
+  if (diff.totalCount === 0) {
+    return [
+      '*No changes were made in this session.*',
+      '',
+      'Send me details of what you\'d like to change — prayer times, announcements, theme, or masjid profile.',
+    ].join('\n');
+  }
+
+  const lines = [
+    '*Changes Applied*',
+    `_Session: ${diff.branchName}_`,
+    '',
+  ];
+
+  for (let i = 0; i < diff.mutations.length; i++) {
+    const m = diff.mutations[i]!;
+    lines.push(formatMutationAsWhatsApp(m, i + 1));
+    lines.push('');
+  }
+
+  lines.push(`_${diff.totalCount} change${diff.totalCount !== 1 ? 's' : ''} total_`);
+  lines.push('');
+  lines.push('Type */confirm* to finalize these changes, or */cancel* to discard them.');
+
+  return lines.join('\n');
+}
+
+function formatMutationAsWhatsApp(m: MutationData, index: number): string {
+  const action = m.action === 'CREATE' ? '+' : m.action === 'DELETE' ? '-' : '~';
+  const domain = domainLabel(m.domain);
+  const bullet = `*${action} ${domain}*`;
+
+  switch (m.domain) {
+    case 'THEME':
+    case 'PROFILE': {
+      const changes = Object.keys(m.payload)
+        .filter(k => !['masjid_id'].includes(k))
+        .map(k => `  ${k}: ${truncate(String(m.payload[k]), 30)}`);
+      return `${index}. ${bullet} ${changes.length ? '\n' + changes.join('\n') : ''}`;
+    }
+    case 'PRAYER_RULES': {
+      if (m.action === 'CREATE') {
+        return `${index}. ${bullet}\n  Rule: ${m.payload.rule_name || 'untitled'}\n  Prayer: ${m.payload.prayer_name || '?'}`;
+      }
+      if (m.action === 'REORDER') return `${index}. *~ Reorder ${domain}*`;
+      if (m.action === 'DELETE') return `${index}. *${action} ${domain}* (rule deleted)`;
+      return `${index}. *${action} ${domain}* (rule updated)`;
+    }
+    case 'JUMUAH': {
+      if (m.action === 'CREATE') {
+        const speech = m.payload.speech_time ? `\n  Speech: ${m.payload.speech_time}` : '';
+        return `${index}. ${bullet}\n  Khutbah: ${m.payload.time || '?'}${speech}`;
+      }
+      if (m.action === 'DELETE') return `${index}. *${action} ${domain}* (session deleted)`;
+      return `${index}. *${action} ${domain}* (session updated)`;
+    }
+    case 'ANNOUNCEMENTS': {
+      if (m.action === 'CREATE') return `${index}. ${bullet}\n  Title: ${truncate(m.payload.title as string || '?', 40)}`;
+      if (m.action === 'PIN') return `${index}. *Pin/Unpin* announcement`;
+      if (m.action === 'DELETE') return `${index}. *${action} ${domain}* (archived)`;
+      return `${index}. *${action} ${domain}* (updated)`;
+    }
+    default:
+      return `${index}. *${action} ${m.domain}*`;
+  }
+}
+
+function domainLabel(domain: string): string {
+  const labels: Record<string, string> = {
+    THEME: 'Theme',
+    PROFILE: 'Profile',
+    PRAYER_RULES: 'Prayer Rules',
+    JUMUAH: "Jumu'ah",
+    ANNOUNCEMENTS: 'Announcements',
+  };
+  return labels[domain] || domain;
+}
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max - 3) + '...' : s;
+}
+
+function formatNoChangesMessage(): string {
+  return [
+    '*No changes detected*',
+    '',
+    'I couldn\'t determine what you wanted to change. Try being more specific, or use `/help` to see available commands.',
+  ].join('\n');
 }
 
 async function buildFallbackResponse(

@@ -1,34 +1,36 @@
-import { SignJWT } from 'jose';
 import type { Env } from './types';
+import {
+  apiCall as coreApiCall,
+  getAdminJWT as coreGetAdminJWT,
+  getMasjidProfile as coreGetMasjidProfile,
+  getPrayerConfig as coreGetPrayerConfig,
+  updateMasjidProfile as coreUpdateMasjidProfile,
+  getPrayerRules as coreGetPrayerRules,
+  updatePrayerConfig as coreUpdatePrayerConfig,
+  getPrayerRulesList as coreGetPrayerRulesList,
+  createPrayerRule as coreCreatePrayerRule,
+  updatePrayerRule as coreUpdatePrayerRule,
+  deletePrayerRule as coreDeletePrayerRule,
+  reorderPrayerRules as coreReorderPrayerRules,
+  getJumuahSessions as coreGetJumuahSessions,
+  createJumuahSession as coreCreateJumuahSession,
+  updateJumuahSession as coreUpdateJumuahSession,
+  deleteJumuahSession as coreDeleteJumuahSession,
+  getAnnouncements as coreGetAnnouncements,
+  createAnnouncement as coreCreateAnnouncement,
+  updateAnnouncement as coreUpdateAnnouncement,
+  deleteAnnouncement as coreDeleteAnnouncement,
+  pinAnnouncement as corePinAnnouncement,
+  dryRunPrayerTimes as coreDryRunPrayerTimes,
+  rollbackRestore as coreRollbackRestore,
+  type ApiClientConfig,
+} from '@masjid/agent';
 
-let cachedToken: string | null = null;
-let cachedTokenExpiry = 0;
-
-export async function getAdminJWT(
-  adminId: string,
-  masjidId: string,
-  env: Env,
-): Promise<string> {
-  if (cachedToken && Date.now() < cachedTokenExpiry) {
-    return cachedToken;
-  }
-
-  const secretKey = new TextEncoder().encode(env.JWT_SECRET);
-
-  const token = await new SignJWT({ sub: adminId, masjid_id: masjidId })
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer('masjid-platform')
-    .setIssuedAt()
-    .setExpirationTime('30 days')
-    .sign(secretKey);
-
-  cachedToken = token;
-  cachedTokenExpiry = Date.now() + 29 * 24 * 60 * 60 * 1000;
-
-  return token;
+function config(env: Env, adminId: string, masjidId: string): ApiClientConfig {
+  return { apiUrl: env.API_URL, jwtSecret: env.JWT_SECRET, adminId, masjidId };
 }
 
-export async function apiCall(
+export function apiCall(
   method: string,
   path: string,
   body: unknown | null,
@@ -36,216 +38,77 @@ export async function apiCall(
   adminId: string,
   masjidId: string,
 ): Promise<Response> {
-  const token = await getAdminJWT(adminId, masjidId, env);
-  const url = `${env.API_URL}${path}`;
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  const init: RequestInit = { method, headers };
-
-  if (body !== null) {
-    headers['Content-Type'] = 'application/json';
-    init.body = JSON.stringify(body);
-  }
-
-  return fetch(url, init);
+  return coreApiCall(method, path, body, config(env, adminId, masjidId));
 }
 
-export async function getMasjidProfile(
-  env: Env,
+export function getAdminJWT(
   adminId: string,
   masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+  env: Env,
+): Promise<string> {
+  return coreGetAdminJWT(config(env, adminId, masjidId));
 }
 
-export async function getPrayerConfig(
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}/prayer`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function getMasjidProfile(env: Env, adminId: string, masjidId: string) {
+  return coreGetMasjidProfile(config(env, adminId, masjidId));
 }
-
-export async function updateMasjidProfile(
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function getPrayerConfig(env: Env, adminId: string, masjidId: string) {
+  return coreGetPrayerConfig(config(env, adminId, masjidId));
 }
-
-export async function getPrayerRules(
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}/prayer`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function updateMasjidProfile(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreUpdateMasjidProfile(body, config(env, adminId, masjidId));
 }
-
-export async function updatePrayerConfig(
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PATCH', `/api/v1/admin/masjids/${masjidId}/prayer`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function getPrayerRules(env: Env, adminId: string, masjidId: string) {
+  return coreGetPrayerRules(config(env, adminId, masjidId));
 }
-
-export async function getPrayerRulesList(
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}/prayer/rules`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function updatePrayerConfig(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreUpdatePrayerConfig(body, config(env, adminId, masjidId));
 }
-
-export async function createPrayerRule(
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${masjidId}/prayer/rules`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function getPrayerRulesList(env: Env, adminId: string, masjidId: string) {
+  return coreGetPrayerRulesList(config(env, adminId, masjidId));
 }
-
-export async function updatePrayerRule(
-  ruleId: string,
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}/prayer/rules/${ruleId}`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function createPrayerRule(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreCreatePrayerRule(body, config(env, adminId, masjidId));
 }
-
-export async function deletePrayerRule(
-  ruleId: string,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${masjidId}/prayer/rules/${ruleId}`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function updatePrayerRule(ruleId: string, body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreUpdatePrayerRule(ruleId, body, config(env, adminId, masjidId));
 }
-
-export async function reorderPrayerRules(
-  order: string[],
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}/prayer/rules/reorder`, { order }, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function deletePrayerRule(ruleId: string, env: Env, adminId: string, masjidId: string) {
+  return coreDeletePrayerRule(ruleId, config(env, adminId, masjidId));
 }
-
-export async function getJumuahSessions(
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}/jumuah`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function reorderPrayerRules(order: string[], env: Env, adminId: string, masjidId: string) {
+  return coreReorderPrayerRules(order, config(env, adminId, masjidId));
 }
-
-export async function createJumuahSession(
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${masjidId}/jumuah`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function getJumuahSessions(env: Env, adminId: string, masjidId: string) {
+  return coreGetJumuahSessions(config(env, adminId, masjidId));
 }
-
-export async function updateJumuahSession(
-  sessionId: string,
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}/jumuah/${sessionId}`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function createJumuahSession(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreCreateJumuahSession(body, config(env, adminId, masjidId));
 }
-
-export async function deleteJumuahSession(
-  sessionId: string,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${masjidId}/jumuah/${sessionId}`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function updateJumuahSession(sessionId: string, body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreUpdateJumuahSession(sessionId, body, config(env, adminId, masjidId));
 }
-
-export async function getAnnouncements(
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${masjidId}/announcements`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function deleteJumuahSession(sessionId: string, env: Env, adminId: string, masjidId: string) {
+  return coreDeleteJumuahSession(sessionId, config(env, adminId, masjidId));
 }
-
-export async function createAnnouncement(
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${masjidId}/announcements`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function getAnnouncements(env: Env, adminId: string, masjidId: string) {
+  return coreGetAnnouncements(config(env, adminId, masjidId));
 }
-
-export async function updateAnnouncement(
-  slug: string,
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}/announcements/${slug}`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function createAnnouncement(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreCreateAnnouncement(body, config(env, adminId, masjidId));
 }
-
-export async function deleteAnnouncement(
-  slug: string,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${masjidId}/announcements/${slug}`, null, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function updateAnnouncement(slug: string, body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreUpdateAnnouncement(slug, body, config(env, adminId, masjidId));
 }
-
-export async function pinAnnouncement(
-  slug: string,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${masjidId}/announcements/${slug}/pin`, {}, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function deleteAnnouncement(slug: string, env: Env, adminId: string, masjidId: string) {
+  return coreDeleteAnnouncement(slug, config(env, adminId, masjidId));
 }
-
-export async function dryRunPrayerTimes(
-  body: Record<string, unknown>,
-  env: Env,
-  adminId: string,
-  masjidId: string,
-): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${masjidId}/prayer/dry-run`, body, env, adminId, masjidId);
-  return res.json() as Promise<Record<string, unknown>>;
+export function pinAnnouncement(slug: string, env: Env, adminId: string, masjidId: string) {
+  return corePinAnnouncement(slug, config(env, adminId, masjidId));
+}
+export function dryRunPrayerTimes(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreDryRunPrayerTimes(body, config(env, adminId, masjidId));
+}
+export function rollbackRestore(snapshotId: string, env: Env, adminId: string, masjidId: string) {
+  return coreRollbackRestore(snapshotId, config(env, adminId, masjidId));
 }

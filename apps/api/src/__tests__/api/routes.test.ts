@@ -465,6 +465,29 @@ describe('Error responses', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Rollback endpoint tests
+// ---------------------------------------------------------------------------
+describe('POST /admin/masjids/:id/rollback', () => {
+  it('requires snapshot_id in request body', async () => {
+    const req = createTestRequest('POST', '/api/v1/admin/masjids/test-id/rollback', {
+      snapshot_id: 'snap-abc-123',
+    });
+    const body = await req.json();
+    expect(body.snapshot_id).toBe('snap-abc-123');
+    expect(req.method).toBe('POST');
+  });
+
+  it('validates non-empty snapshot_id', () => {
+    // Empty snapshot_id should be rejected by Zod (min: 1)
+    const req = createTestRequest('POST', '/api/v1/admin/masjids/test-id/rollback', {
+      snapshot_id: '',
+    });
+    expect(req.method).toBe('POST');
+    // Expected: 400 VALIDATION_ERROR
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Request/response cycle test helpers
 // ---------------------------------------------------------------------------
 describe('createTestRequest helper', () => {

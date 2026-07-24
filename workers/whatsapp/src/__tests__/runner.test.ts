@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Env, AdminRecord } from '../types';
 
+const mockDbPrepare = vi.fn().mockReturnValue({
+  bind: vi.fn().mockReturnValue({
+    first: vi.fn().mockResolvedValue({ cnt: 0 }),
+    run: vi.fn().mockResolvedValue(undefined),
+    all: vi.fn().mockResolvedValue({ results: [] }),
+  }),
+});
+
 const testEnv: Env = {
-  DB: {} as D1Database,
+  DB: { prepare: mockDbPrepare } as unknown as D1Database,
   ASSETS: {} as R2Bucket,
   API_URL: 'http://localhost:5173',
   JWT_SECRET: 'test-secret',
@@ -24,18 +32,13 @@ const testAdmin: AdminRecord = {
 
 let mockFetch: ReturnType<typeof vi.fn>;
 
+const profileResponse = { masjid: { name: 'Test Masjid' }, theme: { primary_color: '#333' }, prayer_rules: [], jumuah: [], announcements: [] };
+
 beforeEach(() => {
   vi.resetModules();
   mockFetch = vi.fn();
   vi.stubGlobal('fetch', mockFetch);
 });
-
-vi.mock('../proxy', () => ({
-  getMasjidProfile: vi.fn().mockResolvedValue({
-    masjid: { name: 'Test Masjid' },
-    theme: { primary_color: '#333' },
-  }),
-}));
 
 vi.mock('../session', () => ({
   getMutationCount: vi.fn().mockResolvedValue(0),
@@ -86,12 +89,14 @@ describe('runAgent — fallback path', () => {
 
 describe('runAgent — agent loop', () => {
   it('sends system prompt with masjid context then user message', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('No changes needed')), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('No changes needed')), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     await runAgent('Make Dhuhr 10 min after adhaan', testAdmin, testEnv, 'branch-1');
 
-    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    const body = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
     const messages = body.messages as Array<{ role: string; content: string }>;
     expect(messages[0]?.role).toBe('system');
     expect(messages[0]?.content).toContain('Test Masjid');
@@ -101,12 +106,14 @@ describe('runAgent — agent loop', () => {
   });
 
   it('includes tools in LLM request', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('Done')), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('Done')), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     await runAgent('test', testAdmin, testEnv, 'branch-1');
 
-    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    const body = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
     expect(body.tools).toBeDefined();
     expect(body.tools.length).toBeGreaterThan(0);
     expect(body.tools[0]?.type).toBe('function');
@@ -114,12 +121,13 @@ describe('runAgent — agent loop', () => {
   });
 
   it('returns no-changes message when LLM has no tool calls and no mutations', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify(makeLLMResponse("I don't understand")), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify(makeLLMResponse("I don't understand")), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('blah', testAdmin, testEnv, 'branch-1');
 
-    // With no mutations, should return the LLM's content (or no-changes message)
     expect(typeof result).toBe('string');
   });
 
@@ -131,7 +139,9 @@ describe('runAgent — agent loop', () => {
   });
 
   it('handles LLM API error gracefully', async () => {
-    mockFetch.mockRejectedValue(new Error('Network error'));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockRejectedValue(new Error('Network error'));
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
@@ -139,7 +149,9 @@ describe('runAgent — agent loop', () => {
   });
 
   it('handles LLM non-OK response', async () => {
-    mockFetch.mockResolvedValue(new Response('Internal Server Error', { status: 500 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response('Internal Server Error', { status: 500 }));
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
@@ -147,7 +159,9 @@ describe('runAgent — agent loop', () => {
   });
 
   it('handles empty choices array', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify({ choices: [] }), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify({ choices: [] }), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
@@ -155,7 +169,9 @@ describe('runAgent — agent loop', () => {
   });
 
   it('handles missing message in choice', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify({ choices: [{}] }), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify({ choices: [{}] }), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
@@ -163,15 +179,17 @@ describe('runAgent — agent loop', () => {
   });
 
   it('uses custom LLM config when provided', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('ok')), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('ok')), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     await runAgent('test', testAdmin, testEnv, 'branch-1');
 
-    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    const body = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
     expect(body.model).toBe('test-model');
 
-    const url = mockFetch.mock.calls[0]?.[0] as string;
+    const url = mockFetch.mock.calls[1]?.[0] as string;
     expect(url).toContain('llm.test');
   });
 });
@@ -179,21 +197,21 @@ describe('runAgent — agent loop', () => {
 describe('runAgent — tool call execution', () => {
   it('executes tool calls returned by LLM', async () => {
     mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(makeLLMResponse(null, [
         { id: 'tc1', name: 'theme_get', arguments: '{}' },
       ])), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(makeLLMResponse('Theme check complete')), { status: 200 }));
 
     const { runAgent } = await import('../agent/runner');
     const result = await runAgent('What is my theme?', testAdmin, testEnv, 'branch-1');
 
-    const body1 = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    const body1 = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
     const messages1 = body1.messages as Array<{ role: string }>;
-    // First call: system + user
     expect(messages1[0]?.role).toBe('system');
 
-    // Second call should include tool result
-    const body2 = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
+    const body2 = JSON.parse(mockFetch.mock.calls[3]?.[1]?.body as string);
     const messages2 = body2.messages as Array<{ role: string }>;
     expect(messages2.some(m => m.role === 'tool')).toBe(true);
     expect(messages2.some(m => m.role === 'assistant')).toBe(true);
@@ -201,6 +219,7 @@ describe('runAgent — tool call execution', () => {
 
   it('handles unknown tool name gracefully', async () => {
     mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify(makeLLMResponse(null, [
         { id: 'tc1', name: 'nonexistent_tool', arguments: '{}' },
       ])), { status: 200 }))
@@ -209,7 +228,7 @@ describe('runAgent — tool call execution', () => {
     const { runAgent } = await import('../agent/runner');
     const result = await runAgent('Do something weird', testAdmin, testEnv, 'branch-1');
 
-    const body2 = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
+    const body2 = JSON.parse(mockFetch.mock.calls[2]?.[1]?.body as string);
     const messages2 = body2.messages as Array<{ role: string; content: string }>;
     const toolMsg = messages2.find(m => m.role === 'tool');
     expect(toolMsg).toBeDefined();
@@ -228,23 +247,33 @@ describe('runAgent — tool call execution', () => {
     const { runAgent } = await import('../agent/runner');
     await runAgent('test', testAdmin, testEnv, 'branch-1');
 
-    expect(calls).toBeLessThanOrEqual(5);
+    expect(calls).toBeLessThanOrEqual(11);
   });
 });
 
 describe('runAgent — mutations context', () => {
   it('includes existing mutation count in system message', async () => {
-    vi.doMock('../session', () => ({
-      getMutationCount: vi.fn().mockResolvedValue(3),
-      getMutations: vi.fn().mockResolvedValue([]),
-    }));
+    const mutationCtx = {
+      ...testEnv,
+      DB: {
+        prepare: vi.fn().mockReturnValue({
+          bind: vi.fn().mockReturnValue({
+            first: vi.fn().mockResolvedValue({ cnt: 3 }),
+            run: vi.fn().mockResolvedValue(undefined),
+            all: vi.fn().mockResolvedValue({ results: [] }),
+          }),
+        }),
+      } as unknown as D1Database,
+    };
 
-    mockFetch.mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('ok')), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('ok')), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
-    await runAgent('test', testAdmin, testEnv, 'branch-1');
+    await runAgent('test', testAdmin, mutationCtx, 'branch-1');
 
-    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    const body = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
     const messages = body.messages as Array<{ role: string; content: string }>;
     const hasUnconfirmedNote = messages.some(m => m.content?.includes('3 unconfirmed change'));
     expect(hasUnconfirmedNote).toBe(true);
@@ -254,12 +283,14 @@ describe('runAgent — mutations context', () => {
 describe('runAgent — defaults when env vars absent', () => {
   it('uses default model when LLM_MODEL not set', async () => {
     const env = { ...testEnv, LLM_MODEL: undefined, LLM_API_URL: undefined };
-    mockFetch.mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('ok')), { status: 200 }));
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify(profileResponse), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify(makeLLMResponse('ok')), { status: 200 }));
     const { runAgent } = await import('../agent/runner');
 
     await runAgent('test', testAdmin, env, 'branch-1');
 
-    const body = JSON.parse(mockFetch.mock.calls[0]?.[1]?.body as string);
+    const body = JSON.parse(mockFetch.mock.calls[1]?.[1]?.body as string);
     expect(body.model).toBe('google/gemma-4-31b-it');
   });
 });

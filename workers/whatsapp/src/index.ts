@@ -21,6 +21,12 @@ import {
 import { runAgent } from './agent/runner';
 import { runVisionAgent } from './agent/runner';
 import { formatDiffReceipt, buildConfirmSuccessMessage } from './agent/format';
+import {
+  getMasjidProfile,
+  getPrayerRulesList,
+  getJumuahSessions,
+  getAnnouncements,
+} from './proxy';
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -159,7 +165,21 @@ async function handleConfirm(
   }
 
   const summary = `WhatsApp session ${branch.branch_name}: ${mutationCount} change${mutationCount !== 1 ? 's' : ''}`;
-  await mergeBranch(branch.id, summary, masjidId, env.DB);
+
+  let fullState: Record<string, unknown> | undefined;
+  try {
+    const [masjid, prayerRules, jumuah, announcements] = await Promise.all([
+      getMasjidProfile(env, adminId, masjidId),
+      getPrayerRulesList(env, adminId, masjidId),
+      getJumuahSessions(env, adminId, masjidId),
+      getAnnouncements(env, adminId, masjidId),
+    ]);
+    fullState = { masjid, prayer_rules: prayerRules, jumuah, announcements };
+  } catch {
+    /* fall through — mergeBranch will store mutations-based state */
+  }
+
+  await mergeBranch(branch.id, summary, masjidId, env.DB, fullState);
 
   await sendReply(
     phone,
