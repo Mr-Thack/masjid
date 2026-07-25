@@ -332,15 +332,14 @@ function ensureTables(sqlite: Database.Database) {
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
-  if (d1) {
-    return drizzle(d1 as D1Database, { schema }) as unknown as ReturnType<typeof drizzleSqlite>;
-  }
-  // Only use local SQLite in Node.js (not Cloudflare Workers where process is polyfilled)
-  // We detect Workers by checking if 'crypto' exists with a DurableObject-like API or similar.
-  // Safer: check if we're in a non-CF context by looking for the absence of CF-specific globals
+  // In local Node.js dev: always use our local SQLite, not the adapter's mock D1.
   const isWorker = typeof caches !== 'undefined' && typeof caches.default !== 'undefined';
   if (!isWorker && typeof process !== 'undefined') {
     return getLocalDb();
+  }
+  // In Cloudflare Workers: use the real D1 binding.
+  if (d1) {
+    return drizzle(d1 as D1Database, { schema }) as unknown as ReturnType<typeof drizzleSqlite>;
   }
   throw new Error('D1 database binding not available');
 }
