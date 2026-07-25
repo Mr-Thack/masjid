@@ -56,7 +56,7 @@ export async function createSquareTermPlan(
   const idempotencyKey = crypto.randomUUID();
 
   const upsertBody = {
-    idempotencyKey,
+    idempotency_key: idempotencyKey,
     object: {
       type: 'SUBSCRIPTION_PLAN',
       id: '#plan',
