@@ -5,6 +5,35 @@ import { admins } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Handle } from '@sveltejs/kit';
 
+const ALLOWED_ORIGINS = [
+  'https://masjid-live.pages.dev',
+  'https://masjid-live-admin.pages.dev',
+  'https://masjid-live-tv.pages.dev',
+  'http://localhost:5175',
+  'http://localhost:5176',
+];
+
+function corsHeaders(origin: string | null): Record<string, string> {
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    return {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    };
+  }
+  return {};
+}
+
+function withCors(response: Response, origin: string | null): Response {
+  const headers = corsHeaders(origin);
+  const res = new Response(response.body, response);
+  for (const [key, value] of Object.entries(headers)) {
+    res.headers.set(key, value);
+  }
+  return res;
+}
+
 const PUBLIC_PATTERNS = [
   /^\/api\/v1\/auth\/(login|register)$/,
   /^\/api\/v1\/webhooks\/stripe$/,
@@ -25,47 +54,55 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
+  const origin = event.request.headers.get('origin');
   const pathname = new URL(event.request.url).pathname;
 
-  if (isPublicPath(pathname) || event.request.method === 'OPTIONS') {
-    return resolve(event);
+  if (event.request.method === 'OPTIONS') {
+    const headers = corsHeaders(origin);
+    if (Object.keys(headers).length > 0) {
+      return new Response(null, { status: 204, headers });
+    }
+    return new Response(null, { status: 204 });
   }
 
-  const authHeader = event.request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return jsonResponse(error('UNAUTHORIZED', 'Missing or invalid Authorization header'), 401);
-  }
-
-  const token = authHeader.slice(7);
-  try {
-    const secret = event.platform?.env?.JWT_SECRET ?? process.env.JWT_SECRET ?? 'dev-secret';
-    const payload = await verifyAccessToken(token, secret);
-
-    const db = getDb(event.platform?.env?.DB);
-    const adminRow = await db
-      .select({
-        id: admins.id,
-        email: admins.email,
-        display_name: admins.displayName,
-        masjid_id: admins.masjidId,
-      })
-      .from(admins)
-      .where(eq(admins.id, payload.sub))
-      .get();
-
-    if (!adminRow) {
-      return jsonResponse(error('UNAUTHORIZED', 'Admin not found'), 401);
+  if (!isPublicPath(pathname)) {
+    const authHeader = event.request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return withCors(jsonResponse(error('UNAUTHORIZED', 'Missing or invalid Authorization header'), 401), origin);
     }
 
-    event.locals.admin = {
-      sub: adminRow.id,
-      masjid_id: adminRow.masjid_id,
-      email: adminRow.email,
-      display_name: adminRow.display_name ?? null,
-    };
-  } catch {
-    return jsonResponse(error('UNAUTHORIZED', 'Invalid or expired token'), 401);
+    const token = authHeader.slice(7);
+    try {
+      const secret = event.platform?.env?.JWT_SECRET ?? process.env.JWT_SECRET ?? 'dev-secret';
+      const payload = await verifyAccessToken(token, secret);
+
+      const db = getDb(event.platform?.env?.DB);
+      const adminRow = await db
+        .select({
+          id: admins.id,
+          email: admins.email,
+          display_name: admins.displayName,
+          masjid_id: admins.masjidId,
+        })
+        .from(admins)
+        .where(eq(admins.id, payload.sub))
+        .get();
+
+      if (!adminRow) {
+        return withCors(jsonResponse(error('UNAUTHORIZED', 'Admin not found'), 401), origin);
+      }
+
+      event.locals.admin = {
+        sub: adminRow.id,
+        masjid_id: adminRow.masjid_id,
+        email: adminRow.email,
+        display_name: adminRow.display_name ?? null,
+      };
+    } catch {
+      return withCors(jsonResponse(error('UNAUTHORIZED', 'Invalid or expired token'), 401), origin);
+    }
   }
 
-  return resolve(event);
+  const response = await resolve(event);
+  return withCors(response, origin);
 };
