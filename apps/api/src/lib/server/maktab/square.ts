@@ -16,7 +16,7 @@ async function squarePost<T>(env: SquareEnv, path: string, body: unknown): Promi
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.SQUARE_ACCESS_TOKEN?.slice(0, 6)}...`,
+      'Authorization': `Bearer ${env.SQUARE_ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
       'Square-Version': '2024-08-21',
     },
