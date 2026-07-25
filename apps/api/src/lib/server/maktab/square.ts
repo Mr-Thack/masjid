@@ -28,7 +28,6 @@ async function squarePost<T>(env: SquareEnv, path: string, body: unknown): Promi
     const detail = JSON.stringify({ sent: body, received: errors ?? data });
     throw new Error(`Square API error: ${response.status} ${url} — ${detail}`);
   }
-  console.log('Square response:', JSON.stringify({ url, sent: body, received: data }));
   return data as T;
 }
 

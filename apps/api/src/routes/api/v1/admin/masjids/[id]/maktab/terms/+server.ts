@@ -51,9 +51,28 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
 
   try {
     const body = TermCreateSchema.parse(await request.json());
-    const db = getDb(platform?.env?.DB);
     const env = (platform?.env ?? {}) as Record<string, unknown>;
 
+    // 1. Create Square plan FIRST — if this fails, nothing is persisted
+    const refs = await createSquareTermPlan(
+      {
+        id: '', // Square generates the plan ID, we only need to pass data
+        name: body.name,
+        length_months: body.length_months,
+        price_cents_1: body.price_cents_1,
+        price_cents_2: body.price_cents_2,
+        price_cents_3plus: body.price_cents_3plus,
+      },
+      {
+        SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN as string | undefined,
+        SQUARE_APP_ID: env.SQUARE_APP_ID as string | undefined,
+        SQUARE_LOCATION_ID: env.SQUARE_LOCATION_ID as string | undefined,
+        ENVIRONMENT: env.ENVIRONMENT as string | undefined,
+      },
+    );
+
+    // 2. Only now insert into DB — atomic: everything or nothing
+    const db = getDb(platform?.env?.DB);
     const termId = crypto.randomUUID();
     await db.insert(mktTerms).values({
       id: termId,
@@ -63,60 +82,17 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       priceCents1: body.price_cents_1,
       priceCents2: body.price_cents_2,
       priceCents3plus: body.price_cents_3plus,
-      paymentRefsJson: '{}',
+      paymentRefsJson: JSON.stringify(refs),
     });
 
-    let squareError: string | null = null;
-    let squareRefs: unknown = null;
-    const hasSquareEnv = !!(env.SQUARE_ACCESS_TOKEN && env.SQUARE_APP_ID && env.SQUARE_LOCATION_ID);
-
-    try {
-      const refs = await createSquareTermPlan(
-        {
-          id: termId,
-          name: body.name,
-          length_months: body.length_months,
-          price_cents_1: body.price_cents_1,
-          price_cents_2: body.price_cents_2,
-          price_cents_3plus: body.price_cents_3plus,
-        },
-        {
-          SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN as string | undefined,
-          SQUARE_APP_ID: env.SQUARE_APP_ID as string | undefined,
-          SQUARE_LOCATION_ID: env.SQUARE_LOCATION_ID as string | undefined,
-          ENVIRONMENT: env.ENVIRONMENT as string | undefined,
-        },
-      );
-      squareRefs = refs;
-      if (refs) {
-        await db
-          .update(mktTerms)
-          .set({ paymentRefsJson: JSON.stringify(refs) })
-          .where(eq(mktTerms.id, termId));
-      }
-    } catch (err) {
-      squareError = err instanceof Error ? err.message : String(err);
-      console.error('Square term pricing failed:', squareError);
-    }
-    // Log current env state
-    console.log('Term creation env:', JSON.stringify({
-      hasToken: !!env.SQUARE_ACCESS_TOKEN,
-      hasApp: !!env.SQUARE_APP_ID,
-      hasLoc: !!env.SQUARE_LOCATION_ID,
-      env_keys: Object.keys(env).filter(k => k.startsWith('SQUARE')),
-    }));
-
     const inserted = await db.select().from(mktTerms).where(eq(mktTerms.id, termId)).get();
-    return JsonResponse({
-      term: inserted ? termToPublic(inserted) : null,
-      square_status: squareError ? `failed: ${squareError}` : (squareRefs ? 'created' : (hasSquareEnv ? 'attempted but refs empty' : 'square env missing')),
-      square_env: { hasToken: !!env.SQUARE_ACCESS_TOKEN, hasApp: !!env.SQUARE_APP_ID, hasLoc: !!env.SQUARE_LOCATION_ID },
-    }, 201);
+    return JsonResponse({ term: inserted ? termToPublic(inserted) : null }, 201);
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'name' in e && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
     }
-    console.error('POST maktab terms error:', e);
-    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to create term');
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('POST maktab terms error:', message);
+    return ErrorJsonResponse('INTERNAL_ERROR', `Failed to create term: ${message}`);
   }
 };
