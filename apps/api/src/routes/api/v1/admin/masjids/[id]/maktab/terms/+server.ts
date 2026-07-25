@@ -98,6 +98,13 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       squareError = err instanceof Error ? err.message : String(err);
       console.error('Square term pricing failed:', squareError);
     }
+    // Log current env state
+    console.log('Term creation env:', JSON.stringify({
+      hasToken: !!env.SQUARE_ACCESS_TOKEN,
+      hasApp: !!env.SQUARE_APP_ID,
+      hasLoc: !!env.SQUARE_LOCATION_ID,
+      env_keys: Object.keys(env).filter(k => k.startsWith('SQUARE')),
+    }));
 
     const inserted = await db.select().from(mktTerms).where(eq(mktTerms.id, termId)).get();
     return JsonResponse({

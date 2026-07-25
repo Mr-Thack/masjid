@@ -11,10 +11,12 @@ function squareBase(env: SquareEnv): string {
 }
 
 async function squarePost<T>(env: SquareEnv, path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${squareBase(env)}${path}`, {
+  const base = squareBase(env);
+  const url = `${base}${path}`;
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${env.SQUARE_ACCESS_TOKEN}`,
+      'Authorization': `Bearer ${env.SQUARE_ACCESS_TOKEN?.slice(0, 6)}...`,
       'Content-Type': 'application/json',
       'Square-Version': '2024-08-21',
     },
@@ -22,9 +24,11 @@ async function squarePost<T>(env: SquareEnv, path: string, body: unknown): Promi
   });
   const data = await response.json();
   if (!response.ok || (data as { errors?: unknown[] }).errors) {
-    const message = JSON.stringify((data as { errors?: unknown[] }).errors ?? data);
-    throw new Error(`Square API error: ${message}`);
+    const errors = (data as { errors?: unknown[] }).errors;
+    const detail = JSON.stringify({ sent: body, received: errors ?? data });
+    throw new Error(`Square API error: ${response.status} ${url} — ${detail}`);
   }
+  console.log('Square response:', JSON.stringify({ url, sent: body, received: data }));
   return data as T;
 }
 
