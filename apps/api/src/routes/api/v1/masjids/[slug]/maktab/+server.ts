@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
             id: activeTerm.id,
             name: activeTerm.name,
             length_months: activeTerm.lengthMonths,
+            billing_months: activeTerm.billingMonths ?? activeTerm.lengthMonths,
             prices: {
               '1': activeTerm.priceCents1,
               '2': activeTerm.priceCents2,

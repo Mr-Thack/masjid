@@ -74,6 +74,7 @@ export interface MaktabInfo {
     id: string;
     name: string;
     length_months: number;
+    billing_months: number;
     prices: { '1': number; '2': number; '3plus': number };
   } | null;
   status_message: string | null;

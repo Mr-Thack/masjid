@@ -400,7 +400,7 @@
         <div class="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <p class="text-sm" style="color: var(--color-text-muted);">
-              {maktab.term.length_months} month subscription · {childrenCount} child{childrenCount === 1 ? '' : 'ren'} ({tier} student{tier === '1' ? '' : 's'})
+              {maktab.term.billing_months} month subscription · {childrenCount} child{childrenCount === 1 ? '' : 'ren'} ({tier} student{tier === '1' ? '' : 's'})
             </p>
             <p class="text-2xl font-bold font-heading">{formatCents(amountCents)}<span class="text-sm font-normal" style="color: var(--color-text-muted);">/month</span></p>
           </div>
@@ -417,7 +417,7 @@
         <div class="mt-6 rounded-xl p-5 text-sm space-y-3" style="background-color: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted);">
           <h3 class="font-semibold font-heading" style="color: var(--color-text);">When you continue to payment, you agree to the following:</h3>
           <ol class="list-decimal pl-5 space-y-1">
-            <li>You are signing up for the <strong style="color: var(--color-text);">full program ({maktab.term.length_months} months)</strong>, not just one month at a time.</li>
+            <li>You are signing up for the <strong style="color: var(--color-text);">full {maktab.term.length_months}-month program</strong>, billed over {maktab.term.billing_months} monthly payments.</li>
             <li><strong style="color: var(--color-text);">There are no refunds</strong>, even if your child stops coming.</li>
             <li><strong style="color: var(--color-text);">You will still be charged each month</strong>, even if your child does not attend.</li>
             <li><strong style="color: var(--color-text);">You cannot cancel or leave</strong> the program once you are signed up.</li>
