@@ -73,31 +73,16 @@ jobs:
 
       - name: Apply D1 migrations (API only)
         if: matrix.name == 'api'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          workingDirectory: ${{ matrix.dir }}
-          command: d1 migrations apply masjid-db --env production --remote
+        run: npx wrangler d1 migrations apply masjid-db --env production --remote
+        working-directory: ${{ matrix.dir }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
       - name: Deploy worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          workingDirectory: ${{ matrix.dir }}
-          command: deploy --env production
-          secrets: |
-            JWT_SECRET
-            WHATSAPP_TOKEN
-            WHATSAPP_PHONE_ID
-            WHATSAPP_VERIFY_TOKEN
-            LLM_API_KEY
-            SQUARE_ACCESS_TOKEN
-            SQUARE_APP_ID
-            SQUARE_LOCATION_ID
-            BREVO_API_KEY
-            VAPID_PUBLIC_KEY
-            VAPID_PRIVATE_KEY
+        run: npx wrangler deploy --env production
+        working-directory: ${{ matrix.dir }}
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
           WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
@@ -134,11 +119,10 @@ jobs:
           VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          workingDirectory: ${{ matrix.dir }}
-          command: pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
+        run: npx wrangler pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
+        working-directory: ${{ matrix.dir }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
   summary:
     needs: [detect-changes, deploy-workers, deploy-pages]
