@@ -86,10 +86,15 @@ jobs:
 
       - name: Debug auth
         run: |
+          echo "::notice::Total env vars: $(env | wc -l)"
+          echo "::notice::Matching CLOUDFLARE vars:"
+          env | grep -i cloudflare || echo "(none)"
+          echo "::notice::All CF/CLOUDFLARE related:"
+          env | grep -iE '^(CF_|CLOUDFLARE)' || echo "(none)"
           if [ -n "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::notice::CLOUDFLARE_API_TOKEN is set (${#CLOUDFLARE_API_TOKEN} chars)"
+            echo "::notice::CLOUDFLARE_API_TOKEN length: ${#CLOUDFLARE_API_TOKEN}"
           else
-            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY or not set"
+            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY"
           fi
 
       - name: Deploy worker
@@ -123,10 +128,15 @@ jobs:
 
       - name: Debug auth
         run: |
+          echo "::notice::Total env vars: $(env | wc -l)"
+          echo "::notice::Matching CLOUDFLARE vars:"
+          env | grep -i cloudflare || echo "(none)"
+          echo "::notice::All CF/CLOUDFLARE related:"
+          env | grep -iE '^(CF_|CLOUDFLARE)' || echo "(none)"
           if [ -n "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::notice::CLOUDFLARE_API_TOKEN is set (${#CLOUDFLARE_API_TOKEN} chars)"
+            echo "::notice::CLOUDFLARE_API_TOKEN length: ${#CLOUDFLARE_API_TOKEN}"
           else
-            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY or not set"
+            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY"
           fi
 
       - name: Deploy to Cloudflare Pages
