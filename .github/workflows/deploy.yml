@@ -100,7 +100,25 @@ jobs:
           fi
 
       - name: Deploy worker
-        run: npx wrangler@latest deploy --env production
+        run: |
+          VAR_ARGS=()
+          [ -n "$JWT_SECRET" ] && VAR_ARGS+=(--var "JWT_SECRET:$JWT_SECRET")
+          [ -n "$SQUARE_ACCESS_TOKEN" ] && VAR_ARGS+=(--var "SQUARE_ACCESS_TOKEN:$SQUARE_ACCESS_TOKEN")
+          [ -n "$SQUARE_APP_ID" ] && VAR_ARGS+=(--var "SQUARE_APP_ID:$SQUARE_APP_ID")
+          [ -n "$SQUARE_LOCATION_ID" ] && VAR_ARGS+=(--var "SQUARE_LOCATION_ID:$SQUARE_LOCATION_ID")
+          [ -n "$BREVO_API_KEY" ] && VAR_ARGS+=(--var "BREVO_API_KEY:$BREVO_API_KEY")
+          [ -n "$SENDER_EMAIL" ] && VAR_ARGS+=(--var "SENDER_EMAIL:$SENDER_EMAIL")
+          [ -n "$SENDER_NAME" ] && VAR_ARGS+=(--var "SENDER_NAME:$SENDER_NAME")
+          [ -n "$FORWARD_TO_EMAIL" ] && VAR_ARGS+=(--var "FORWARD_TO_EMAIL:$FORWARD_TO_EMAIL")
+          [ -n "$LOGGING_EMAIL" ] && VAR_ARGS+=(--var "LOGGING_EMAIL:$LOGGING_EMAIL")
+          [ -n "$WHATSAPP_TOKEN" ] && VAR_ARGS+=(--var "WHATSAPP_TOKEN:$WHATSAPP_TOKEN")
+          [ -n "$WHATSAPP_PHONE_ID" ] && VAR_ARGS+=(--var "WHATSAPP_PHONE_ID:$WHATSAPP_PHONE_ID")
+          [ -n "$WHATSAPP_VERIFY_TOKEN" ] && VAR_ARGS+=(--var "WHATSAPP_VERIFY_TOKEN:$WHATSAPP_VERIFY_TOKEN")
+          [ -n "$LLM_API_KEY" ] && VAR_ARGS+=(--var "LLM_API_KEY:$LLM_API_KEY")
+          [ -n "$API_URL" ] && VAR_ARGS+=(--var "API_URL:$API_URL")
+          [ -n "$VAPID_PUBLIC_KEY" ] && VAR_ARGS+=(--var "VAPID_PUBLIC_KEY:$VAPID_PUBLIC_KEY")
+          [ -n "$VAPID_PRIVATE_KEY" ] && VAR_ARGS+=(--var "VAPID_PRIVATE_KEY:$VAPID_PRIVATE_KEY")
+          npx wrangler@latest deploy --env production --var ENVIRONMENT:production "${VAR_ARGS[@]}"
         working-directory: ${{ matrix.dir }}
 
   deploy-pages:

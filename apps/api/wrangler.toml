@@ -26,17 +26,13 @@ SQUARE_ACCESS_TOKEN = ""
 SQUARE_APP_ID = ""
 SQUARE_LOCATION_ID = ""
 BREVO_API_KEY = ""
-SENDER_EMAIL = ""
-SENDER_NAME = ""
-FORWARD_TO_EMAIL = ""
-LOGGING_EMAIL = ""
+SENDER_EMAIL = "automated@masjidsuffah.com"
+SENDER_NAME = "Masjid Suffah"
+FORWARD_TO_EMAIL = "suffahmasjid@gmail.com"
+LOGGING_EMAIL = "masjidsuffahlogging@gmail.com"
 BOT_NAME = "masjid-api/1.0"
 
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "masjid-db"
 database_id = "placeholder-db-id"
-
-[[env.production.kv_namespaces]]
-binding = "CACHE"
-id = "placeholder-kv-id"
