@@ -65,10 +65,19 @@ export async function createSquareTermPlan(
       id: '#plan',
       subscription_plan_data: {
         name: term.name,
-        phases: prices.map((amount, i) => ({
-          cadence: 'MONTHLY',
-          periods: term.length_months,
-          recurring_price_money: { amount, currency: 'USD' },
+        subscription_plan_variations: prices.map((amount, i) => ({
+          type: 'SUBSCRIPTION_PLAN_VARIATION',
+          id: `#var_${i}`,
+          subscription_plan_variation_data: {
+            name: `${i + 1} Student(s)`,
+            phases: [
+              {
+                cadence: 'MONTHLY',
+                periods: term.length_months,
+                recurring_price_money: { amount, currency: 'USD' },
+              },
+            ],
+          },
         })),
       },
     },
@@ -77,12 +86,12 @@ export async function createSquareTermPlan(
   const response = await squarePost<{
     catalog_object: {
       id: string;
-      subscription_plan_data: { phases: any[] };
+      subscription_plan_data: { subscription_plan_variations: any[] };
     };
   }>(fullEnv, '/catalog/object', upsertBody);
 
   const variationIds = sortPlanVariations(
-    response.catalog_object.subscription_plan_data.phases,
+    response.catalog_object.subscription_plan_data.subscription_plan_variations,
   );
 
   if (variationIds.length !== 3) {
