@@ -56,6 +56,8 @@ CREATE TABLE masjid_themes (
     label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
     label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
     label_jumuah TEXT NOT NULL DEFAULT "Jumu'ah",
+    label_speech TEXT NOT NULL DEFAULT 'Speech',
+    label_speech TEXT NOT NULL DEFAULT 'Speech',
     label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
     label_fajr TEXT NOT NULL DEFAULT 'Fajr',
     label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',

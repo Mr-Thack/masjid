@@ -42,34 +42,40 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const passwordHash = await hashPassword(body.admin_password);
     const now = new Date().toISOString();
 
-    await db.insert(masjids).values({
-        id: masjidId,
-        slug: body.slug,
-        name: body.name,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        timezone: body.timezone,
-        calculationMethod: body.calculation_method,
-        adminEmail: body.admin_email,
-        tenantStatus: 'ACTIVE',
-        createdAt: now,
-      });
-    await db.insert(masjidThemes).values({
-        masjidId,
-        layoutPreset: 'modern_minimal',
-        primaryColor: '#1e3a8a',
-        accentColor: '#10b981',
-        fontHeading: 'Inter',
-        fontBody: 'Roboto',
-      });
-    await db.insert(admins).values({
-        id: adminId,
-        masjidId,
-        email: body.admin_email.toLowerCase().trim(),
-        passwordHash,
-        displayName: body.admin_display_name ?? null,
-        createdAt: now,
-      });
+    try {
+      await db.batch([
+        db.insert(masjids).values({
+          id: masjidId,
+          slug: body.slug,
+          name: body.name,
+          latitude: body.latitude,
+          longitude: body.longitude,
+          timezone: body.timezone,
+          calculationMethod: body.calculation_method,
+          adminEmail: body.admin_email,
+          tenantStatus: 'ACTIVE',
+          createdAt: now,
+        }),
+        db.insert(masjidThemes).values({
+          masjidId,
+          layoutPreset: 'modern_minimal',
+          primaryColor: '#1e3a8a',
+          accentColor: '#10b981',
+          fontHeading: 'Inter',
+          fontBody: 'Roboto',
+        }),
+        db.insert(admins).values({
+          id: adminId,
+          masjidId,
+          email: body.admin_email.toLowerCase().trim(),
+          passwordHash,
+          displayName: body.admin_display_name ?? null,
+          createdAt: now,
+        }),
+      ]);
+    } catch (e) {
+      return ErrorJsonResponse('INTERNAL_ERROR', `batch insert failed: ${String(e)}`);
+    }
 
     const token = await signAccessToken(
       { sub: adminId, masjid_id: masjidId },
@@ -89,6 +95,6 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     if (e instanceof Error && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
     }
-    return ErrorJsonResponse('INTERNAL_ERROR', 'Registration failed');
+    return ErrorJsonResponse('INTERNAL_ERROR', `Registration failed: ${String(e)}`);
   }
 };
