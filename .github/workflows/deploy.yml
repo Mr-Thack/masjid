@@ -57,6 +57,7 @@ jobs:
     environment: Prod
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
       SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
@@ -99,7 +100,7 @@ jobs:
           fi
 
       - name: Deploy worker
-        run: npx wrangler deploy --env production
+        run: npx wrangler@latest deploy --env production
         working-directory: ${{ matrix.dir }}
 
   deploy-pages:
@@ -109,6 +110,7 @@ jobs:
     environment: Prod
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -142,7 +144,7 @@ jobs:
           fi
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
+        run: npx wrangler@latest pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
         working-directory: ${{ matrix.dir }}
 
   summary:
