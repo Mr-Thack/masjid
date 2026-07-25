@@ -32,6 +32,8 @@
     applyTheme(theme);
   });
 
+  let embed = $derived($page.url.searchParams.has('embed'));
+
   const navItems = [
     {
       segment: '',
@@ -85,10 +87,11 @@
   class="min-h-dvh flex flex-col"
   style="background-color: var(--color-bg); color: var(--color-text);"
 >
-  <header
-    class="sticky top-0 z-50 glass border-b"
-    style="border-top: 3px solid var(--color-primary); border-color: var(--color-border);"
-  >
+  {#if !embed}
+    <header
+      class="sticky top-0 z-50 glass border-b"
+      style="border-top: 3px solid var(--color-primary); border-color: var(--color-border);"
+    >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
       <a href={navHref('')} class="flex items-center gap-3 no-underline min-w-0">
         <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold bg-primary text-white flex-shrink-0">
@@ -118,14 +121,16 @@
       </nav>
     </div>
   </header>
+  {/if}
 
   <main
-    class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-8 {transitioning ? 'opacity-50' : 'opacity-100'}"
+    class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 {embed ? 'pb-6' : 'pb-24 lg:pb-8'} {transitioning ? 'opacity-50' : 'opacity-100'}"
     style="transition: opacity 0.2s ease;"
   >
     {@render children()}
   </main>
 
+  {#if !embed}
   <nav
     class="fixed bottom-0 left-0 right-0 z-50 glass border-t lg:hidden"
     style="padding-bottom: var(--safe-bottom); border-color: var(--color-border);"
@@ -147,4 +152,5 @@
       {/each}
     </div>
   </nav>
+  {/if}
 </div>

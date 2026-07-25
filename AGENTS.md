@@ -1,14 +1,14 @@
 # AGENTS.md
 
-## Current state (2026-07-23)
+## Current state (2026-07-24)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 273 tests)
+- **Working API** (SvelteKit + D1, 408 tests)
 - **Working TV frontend** (SvelteKit static, 28 tests — no Tailwind, hand-written CSS ~6 KB)
-- **Working consumer frontend** (SvelteKit static/SPA, 36 tests)
+- **Working consumer frontend** (SvelteKit static/SPA, 47 tests, 1 pre-existing Jumuah homepage failure)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
-- **488 tests passing** (273 API + 215 WhatsApp)
+- **670+ tests passing** (408 API + 215 WhatsApp + 47 consumer)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 
 ## How to start everything
@@ -29,9 +29,9 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test          # API tests, 273 (no external deps)
+npm run test          # API tests, 408 (no external deps)
 npm run test:tv       # TV frontend, 28 tests (jsdom + testing-library)
-npm run test:consumer # Consumer frontend, 36 tests (jsdom + testing-library)
+npm run test:consumer # Consumer frontend, 47 tests (jsdom + testing-library; 1 pre-existing Jumuah homepage failure)
 npm run test:whatsapp # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw       # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:agent    # Agent package tests (pending: ~175 expected)
@@ -48,6 +48,8 @@ npm run test:all      # everything (excluding test:sw and test:admin since they 
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Consumer page: `http://localhost:5175/masjid-al-noor`
 - TV page: `http://localhost:5174/display/masjid-al-noor`
+- Maktab enrollment: `http://localhost:5175/masjid-al-noor/maktab/enroll`
+  - Seed term: Fall 2026, 4 months, open, prices $100 / $160 / $200 per month
 
 ### Masjid Al-Jabal (Kennesaw, GA)
 - Team: `admin@masjid-aljabal.org` / `password123`
@@ -331,9 +333,11 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 Maktab enrollment lives inside the main `@masjid/api` monolith, using the same D1/SQLite database as the rest of the platform.
 
 ### State
-- **4 API tests** covering public info, admin term/settings CRUD, and full Square enrollment flow.
+- **408 API tests** total; 56 of those cover Maktab (public info, auth, validation, admin CRUD, Square enrollment, term activation, registrations, and helper units for Square/email/money/schemas).
 - **Square is the only payment provider**; Stripe support was removed because account verification could not be completed in time.
 - **No migration from `suffah-old`** — only new enrollments are tracked.
+- **Embed mode** for the enrollment form: `?embed=1` (or `?embed=true`) hides the consumer header and bottom navigation so the form can be dropped into an existing masjid website via iframe.
+- **Local dev secrets** live in `apps/api/.dev.vars` — this file is gitignored and loaded by Wrangler-style dev setups (and merged into `process.env` by the Maktab API routes for `vite dev`).
 
 ### D1 tables
 | Table | Purpose |
@@ -374,3 +378,5 @@ npm run test
 - Need to inspect the running page? `curl http://localhost:5175/masjid-al-noor` gives the SSR output
 - The CSS is served at `http://localhost:5175/src/app.css` — contains the full compiled Tailwind v4 output
 - To start admin: `npm run dev --workspace=@masjid/admin` (port 5176)
+- Maktab form embed URL: `http://localhost:5175/masjid-al-noor/maktab/enroll?embed=1`
+- Maktab dev secrets (Square/Brevo) go in `apps/api/.dev.vars`; put real values there for live sandbox testing

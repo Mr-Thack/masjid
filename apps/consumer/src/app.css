@@ -5,6 +5,7 @@
   --color-accent: var(--color-accent);
   --color-primary-light: var(--color-primary-light);
   --color-accent-light: var(--color-accent-light);
+  --color-surface: var(--color-surface);
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
 }

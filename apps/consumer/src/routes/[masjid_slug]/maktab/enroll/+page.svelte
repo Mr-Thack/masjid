@@ -8,6 +8,7 @@
   let slug = $derived($page.params.masjid_slug);
   let masjid = $derived($page.data.masjid);
   let maktab = $derived($page.data.maktab);
+  let embed = $derived($page.url.searchParams.has('embed'));
 
   let form = $state({
     father: { name: '', phone: '', email: '' },
@@ -152,13 +153,15 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto pb-12">
-  <a
-    href="/{slug}/maktab"
-    class="text-sm font-medium inline-flex items-center gap-1 mb-4 no-underline"
-    style="color: var(--color-accent);"
-  >
-    ← Back to Maktab
-  </a>
+  {#if !embed}
+    <a
+      href="/{slug}/maktab"
+      class="text-sm font-medium inline-flex items-center gap-1 mb-4 no-underline"
+      style="color: var(--color-accent);"
+    >
+      ← Back to Maktab
+    </a>
+  {/if}
 
   <h1 class="text-2xl sm:text-3xl font-bold font-heading mb-2">Maktab Enrollment</h1>
 
@@ -178,13 +181,15 @@
       <p style="color: var(--color-text-muted);">
         Thank you! Your enrollment has been received and a confirmation will be sent by email.
       </p>
-      <a
-        href="/{slug}"
-        class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline"
-        style="background-color: var(--color-primary);"
-      >
-        Return Home
-      </a>
+      {#if !embed}
+        <a
+          href="/{slug}"
+          class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline"
+          style="background-color: var(--color-primary);"
+        >
+          Return Home
+        </a>
+      {/if}
     </div>
   {:else}
     <form
@@ -201,7 +206,7 @@
             <input
               type="text"
               bind:value={form.father.name}
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -210,7 +215,7 @@
             <input
               type="text"
               bind:value={form.mother.name}
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -220,7 +225,7 @@
               type="tel"
               bind:value={form.father.phone}
               placeholder="+1 555 123 4567"
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -230,7 +235,7 @@
               type="tel"
               bind:value={form.mother.phone}
               placeholder="+1 555 123 4567"
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -239,7 +244,7 @@
             <input
               type="email"
               bind:value={form.father.email}
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -248,7 +253,7 @@
             <input
               type="email"
               bind:value={form.mother.email}
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -264,7 +269,7 @@
               type="text"
               bind:value={form.address_line1}
               autocomplete="street-address"
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -274,7 +279,7 @@
               type="text"
               bind:value={form.city}
               autocomplete="address-level2"
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -284,7 +289,7 @@
               type="text"
               bind:value={form.postal_code}
               autocomplete="postal-code"
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -294,7 +299,7 @@
               type="text"
               bind:value={form.country}
               autocomplete="country-name"
-              class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+              class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
           </label>
@@ -332,18 +337,18 @@
                 type="text"
                 bind:value={child.name}
                 placeholder="Full name"
-                class="rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+                class="rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
                 style="border-color: var(--color-border); color: var(--color-text);"
               />
               <input
                 type="date"
                 bind:value={child.dob}
-                class="rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+                class="rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
                 style="border-color: var(--color-border); color: var(--color-text);"
               />
               <select
                 bind:value={child.sex}
-                class="rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+                class="rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
                 style="border-color: var(--color-border); color: var(--color-text);"
               >
                 <option value="" disabled>Gender</option>
@@ -366,7 +371,7 @@
                 type="text"
                 bind:value={form.card_holder_name}
                 autocomplete="cc-name"
-                class="w-full rounded-lg px-3 py-2 bg-black/10 border outline-none focus:ring-2 focus:ring-primary/50"
+                class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
                 style="border-color: var(--color-border); color: var(--color-text);"
               />
             </label>
@@ -403,6 +408,20 @@
           >
             {submitting ? 'Processing…' : 'Complete Enrollment'}
           </button>
+        </div>
+
+        <div class="mt-6 rounded-xl p-5 text-sm space-y-3" style="background-color: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted);">
+          <h3 class="font-semibold font-heading" style="color: var(--color-text);">When you continue to payment, you agree to the following:</h3>
+          <ol class="list-decimal pl-5 space-y-1">
+            <li>You are signing up for the <strong style="color: var(--color-text);">full program ({maktab.term.length_months} months)</strong>, not just one month at a time.</li>
+            <li><strong style="color: var(--color-text);">There are no refunds</strong>, even if your child stops coming.</li>
+            <li><strong style="color: var(--color-text);">You will still be charged each month</strong>, even if your child does not attend.</li>
+            <li><strong style="color: var(--color-text);">You cannot cancel or leave</strong> the program once you are signed up.</li>
+            <li>Your card will be <strong style="color: var(--color-text);">charged automatically every month</strong>.</li>
+          </ol>
+          <p>
+            By clicking the <em style="color: var(--color-text);">"Complete Enrollment"</em> button above, you agree to these terms.
+          </p>
         </div>
       </section>
 

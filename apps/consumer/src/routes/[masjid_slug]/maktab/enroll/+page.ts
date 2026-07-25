@@ -8,7 +8,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
   try {
     maktab = await fetchMaktabInfo(params.masjid_slug, fetch);
   } catch (e) {
-    error = e instanceof Error ? e.message : 'Unable to load enrollment information.';
+    error = e instanceof Error ? e.message : 'Unable to load Maktab information.';
   }
 
   return {
