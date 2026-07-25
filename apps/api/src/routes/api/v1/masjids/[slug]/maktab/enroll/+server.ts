@@ -55,8 +55,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       return ErrorJsonResponse('INTERNAL_ERROR', 'Active term is not linked to Square plans');
     }
 
-    const devEnv = typeof process !== 'undefined' && process.env ? process.env : {};
-    const env = { ...devEnv, ...(platform?.env ?? {}) } as Record<string, string | undefined>;
+    const env = (platform?.env ?? {}) as Record<string, string | undefined>;
     const squareEnv = {
       SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN,
       SQUARE_APP_ID: env.SQUARE_APP_ID,

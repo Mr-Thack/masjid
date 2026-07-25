@@ -52,8 +52,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
   try {
     const body = TermCreateSchema.parse(await request.json());
     const db = getDb(platform?.env?.DB);
-    const devEnv = typeof process !== 'undefined' && process.env ? process.env : {};
-    const env = { ...devEnv, ...(platform?.env ?? {}) };
+    const env = (platform?.env ?? {}) as Record<string, unknown>;
 
     const termId = crypto.randomUUID();
     await db.insert(mktTerms).values({

@@ -32,8 +32,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           .get()
       : null;
 
-    const devEnv = typeof process !== 'undefined' && process.env ? process.env : {};
-    const env = { ...devEnv, ...(platform?.env ?? {}) } as Record<string, string | undefined>;
+    const env = (platform?.env ?? {}) as Record<string, string | undefined>;
     const hasSquare = !!(env.SQUARE_ACCESS_TOKEN && env.SQUARE_APP_ID && env.SQUARE_LOCATION_ID);
 
     return JsonResponse({
