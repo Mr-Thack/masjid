@@ -2,6 +2,9 @@ name = "mwa"
 compatibility_date = "2024-12-01"
 main = "src/index.ts"
 
+[observability]
+enabled = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "masjid-db"
