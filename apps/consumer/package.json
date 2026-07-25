@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test:sw": "node tests/sw-integration.test.js",
-    "deploy": "npx wrangler pages deploy build --project-name=masjid --branch=master"
+    "deploy": "npx wrangler pages deploy build --project-name=masjid-live --branch=master"
   },
   "dependencies": {
     "@masjid/schemas": "*",

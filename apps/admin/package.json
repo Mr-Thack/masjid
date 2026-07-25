@@ -7,7 +7,7 @@
     "dev": "vite dev --port 5176",
     "build": "vite build",
     "preview": "vite preview --port 5176",
-    "deploy": "npx wrangler pages deploy build --project-name=madmin --branch=master"
+    "deploy": "npx wrangler pages deploy build --project-name=masjid-live-admin --branch=master"
   },
   "dependencies": {
     "@masjid/schemas": "*",

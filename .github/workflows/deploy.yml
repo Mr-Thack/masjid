@@ -154,7 +154,7 @@ jobs:
           fi
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@latest pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
+        run: npx wrangler@latest pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid-live' || matrix.name == 'tv' && 'masjid-live-tv' || 'masjid-live-admin' }} --branch=master
         working-directory: ${{ matrix.dir }}
 
   summary:

@@ -1,9 +1,9 @@
 import { execSync } from 'node:child_process';
 
 const pages = [
-  { name: 'consumer', pkg: '@masjid/consumer', project: 'masjid' },
-  { name: 'tv', pkg: '@masjid/tv', project: 'tv' },
-  { name: 'admin', pkg: '@masjid/admin', project: 'madmin' },
+  { name: 'consumer', pkg: '@masjid/consumer', project: 'masjid-live' },
+  { name: 'tv', pkg: '@masjid/tv', project: 'masjid-live-tv' },
+  { name: 'admin', pkg: '@masjid/admin', project: 'masjid-live-admin' },
 ];
 
 const argv = process.argv.slice(2);
