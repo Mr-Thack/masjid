@@ -66,6 +66,10 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       paymentRefsJson: '{}',
     });
 
+    let squareError: string | null = null;
+    let squareRefs: unknown = null;
+    const hasSquareEnv = !!(env.SQUARE_ACCESS_TOKEN && env.SQUARE_APP_ID && env.SQUARE_LOCATION_ID);
+
     try {
       const refs = await createSquareTermPlan(
         {
@@ -83,6 +87,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
           ENVIRONMENT: env.ENVIRONMENT as string | undefined,
         },
       );
+      squareRefs = refs;
       if (refs) {
         await db
           .update(mktTerms)
@@ -90,13 +95,16 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
           .where(eq(mktTerms.id, termId));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error('Square term pricing failed:', message);
-      // Term exists but cannot enroll until Square plan is linked.
+      squareError = err instanceof Error ? err.message : String(err);
+      console.error('Square term pricing failed:', squareError);
     }
 
     const inserted = await db.select().from(mktTerms).where(eq(mktTerms.id, termId)).get();
-    return JsonResponse({ term: inserted ? termToPublic(inserted) : null }, 201);
+    return JsonResponse({
+      term: inserted ? termToPublic(inserted) : null,
+      square_status: squareError ? `failed: ${squareError}` : (squareRefs ? 'created' : (hasSquareEnv ? 'attempted but refs empty' : 'square env missing')),
+      square_env: { hasToken: !!env.SQUARE_ACCESS_TOKEN, hasApp: !!env.SQUARE_APP_ID, hasLoc: !!env.SQUARE_LOCATION_ID },
+    }, 201);
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'name' in e && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);

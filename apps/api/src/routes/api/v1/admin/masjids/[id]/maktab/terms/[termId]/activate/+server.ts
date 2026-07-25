@@ -30,7 +30,7 @@ export const POST: RequestHandler = async ({ params, locals, platform }) => {
     if (!refs.square) {
       return ErrorJsonResponse(
         'CONFLICT',
-        'Term does not have a Square payment plan configured yet',
+        `Term "${term.name}" has no Square plan. paymentRefsJson=${term.paymentRefsJson}. Square env: TOKEN=${!!platform?.env?.SQUARE_ACCESS_TOKEN} APP=${!!platform?.env?.SQUARE_APP_ID} LOC=${!!platform?.env?.SQUARE_LOCATION_ID}`,
       );
     }
 
