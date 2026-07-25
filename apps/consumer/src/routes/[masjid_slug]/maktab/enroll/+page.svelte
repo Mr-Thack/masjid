@@ -224,20 +224,22 @@
             <input
               type="tel"
               bind:value={form.father.phone}
-              placeholder="+1 555 123 4567"
+              placeholder="555-123-4567"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
+            <p class="text-xs font-bold mt-1" style="color: var(--color-accent);">* Include country code (+1)</p>
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Mother's Phone</span>
             <input
               type="tel"
               bind:value={form.mother.phone}
-              placeholder="+1 555 123 4567"
+              placeholder="555-123-4567"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
+            <p class="text-xs font-bold mt-1" style="color: var(--color-accent);">* Include country code (+1)</p>
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Father's Email</span>
