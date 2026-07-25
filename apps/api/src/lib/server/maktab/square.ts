@@ -69,7 +69,7 @@ export async function createSquareTermPlan(
         phases: prices.map((amount, i) => ({
           cadence: 'MONTHLY',
           periods: term.length_months,
-          recurring_price_money: { amount: String(amount), currency: 'USD' },
+          recurring_price_money: { amount, currency: 'USD' },
         })),
       },
     },
