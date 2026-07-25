@@ -69,21 +69,21 @@ jobs:
       - run: npm ci
 
       - name: Build worker
-        run: npm run build --workspace=${{ matrix.include.workspace }}
+        run: npm run build --workspace=${{ matrix.workspace }}
 
       - name: Apply D1 migrations (API only)
-        if: matrix.include.name == 'api'
+        if: matrix.name == 'api'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          workingDirectory: ${{ matrix.include.dir }}
+          workingDirectory: ${{ matrix.dir }}
           command: d1 migrations apply masjid-db --env production --remote
 
       - name: Deploy worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          workingDirectory: ${{ matrix.include.dir }}
+          workingDirectory: ${{ matrix.dir }}
           command: deploy --env production
           secrets: |
             JWT_SECRET
@@ -129,7 +129,7 @@ jobs:
       - run: npm ci
 
       - name: Build page
-        run: npm run build --workspace=${{ matrix.include.workspace }}
+        run: npm run build --workspace=${{ matrix.workspace }}
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
 
@@ -137,8 +137,8 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          workingDirectory: ${{ matrix.include.dir }}
-          command: pages deploy build --project-name=${{ matrix.include.name == 'consumer' && 'masjid' || matrix.include.name == 'tv' && 'tv' || 'madmin' }} --branch=master
+          workingDirectory: ${{ matrix.dir }}
+          command: pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
 
   summary:
     needs: [detect-changes, deploy-workers, deploy-pages]
