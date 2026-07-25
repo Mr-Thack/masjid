@@ -147,7 +147,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         expires_at: a.expiresAt,
       })),
     });
-  } catch {
-    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to fetch masjid page');
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('GET masjid page error:', message, e instanceof Error ? e.stack : '');
+    return ErrorJsonResponse('INTERNAL_ERROR', `Failed to fetch masjid page: ${message}`);
   }
 };

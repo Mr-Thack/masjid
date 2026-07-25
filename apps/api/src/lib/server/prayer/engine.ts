@@ -143,10 +143,12 @@ export function verifyComputedTimes(times: ComputedTimes): void {
   for (let i = 1; i < order.length; i++) {
     const currentIqaamah = parseHM(times[order[i]!].iqaamah);
     if (currentIqaamah <= previousIqaamah) {
-      throw new Error(`Prayer order invalid around ${order[i]}`);
+      console.warn(`Prayer order invalid around ${order[i]} for masjid (iqaamah=${times[order[i]!].iqaamah}, prev=${times[order[i-1]!].iqaamah})`);
+      // Don't throw — bad coordinates/timezone can cause order violations.
+      // The admin needs to fix their masjid config, not crash the page.
     }
     if (minutesBetween(times[order[i - 1]!].iqaamah, times[order[i]!].adhaan) < 0) {
-      throw new Error(`Adhaan of ${order[i]} is before iqaamah of ${order[i - 1]}`);
+      console.warn(`Adhaan of ${order[i]} is before iqaamah of ${order[i - 1]}`);
     }
     previousIqaamah = currentIqaamah;
   }

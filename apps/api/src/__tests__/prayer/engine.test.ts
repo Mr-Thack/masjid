@@ -522,7 +522,8 @@ describe('verifyComputedTimes', () => {
     expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Fajr iqaamah must be before sunrise/);
   });
 
-  it('rejects inverted prayer order', () => {
+  it('warns but does not reject inverted prayer order', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const times = {
       fajr: { adhaan: '05:21', iqaamah: '05:41' },
       sunrise: '06:42',
@@ -531,6 +532,8 @@ describe('verifyComputedTimes', () => {
       maghrib: { adhaan: '20:48', iqaamah: '20:53' },
       isha: { adhaan: '19:00', iqaamah: '19:10' },
     };
-    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Prayer order invalid/);
+    expect(() => verifyComputedTimes(times as ComputedTimes)).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Prayer order invalid'));
+    warnSpy.mockRestore();
   });
 });
