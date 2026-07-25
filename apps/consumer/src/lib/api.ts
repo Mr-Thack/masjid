@@ -84,7 +84,7 @@ export interface MaktabInfo {
   } | null;
 }
 
-const BASE = `${import.meta.env.VITE_API_URL || ''}/api/v1/masjids`;
+export const BASE = `${import.meta.env.VITE_API_URL || ''}/api/v1/masjids`;
 
 export async function fetchPagePayload(
   slug: string,

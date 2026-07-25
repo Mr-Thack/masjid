@@ -4,7 +4,15 @@ import {
   fetchPrayerTimes,
   fetchAnnouncements,
   fetchJumuah,
+  BASE,
 } from '$lib/api';
+
+describe('BASE URL', () => {
+  it('falls back to relative path when VITE_API_URL is not set', () => {
+    // import.meta.env.VITE_API_URL defaults to undefined in test
+    expect(BASE).toBe('/api/v1/masjids');
+  });
+});
 
 function mockFetch(data: unknown, ok = true, status = 200) {
   return vi.fn().mockResolvedValue({
