@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite dev --port 5176",
     "build": "vite build",
-    "preview": "vite preview --port 5176"
+    "preview": "vite preview --port 5176",
+    "deploy": "npx wrangler pages deploy build --project-name=madmin --branch=main"
   },
   "dependencies": {
     "@masjid/schemas": "*",

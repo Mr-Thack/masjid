@@ -326,7 +326,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 - **All LLM calls go through the API server** — the project's single API key is used server-side
 - **Tailwind v4** CSS-first config in `app.css`
 - **svelte-sonner** for toast notifications, **lucide-svelte** for icons
-- **No service worker** — browser cache is sufficient
+- **No service worker** — browser cache is sufficient. There is no `navigator.serviceWorker.register()` call and no `static/sw.js`; the admin app does not currently need offline support or push notifications. A stale SW-like poisoning risk from the catch-all `Cache-Control` header in `static/_headers` was fixed (see `docs/admin-cache-poisoning.md`), and a page-level `/sw-kill` cleanup route is included in `app.html` for recovery.
 
 ## Maktab Registration (`apps/api`)
 

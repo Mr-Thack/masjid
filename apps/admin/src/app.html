@@ -9,6 +9,35 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..900;1,14..32,300..900&family=Roboto:ital,wght@0,100..900;1,100..900&family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Naskh+Arabic:wght@400..700&family=Scheherazade+New:wght@400..700&display=swap" rel="stylesheet" />
     %sveltekit.head%
+    <script>
+      // Admin app deliberately does not register a service worker.
+      // If a stale service worker from an earlier version is somehow active,
+      // visiting /sw-kill will unregister it, clear its caches, and reload clean.
+      (function () {
+        function goHome() {
+          location.replace('/');
+        }
+        if (location.pathname === '/sw-kill') {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker
+              .getRegistrations()
+              .then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              })
+              .then(function () {
+                if ('caches' in self) {
+                  return caches.keys().then(function (names) {
+                    return Promise.all(names.map(function (n) { return caches.delete(n); }));
+                  });
+                }
+              })
+              .then(goHome, goHome);
+          } else {
+            goHome();
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div style="display: contents">%sveltekit.body%</div>

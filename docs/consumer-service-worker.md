@@ -101,7 +101,22 @@ If offline prayer times are not a priority, removing the SW eliminates this enti
 2. Or visit `chrome://serviceworker-internals/` and unregister the entry for `localhost:5175` / the production origin.
 3. Hard reload with **Ctrl+Shift+R**.
 
+## A similar poisoning pattern in the admin app
+
+The admin app (`apps/admin`) does **not** register a service worker. However, it had an analogous client-poisoning vector in its `static/_headers` file:
+
+```text
+/*
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+```
+
+Because `@sveltejs/adapter-static` rewrites every path to `index.html`, this catch-all header cached the SPA shell for up to an hour and allowed stale-while-revalidate for a day. After a deployment, a stale `index.html` could reference immutable JS/CSS files that no longer existed, producing the same permanent hydration/breakage that the consumer service-worker bug caused.
+
+The admin `_headers` were hardened so only immutable hashed assets are long-cached, while the shell gets `no-cache, no-store, must-revalidate`. A page-level `/sw-kill` route was also added to clear any stale service-worker/cache state. See `docs/admin-cache-poisoning.md` for the full write-up.
+
 ## References
 
 - `apps/consumer/static/sw.js`
 - `apps/consumer/src/app.html` (registers the SW)
+- `apps/admin/static/_headers`
+- `docs/admin-cache-poisoning.md`

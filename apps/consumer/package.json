@@ -8,7 +8,8 @@
     "postbuild": "node scripts/sw-hash.js",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test:sw": "node tests/sw-integration.test.js"
+    "test:sw": "node tests/sw-integration.test.js",
+    "deploy": "npx wrangler pages deploy build --project-name=masjid --branch=main"
   },
   "dependencies": {
     "@masjid/schemas": "*",

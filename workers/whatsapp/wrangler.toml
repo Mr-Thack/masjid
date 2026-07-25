@@ -1,4 +1,4 @@
-name = "masjid-worker-whatsapp"
+name = "mwa"
 compatibility_date = "2024-12-01"
 main = "src/index.ts"
 
@@ -20,3 +20,21 @@ WHATSAPP_VERIFY_TOKEN = "placeholder-verify-token"
 LLM_API_URL = "https://openrouter.ai/api/v1"
 LLM_API_KEY = "placeholder-openrouter-key"
 LLM_MODEL = "google/gemma-4-31b-it"
+
+[env.production]
+name = "mwa"
+
+[env.production.vars]
+API_URL = ""
+JWT_SECRET = ""
+LLM_API_URL = "https://openrouter.ai/api/v1"
+LLM_MODEL = "google/gemma-4-31b-it"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "masjid-db"
+database_id = "placeholder-db-id"
+
+[[env.production.r2_buckets]]
+binding = "ASSETS"
+bucket_name = "masjid-assets"

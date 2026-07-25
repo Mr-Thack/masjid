@@ -1,4 +1,4 @@
-name = "masjid-worker-push"
+name = "mpush"
 compatibility_date = "2024-12-01"
 main = "src/index.ts"
 
@@ -14,3 +14,14 @@ database_id = "placeholder-db-id"
 VAPID_SUBJECT = "mailto:admin@masjid.local"
 VAPID_PUBLIC_KEY = "placeholder-vapid-public-key"
 VAPID_PRIVATE_KEY = "placeholder-vapid-private-key"
+
+[env.production]
+name = "mpush"
+
+[env.production.vars]
+VAPID_SUBJECT = ""
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "masjid-db"
+database_id = "placeholder-db-id"

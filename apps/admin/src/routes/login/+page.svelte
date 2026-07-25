@@ -2,6 +2,8 @@
   import { goto } from '$app/navigation';
   import { auth } from '$lib/auth.svelte';
 
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+
   let email = $state('');
   let password = $state('');
   let error = $state<string | null>(null);
@@ -17,7 +19,7 @@
     submitting = true;
     try {
       const admin = await auth.login(email.trim(), password);
-      const profile = await fetch(`/api/v1/admin/masjids/${admin.masjid_id}`, {
+      const profile = await fetch(`${API_BASE}/api/v1/admin/masjids/${admin.masjid_id}`, {
         headers: { Authorization: `Bearer ${auth.token}` },
       }).then(r => r.json());
       goto(`/admin/${profile.slug}`);
@@ -32,7 +34,7 @@
     if (auth.isAuthenticated) {
       auth.checkAuth().then(valid => {
         if (valid && auth.admin) {
-          fetch(`/api/v1/admin/masjids/${auth.admin.masjid_id}`, {
+          fetch(`${API_BASE}/api/v1/admin/masjids/${auth.admin.masjid_id}`, {
             headers: { Authorization: `Bearer ${auth.token}` },
           }).then(r => r.json()).then(profile => {
             goto(`/admin/${profile.slug}`);
@@ -87,5 +89,9 @@
         </button>
       </form>
     </div>
+
+    <p class="text-text-muted text-sm text-center mt-4">
+      No account? <a href="/register" class="text-accent underline">Create one</a>
+    </p>
   </div>
 </div>

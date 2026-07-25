@@ -1,4 +1,4 @@
-name = "masjid-api"
+name = "mapi"
 compatibility_date = "2024-12-01"
 main = ".svelte-kit/cloudflare/_worker.js"
 
@@ -14,3 +14,28 @@ id = "placeholder-kv-id"
 [vars]
 JWT_SECRET = "placeholder-jwt-secret-replace-in-production"
 ENVIRONMENT = "dev"
+
+[env.production]
+name = "mapi"
+
+[env.production.vars]
+JWT_SECRET = ""
+ENVIRONMENT = "production"
+SQUARE_ACCESS_TOKEN = ""
+SQUARE_APP_ID = ""
+SQUARE_LOCATION_ID = ""
+BREVO_API_KEY = ""
+SENDER_EMAIL = ""
+SENDER_NAME = ""
+FORWARD_TO_EMAIL = ""
+LOGGING_EMAIL = ""
+BOT_NAME = "masjid-api/1.0"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "masjid-db"
+database_id = "placeholder-db-id"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "placeholder-kv-id"

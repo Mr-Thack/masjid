@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler deploy --env production",
+    "deploy:dry": "wrangler deploy --env production --dry-run",
     "dev": "wrangler dev"
   },
   "dependencies": {

@@ -42,8 +42,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const passwordHash = await hashPassword(body.admin_password);
     const now = new Date().toISOString();
 
-    await db.batch([
-      db.insert(masjids).values({
+    await db.insert(masjids).values({
         id: masjidId,
         slug: body.slug,
         name: body.name,
@@ -54,24 +53,23 @@ export const POST: RequestHandler = async ({ request, platform }) => {
         adminEmail: body.admin_email,
         tenantStatus: 'ACTIVE',
         createdAt: now,
-      }),
-      db.insert(masjidThemes).values({
+      });
+    await db.insert(masjidThemes).values({
         masjidId,
         layoutPreset: 'modern_minimal',
         primaryColor: '#1e3a8a',
         accentColor: '#10b981',
         fontHeading: 'Inter',
         fontBody: 'Roboto',
-      }),
-      db.insert(admins).values({
+      });
+    await db.insert(admins).values({
         id: adminId,
         masjidId,
         email: body.admin_email.toLowerCase().trim(),
         passwordHash,
         displayName: body.admin_display_name ?? null,
         createdAt: now,
-      }),
-    ]);
+      });
 
     const token = await signAccessToken(
       { sub: adminId, masjid_id: masjidId },

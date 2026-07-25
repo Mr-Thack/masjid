@@ -8,6 +8,8 @@
   import JumuahNotice from '$lib/components/JumuahNotice.svelte';
   import AnalogClock from '$lib/components/AnalogClock.svelte';
 
+  const API_BASE = import.meta.env.VITE_API_URL || '';
+
   let { data }: { data: BoardPayload } = $props();
 
   let payload = $state(data);
@@ -215,7 +217,7 @@
 
   async function refresh() {
     try {
-      const res = await fetch(`/api/v1/masjids/${payload.masjid.slug}/board`);
+      const res = await fetch(`${API_BASE}/api/v1/masjids/${payload.masjid.slug}/board`);
       if (res.ok) {
         payload = await res.json();
         now = new Date();

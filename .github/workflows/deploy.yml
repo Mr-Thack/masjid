@@ -1,0 +1,148 @@
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      workers_json: ${{ steps.changes.outputs.workers_json }}
+      pages_json: ${{ steps.changes.outputs.pages_json }}
+      changed: ${{ steps.changes.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Detect changed packages
+        id: changes
+        run: |
+          result=$(node tooling/changed-packages.js)
+          echo "$result" | tail -1 > /tmp/changes.json
+          {
+            echo 'workers_json<<EOF'
+            jq -c '.workers' /tmp/changes.json
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+          {
+            echo 'pages_json<<EOF'
+            jq -c '.pages' /tmp/changes.json
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+          echo "changed=$(jq -r '.changed' /tmp/changes.json)" >> $GITHUB_OUTPUT
+
+  deploy-workers:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.workers_json != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.detect-changes.outputs.workers_json) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build worker
+        run: npm run build --workspace=${{ matrix.include.workspace }}
+
+      - name: Apply D1 migrations (API only)
+        if: matrix.include.name == 'api'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          workingDirectory: ${{ matrix.include.dir }}
+          command: d1 migrations apply masjid-db --env production --remote
+
+      - name: Deploy worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          workingDirectory: ${{ matrix.include.dir }}
+          command: deploy --env production
+          secrets: |
+            JWT_SECRET
+            WHATSAPP_TOKEN
+            WHATSAPP_PHONE_ID
+            WHATSAPP_VERIFY_TOKEN
+            LLM_API_KEY
+            SQUARE_ACCESS_TOKEN
+            SQUARE_APP_ID
+            SQUARE_LOCATION_ID
+            BREVO_API_KEY
+            VAPID_PUBLIC_KEY
+            VAPID_PRIVATE_KEY
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+          SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
+          SQUARE_LOCATION_ID: ${{ secrets.SQUARE_LOCATION_ID }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+
+  deploy-pages:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.pages_json != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.detect-changes.outputs.pages_json) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build page
+        run: npm run build --workspace=${{ matrix.include.workspace }}
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          workingDirectory: ${{ matrix.include.dir }}
+          command: pages deploy build --project-name=${{ matrix.include.name == 'consumer' && 'masjid' || matrix.include.name == 'tv' && 'tv' || 'madmin' }} --branch=main
+
+  summary:
+    needs: [detect-changes, deploy-workers, deploy-pages]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment summary
+        run: |
+          if [ "${{ needs.detect-changes.outputs.changed }}" != "true" ]; then
+            echo "## No deployable changes — skipped." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "Workers: ${{ needs.deploy-workers.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Pages: ${{ needs.deploy-pages.result }}" >> $GITHUB_STEP_SUMMARY
