@@ -19,10 +19,22 @@ function getChangedFiles(base = 'HEAD^') {
       .split('\n')
       .filter(Boolean);
   } catch {
-    return execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' })
-      .trim()
-      .split('\n')
-      .filter(Boolean);
+    try {
+      return execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' })
+        .trim()
+        .split('\n')
+        .filter(Boolean);
+    } catch {
+      try {
+        // single-commit repo: diff against empty tree
+        return execSync('git diff --name-only 4b825dc642cb6eb9a060e54bf899c9cf095e5ab2 HEAD', { encoding: 'utf8' })
+          .trim()
+          .split('\n')
+          .filter(Boolean);
+      } catch {
+        return [];
+      }
+    }
   }
 }
 

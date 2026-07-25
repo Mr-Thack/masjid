@@ -28,19 +28,13 @@ jobs:
       - name: Detect changed packages
         id: changes
         run: |
-          result=$(node tooling/changed-packages.js)
-          echo "$result" | tail -1 > /tmp/changes.json
-          {
-            echo 'workers_json<<EOF'
-            jq -c '.workers' /tmp/changes.json
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
-          {
-            echo 'pages_json<<EOF'
-            jq -c '.pages' /tmp/changes.json
-            echo 'EOF'
-          } >> $GITHUB_OUTPUT
+          node tooling/changed-packages.js > /tmp/changes_raw.txt
+          tail -1 /tmp/changes_raw.txt > /tmp/changes.json
           echo "changed=$(jq -r '.changed' /tmp/changes.json)" >> $GITHUB_OUTPUT
+          echo "workers_json=$(jq -c '.workers' /tmp/changes.json)" >> $GITHUB_OUTPUT
+          echo "pages_json=$(jq -c '.pages' /tmp/changes.json)" >> $GITHUB_OUTPUT
+          cat /tmp/changes_raw.txt
+          echo "::notice::workers=$(jq -r '[.workers[].name] | join(",")' /tmp/changes.json) pages=$(jq -r '[.pages[].name] | join(",")' /tmp/changes.json)"
 
   deploy-workers:
     needs: detect-changes
