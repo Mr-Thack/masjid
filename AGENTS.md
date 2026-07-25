@@ -1,15 +1,16 @@
 # AGENTS.md
 
-## Current state (2026-07-24)
+## Current state (2026-07-25)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 408 tests)
+- **Working API** (SvelteKit + D1, 416 tests)
 - **Working TV frontend** (SvelteKit static, 28 tests — no Tailwind, hand-written CSS ~6 KB)
-- **Working consumer frontend** (SvelteKit static/SPA, 47 tests, 1 pre-existing Jumuah homepage failure)
+- **Working consumer frontend** (SvelteKit static/SPA, 48 tests, 1 pre-existing Jumuah homepage failure)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
-- **670+ tests passing** (408 API + 215 WhatsApp + 47 consumer)
+- **670+ tests passing** (416 API + 215 WhatsApp + 48 consumer)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
+- **Production deployed** — API on mapi.mr-thack.workers.dev, consumer on masjid-live.pages.dev, TV on masjid-live-tv.pages.dev, admin on masjid-live-admin.pages.dev
 
 ## How to start everything
 ```bash
@@ -29,9 +30,9 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test          # API tests, 408 (no external deps)
+npm run test          # API tests, 416 (no external deps)
 npm run test:tv       # TV frontend, 28 tests (jsdom + testing-library)
-npm run test:consumer # Consumer frontend, 47 tests (jsdom + testing-library; 1 pre-existing Jumuah homepage failure)
+npm run test:consumer # Consumer frontend, 48 tests (jsdom + testing-library; 1 pre-existing Jumuah homepage failure)
 npm run test:whatsapp # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw       # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:agent    # Agent package tests (pending: ~175 expected)
@@ -380,3 +381,289 @@ npm run test
 - To start admin: `npm run dev --workspace=@masjid/admin` (port 5176)
 - Maktab form embed URL: `http://localhost:5175/masjid-al-noor/maktab/enroll?embed=1`
 - Maktab dev secrets (Square/Brevo) go in `apps/api/.dev.vars`; put real values there for live sandbox testing
+- Debug endpoint: `GET /api/v1/debug` — public, no auth; returns DB connectivity, bcrypt test, admin info
+- Status endpoint: `GET /api/v1/status` — public, no auth; returns worker health, env vars presence, D1 connectivity
+- Production status: `curl https://mapi.mr-thack.workers.dev/api/v1/status`
+- Term `billing_months` column exists on `mkt_terms` — set it to charge fewer months than the term length (e.g. 8 for a 9-month Ramadan term)
+
+## Production deployment lessons (2026-07-25)
+
+This section documents every pitfall encountered during the first production deployment to Cloudflare
+Workers + Pages. These are **hard-earned** — avoid repeating them.
+
+### 1. `nodejs_compat` polyfills `process` globally
+
+**Pitfall**: The `nodejs_compat` compatibility flag provides a `process` global in Workers.
+This means `typeof process !== 'undefined'` returns `true` in Cloudflare Workers, making it
+**unreliable** as a Node.js-vs-Worker detection mechanism.
+
+**How we fixed it**: Use `typeof caches !== 'undefined' && typeof caches.default !== 'undefined'`
+to detect the Worker runtime instead. The `caches` global with a `.default` property is specific
+to Cloudflare Workers.
+
+**Files affected**: `apps/api/src/lib/server/db/index.ts` (`getDb()`), three Maktab route
+files that used `typeof process !== 'undefined' && process.env`.
+
+### 2. `import.meta.dirname` is `undefined` in Workers
+
+**Pitfall**: Cloudflare Workers don't have a filesystem, so `import.meta.dirname` is `undefined`.
+Any code that does `path.resolve(import.meta.dirname, ...)` crashes with "The 'paths[0]' argument
+must be of type string."
+
+**How we fixed it**: Guard with `typeof import.meta.dirname !== 'undefined'` and fall back to
+a dummy path (`'/dummy'`). The guarded code only executes in local Node.js dev.
+
+**Files affected**: `apps/api/src/lib/server/db/index.ts` (`PROJECT_ROOT` constant).
+
+### 3. Native modules (better-sqlite3) cannot be bundled into Workers
+
+**Pitfall**: `better-sqlite3` is a native C++ addon. It cannot run in Workers even with
+`nodejs_compat`. Static imports at the top of a file execute at module init time, crashing
+the Worker even if the import is never used (because the code path that uses it is never
+reached in production).
+
+**How we fixed it**: Created a Vite plugin (`apps/api/vite.config.ts`) that stubs
+`better-sqlite3` and `drizzle-orm/better-sqlite3` during `vite build` (not `vite dev`).
+The plugin intercepts `resolveId` and returns virtual empty modules during build mode only.
+
+**Files affected**: `apps/api/vite.config.ts` (the `stubNativeModules` plugin).
+
+**Alternative that would also work**: Move all local-dev DB code into a separate file and
+do a dynamic `await import('./local')` inside `getDb()` — the import only executes when
+`getLocalDb()` is called, which never happens in production.
+
+### 4. Square API uses snake_case everywhere
+
+**Pitfall**: The Square REST API uses **snake_case** for ALL field names in both requests
+and responses. The code had camelCase everywhere: `catalogObject`, `subscriptionPlanData`,
+`idempotencyKey`, `recurringPriceMoney`, `priceMoney`, etc. Every single one was wrong.
+
+**How we fixed it**: Converted every field in `square.ts` to snake_case:
+- Requests: `idempotency_key`, `subscription_plan_data`, `subscription_plan_variations`,
+  `subscription_plan_variation_data`, `recurring_price_money` → `pricing.price_money`,
+  `given_name`, `email_address`, `phone_number`, `address_line_1`, `source_id`,
+  `cardholder_name`, `billing_address`, `customer_id`, `location_id`,
+  `plan_variation_id`, `start_date`, `card_id`
+- Responses: `catalog_object`, `subscription_plan_data`,
+  `subscription_plan_variations`, `subscription_plan_variation_data`
+
+**Key lesson**: The unit tests mocked Square responses with camelCase to match the code.
+When the code was "fixed" to snake_case, the tests still passed because both the mock
+AND the code were wrong in the same way. Always verify mocks against the actual API spec.
+
+**Files affected**: `apps/api/src/lib/server/maktab/square.ts`
+
+### 5. Square API version matters
+
+**Pitfall**: We were on Square-Version `2024-08-21` (2 years old). The latest is
+`2026-07-15`. Older versions have different field requirements — e.g., `2024-08-21`
+requires `pricing.price_money` instead of `recurring_price_money` for phase pricing.
+
+**How we fixed it**: Bumped to `2026-07-15`. Keep the `Square-Version` header
+up-to-date; check the Square docs changelog periodically.
+
+### 6. Wrangler v4 requires explicit `--var` flags
+
+**Pitfall**: Wrangler v3 auto-overrode `[vars]` values from OS environment variables.
+Wrangler v4 **removed** this behavior. You must pass `--var NAME:VALUE` explicitly
+for each variable you want to override at deploy time.
+
+**How we fixed it**: The GitHub Actions workflow builds a bash array of `--var` flags
+from non-empty environment variables:
+
+```bash
+VAR_ARGS=()
+[ -n "$JWT_SECRET" ] && VAR_ARGS+=(--var "JWT_SECRET:$JWT_SECRET")
+...
+npx wrangler deploy --env production "${VAR_ARGS[@]}"
+```
+
+**Files affected**: `.github/workflows/deploy.yml` (deploy-worker step)
+
+### 7. Wrangler v4 requires `[assets]` config for Workers Static Assets
+
+**Pitfall**: The `@sveltejs/adapter-cloudflare` output uses Workers Static Assets
+(`env.ASSETS.fetch(req)`). Without the `[assets]` config in `wrangler.toml`, the
+ASSETS binding is undefined and the Worker crashes with error 1101. Additionally,
+`[assets]` is NOT inherited by environments — it must be repeated in
+`[env.production.assets]`.
+
+**How we fixed it**: Added to both top-level and `[env.production]`:
+```toml
+[assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
+
+[env.production.assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
+```
+
+**Files affected**: `apps/api/wrangler.toml`
+
+### 8. Static Pages builds need VITE_API_URL at build time
+
+**Pitfall**: The consumer and TV apps are static SPAs (`adapter-static`). They embed
+`VITE_API_URL` at **build time** via `import.meta.env.VITE_API_URL`. If not set during
+`vite build`, they fall back to relative paths and fetch from their own origin — which
+returns HTML (SPA fallback) instead of JSON, crashing with a parse error.
+
+**How we fixed it**: The CI workflow passes `VITE_API_URL` as an environment variable
+during the build step. For local/manual deploys:
+```bash
+VITE_API_URL=https://mapi.mr-thack.workers.dev npm run build
+```
+
+**Files affected**: All consumer/TV page deploys, `.github/workflows/deploy.yml`
+
+### 9. GitHub Actions matrix `include` variables are top-level
+
+**Pitfall**: When using `matrix: include: ${{ fromJSON(...) }}`, each include entry's
+properties become top-level matrix variables: `${{ matrix.workspace }}`, NOT
+`${{ matrix.include.workspace }}`.
+
+**How we fixed it**: Changed all `matrix.include.workspace` → `matrix.workspace`,
+`matrix.include.name` → `matrix.name`, `matrix.include.dir` → `matrix.dir`.
+
+### 10. GitHub Actions heredoc outputs can break `fromJSON`
+
+**Pitfall**: Using heredoc syntax (`<<EOF`) in `$GITHUB_OUTPUT` can add trailing
+whitespace or newlines that break `fromJSON()` parsing.
+
+**How we fixed it**: Switched to simple `echo "key=$(jq -c ...)" >> $GITHUB_OUTPUT`
+for single-line JSON values. No heredoc needed for compact JSON.
+
+### 11. GitHub Environments need `environment:` declaration
+
+**Pitfall**: Environment-specific secrets (Prod) are NOT accessible unless the job
+declares `environment: Prod`. Without it, `${{ secrets.NAME }}` resolves to
+repository-level secrets (which may be empty).
+
+**How we fixed it**: Added `environment: Prod` to both `deploy-workers` and
+`deploy-pages` jobs.
+
+### 12. Cloudflare API token naming
+
+**Pitfall**: Mixing `CF_API_TOKEN` and `CLOUDFLARE_API_TOKEN`. Wrangler ONLY recognizes
+`CLOUDFLARE_API_TOKEN` as the auth env var. Using `CF_API_TOKEN` in the workflow env
+block won't work unless explicitly mapped.
+
+**How we fixed it**: Standardized on `CLOUDFLARE_API_TOKEN` everywhere:
+GitHub Secrets, `.env.prod`, and `${{ secrets.CLOUDFLARE_API_TOKEN }}` in the workflow.
+
+### 13. Cloudflare Account API tokens cannot call `/memberships`
+
+**Pitfall**: Account-scoped API tokens (created via "Custom token" with account
+permissions) cannot call the `/memberships` endpoint — error 9106. This endpoint
+requires a user identity, which Account tokens don't have.
+
+**How we fixed it**: Set `CLOUDFLARE_ACCOUNT_ID` explicitly in the workflow env so
+Wrangler doesn't need to discover it via `/memberships`.
+
+### 14. `check-changes` CI script handles single-commit repos
+
+**Pitfall**: The `tooling/changed-packages.js` script used `git diff HEAD^ HEAD`
+which fails on repos with only one commit (no parent to diff against).
+
+**How we fixed it**: In CI mode (`CI=true`, set automatically by GitHub Actions),
+the script force-deploys everything without checking git history. For local use,
+added fallbacks through `HEAD~1` → empty tree hash diff.
+
+### 15. `db.batch()` for atomic multi-table inserts
+
+**Pitfall**: Three separate `await db.insert()` calls are NOT atomic in D1.
+If the second insert succeeds but the third fails, you get partial state
+(orphaned rows). This happened with registration — masjid was created but
+admin insert failed, leaving an unreachable masjid.
+
+**How we fixed it**: Wrapped multi-table inserts in `db.batch([...])` for
+atomicity. All inserts succeed together or none do.
+
+**Files affected**: `apps/api/src/routes/api/v1/auth/register/+server.ts`
+
+### 16. `getDb()` must check local Node.js before D1 binding
+
+**Pitfall**: In local dev, `@sveltejs/adapter-cloudflare` provides a mock D1
+binding (`platform.env.DB`). If `getDb()` checks `d1` before checking
+`typeof process`, it uses the mock D1 (which points to a different SQLite DB)
+instead of the project's `.masjid/local.db`. Deleting/recreating the local DB
+causes "no such table" errors because the mock D1's DB wasn't reseeded.
+
+**How we fixed it**: Moved the `isWorker` / `typeof process` check BEFORE
+the `d1` check in `getDb()`. In local Node.js, always use `getLocalDb()`.
+
+**Files affected**: `apps/api/src/lib/server/db/index.ts`
+
+### 17. Prayer engine `verifyComputedTimes` should warn, not crash
+
+**Pitfall**: Masjid admins can enter wrong coordinates (e.g., lat=50, lon=50 in
+America/New_York). The prayer engine computes astronomically correct times for
+those coordinates, but converting to the mismatched timezone produces times in
+the wrong order (Fajr at 18:53, Dhuhr at 04:47). The strict order check threw
+an error, crashing the entire masjid page with 500.
+
+**How we fixed it**: Changed `throw new Error()` to `console.warn()` for order
+violations. The page renders with whatever times the engine computes — the admin
+sees wrong times and fixes their coordinates. Only truly invalid states
+(missing prayer, right_after_adhaan misuse) still throw.
+
+**Files affected**: `apps/api/src/lib/server/prayer/engine.ts`
+
+### 18. `schema.sql` and Drizzle schema must stay in sync
+
+**Pitfall**: The Drizzle ORM schema (`apps/api/src/lib/server/db/schema.ts`) had
+a `label_speech` column on `masjid_themes` that was missing from `schema.sql`.
+New registrations failed with "table masjid_themes has no column named
+label_speech" in production (D1).
+
+**How we fixed it**: Added `label_speech TEXT NOT NULL DEFAULT 'Speech'` to
+`schema.sql` and ran `ALTER TABLE` on the production D1 database. Added
+`billing_months INTEGER` at the same time for the maktab terms feature.
+
+**Lesson**: When adding a column to the Drizzle schema, always check if
+`schema.sql` needs updating too. The two schemas are maintained independently
+(Drizzle for local dev via `ensureTables()`, `schema.sql` for D1 production).
+
+### 19. Square payment plan amounts must be integers
+
+**Pitfall**: Square's `recurring_price_money.amount` field expects a **number**
+(integer in cents), not a string. The code had `String(amount)` which sent
+`"10000"` instead of `10000`, causing `EXPECTED_INTEGER` errors.
+
+**How we fixed it**: Removed the `String()` wrapper. Pass the raw number.
+
+### 20. Maktab term creation must be atomic (Square first, then DB)
+
+**Pitfall**: The old term creation flow inserted the term into the DB FIRST
+(with empty `paymentRefsJson`), then tried to create the Square plan. If
+Square failed (which it always did due to the snake_case issues), the term
+was left in the DB with no Square plan — unusable, and the response still
+said 201 Created.
+
+**How we fixed it**: Square API call FIRST, DB insert only if Square succeeds.
+The `paymentRefsJson` is populated from the Square response during insert.
+The error from Square is returned directly to the admin. Nothing is persisted
+on failure.
+
+### 21. Debug endpoint pattern
+
+When debugging production issues, adding a public debug endpoint (like
+`/api/v1/debug`) that returns internal state is invaluable. It bypasses
+auth and lets you test DB connectivity, bcrypt, etc. without deploying
+code changes. Remember to add it to `PUBLIC_PATTERNS` in hooks.server.ts.
+
+### 22. Square sandbox integration tests
+
+Live integration tests that hit the real Square sandbox API are invaluable.
+They use `cnon:card-nonce-ok` as the test card source and postal code `94103`.
+Tests auto-skip when `.env.dev` doesn't have Square credentials (CI-safe).
+
+```bash
+npx vitest run apps/api/src/__tests__/maktab/square.test.ts -t sandbox
+```
+
+### 23. Cloudflare Workers Observability
+
+Add `[observability] enabled = true` to every worker's `wrangler.toml`.
+This enables Workers Logs in the Cloudflare dashboard, letting you see
+`console.error()` output from production without websocket tail sessions.
