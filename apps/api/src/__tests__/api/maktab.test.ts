@@ -56,13 +56,13 @@ function squareMockFetch() {
     if (path.endsWith('/catalog/object')) {
       return new Response(
         JSON.stringify({
-          catalogObject: {
+          catalog_object: {
             id: 'plan_1',
-            subscriptionPlanData: {
-              subscriptionPlanVariations: [
-                { id: 'var_a', subscriptionPlanVariationData: { name: '1 Student(s)' } },
-                { id: 'var_b', subscriptionPlanVariationData: { name: '2 Student(s)' } },
-                { id: 'var_c', subscriptionPlanVariationData: { name: '3 Student(s)' } },
+            subscription_plan_data: {
+              subscription_plan_variations: [
+                { id: 'var_a', subscription_plan_variation_data: { name: '1 Student(s)' } },
+                { id: 'var_b', subscription_plan_variation_data: { name: '2 Student(s)' } },
+                { id: 'var_c', subscription_plan_variation_data: { name: '3 Student(s)' } },
               ],
             },
           },
@@ -765,7 +765,7 @@ describe('Admin terms', () => {
     }
   });
 
-  it('POST still succeeds when Square plan creation fails', async () => {
+  it('POST returns error when Square plan creation fails', async () => {
     const slug = `terms-sqfail-${Date.now()}`;
     const id = await seedMasjid(slug);
 
@@ -777,9 +777,9 @@ describe('Admin terms', () => {
         price_cents_1: 5000, price_cents_2: 8000, price_cents_3plus: 10000,
       });
       const res = await postTerms({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
-      expect(res.status).toBe(201);
+      expect(res.status).toBe(500);
       const body = await res.json();
-      expect(body.term.name).toBe('Fallback Term');
+      expect(body.error.message).toContain('Square API error');
     } finally {
       vi.unstubAllGlobals();
     }
