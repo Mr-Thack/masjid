@@ -2,13 +2,13 @@
 
 ## Current state (2026-07-23)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 269 tests)
+- **Working API** (SvelteKit + D1, 273 tests)
 - **Working TV frontend** (SvelteKit static, 28 tests — no Tailwind, hand-written CSS ~6 KB)
 - **Working consumer frontend** (SvelteKit static/SPA, 36 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
-- **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 8 settings pages, bot chat panel — tests pending)
-- **484 tests passing** (269 API + 215 WhatsApp)
+- **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
+- **488 tests passing** (273 API + 215 WhatsApp)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 
 ## How to start everything
@@ -29,7 +29,7 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test          # API-only, 269 tests (no external deps)
+npm run test          # API tests, 273 (no external deps)
 npm run test:tv       # TV frontend, 28 tests (jsdom + testing-library)
 npm run test:consumer # Consumer frontend, 36 tests (jsdom + testing-library)
 npm run test:whatsapp # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
@@ -71,6 +71,7 @@ masjid/
   apps/admin/                — SvelteKit static/SPA, admin dashboard (settings + AI bot chat)
   workers/push/              — Cloudflare Worker for push notifications (skeleton)
   workers/whatsapp/          — Cloudflare Worker for WhatsApp Zero-UI (imports bot logic from @masjid/agent)
+  apps/api/src/lib/server/maktab/ — Maktab registration/enrollment module (Square only)
   tooling/seed.ts            — DB seed script
   vitest.config.ts           — Root vitest (API only, node)
   vitest.tv.config.ts        — TV vitest (jsdom, svelte plugin)
@@ -143,7 +144,7 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 ### Pages (under `/[masjid_slug]/`)
 | Route | Description |
 |---|---|
-| `+layout.svelte` | Shell: sticky header, top nav on desktop/bottom nav on mobile (Home | Prayer | News | Info), theme application, nav transitions |
+| `+layout.svelte` | Shell: sticky header, top nav on desktop/bottom nav on mobile (Home | Prayer | News | Info | Maktab), theme application, nav transitions |
 | `+layout.ts` | Load function — fetches page payload, returns masjid/theme/prayer_times/jumuah/announcements |
 | `+page.svelte` | Home: hero + countdown, prayer cards grid, jumuah today, pinned announcement, donate CTA |
 | `+error.svelte` | Error boundary fallback |
@@ -152,6 +153,8 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 | `announcements/+page.svelte` | Announcements feed |
 | `donate/+page.svelte` | Donation page with CTA and "Why Give" section |
 | `info/+page.svelte` | Masjid contact info, address, and social links |
+| `maktab/+page.svelte` | Minimal term/pricing card with **Enroll Now** CTA |
+| `maktab/enroll/+page.svelte` | Square Web Payments SDK enrollment form (parent, address, children, card) |
 
 ### Other known items
 - **The `minimal-light` preset exists** but has no light-mode `.glass`/`.glass-card` equivalents — would need light variants for a true light theme.
@@ -297,6 +300,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 | `/admin/[slug]/settings/theme` | Theme settings (presets, colors, fonts, labels) |
 | `/admin/[slug]/settings/prayer` | Prayer rules table + dry-run simulator |
 | `/admin/[slug]/settings/jumuah` | Jumu'ah sessions management |
+| `/admin/[slug]/settings/maktab` | Maktab term/pricing management + registrations |
 | `/admin/[slug]/settings/announcements` | Announcements with markdown editor |
 | `/admin/[slug]/settings/domain` | Custom domain management |
 | `/admin/[slug]/settings/snapshots` | Configuration snapshots + rollback |
@@ -316,11 +320,52 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 
 ### Architecture
 - **Auth**: `auth.svelte.ts` rune store manages JWT login/logout, localStorage persistence
-- **API client**: `api.ts` wraps 28 endpoints, auto-attaches JWT, handles 401 → logout
+- **API client**: `api.ts` wraps Maktab endpoints plus admin API calls, auto-attaches JWT, handles 401 → logout
 - **All LLM calls go through the API server** — the project's single API key is used server-side
 - **Tailwind v4** CSS-first config in `app.css`
 - **svelte-sonner** for toast notifications, **lucide-svelte** for icons
 - **No service worker** — browser cache is sufficient
+
+## Maktab Registration (`apps/api`)
+
+Maktab enrollment lives inside the main `@masjid/api` monolith, using the same D1/SQLite database as the rest of the platform.
+
+### State
+- **4 API tests** covering public info, admin term/settings CRUD, and full Square enrollment flow.
+- **Square is the only payment provider**; Stripe support was removed because account verification could not be completed in time.
+- **No migration from `suffah-old`** — only new enrollments are tracked.
+
+### D1 tables
+| Table | Purpose |
+|---|---|
+| `mkt_terms` | Program terms with 3-tier pricing (1 / 2 / 3+ children) and Square plan IDs |
+| `mkt_settings` | Active term pointer + enrollment open/closed flag per masjid |
+| `mkt_registrations` | Enrollment records linked to Square subscriptions |
+| `mkt_outbox` | Available for future retry-able email queue; currently unused |
+
+### Environment variables (configured where `@masjid/api` is deployed)
+| Var/Secret | Purpose |
+|---|---|
+| `SQUARE_ACCESS_TOKEN` + `SQUARE_APP_ID` + `SQUARE_LOCATION_ID` | Square subscriptions + cards |
+| `BREVO_API_KEY` | Transactional email |
+| `SENDER_EMAIL` / `SENDER_NAME` / `FORWARD_TO_EMAIL` / `LOGGING_EMAIL` / `BOT_NAME` | Email headers/addresses |
+
+### Endpoints
+All routes are part of the main API; no Vite proxy or separate worker is needed.
+
+| Path | Auth | Purpose |
+|---|---|---|
+| `GET /api/v1/masjids/:slug/maktab` | Public | Active term, prices, open/closed status, Square app/location IDs |
+| `POST /api/v1/masjids/:slug/maktab/enroll` | Public | Create Square customer/card/subscription and register enrollment |
+| `GET/PUT /api/v1/admin/masjids/:id/maktab/settings` | JWT | Enrollment switch + active term |
+| `GET/POST /api/v1/admin/masjids/:id/maktab/terms` | JWT | Term CRUD; creates Square subscription plan |
+| `POST /api/v1/admin/masjids/:id/maktab/terms/:termId/activate` | JWT | Make term active |
+| `GET /api/v1/admin/masjids/:id/maktab/registrations` | JWT | List registrations |
+
+### How to test
+```bash
+npm run test
+```
 
 ## Quick dev tips
 - DB goes missing? Re-run `npx tsx tooling/seed.ts`

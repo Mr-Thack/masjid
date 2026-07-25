@@ -53,6 +53,11 @@
       label: 'Info',
       icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
     },
+    {
+      segment: 'maktab',
+      label: 'Maktab',
+      icon: 'M12 14l9-5-9-5-9 5 9 5z M5 15l7 4 7-4',
+    },
   ];
 
   function isActive(segment: string): boolean {

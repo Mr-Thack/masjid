@@ -36,6 +36,27 @@ function addColumnIfMissing(
   }
 }
 
+function tableHasColumn(sqlite: Database.Database, table: string, column: string): boolean {
+  const existing = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return existing.some((c) => c.name === column);
+}
+
+function migrateMktTables(sqlite: Database.Database) {
+  // The old mkt_registrations stub had only a few columns. If it exists, drop the
+  // whole Maktab schema so we can recreate the real tables.
+  if (
+    sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='mkt_registrations'").get()
+    && tableHasColumn(sqlite, 'mkt_registrations', 'student_name')
+  ) {
+    sqlite.exec(`
+      DROP TABLE IF EXISTS mkt_outbox;
+      DROP TABLE IF EXISTS mkt_registrations;
+      DROP TABLE IF EXISTS mkt_settings;
+      DROP TABLE IF EXISTS mkt_terms;
+    `);
+  }
+}
+
 function ensureTables(sqlite: Database.Database) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS masjids (
@@ -221,6 +242,73 @@ function ensureTables(sqlite: Database.Database) {
       asset_id TEXT NOT NULL REFERENCES masjid_assets(id) ON DELETE CASCADE,
       created_at TEXT DEFAULT (datetime('now'))
     );
+  `);
+
+  migrateMktTables(sqlite);
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS mkt_terms (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      length_months INTEGER NOT NULL,
+      price_cents_1 INTEGER NOT NULL,
+      price_cents_2 INTEGER NOT NULL,
+      price_cents_3plus INTEGER NOT NULL,
+      payment_refs_json TEXT NOT NULL DEFAULT '{}',
+      is_active INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_mkt_terms_masjid ON mkt_terms(masjid_id);
+
+    CREATE TABLE IF NOT EXISTS mkt_settings (
+      masjid_id TEXT PRIMARY KEY REFERENCES masjids(id) ON DELETE CASCADE,
+      active_term_id TEXT REFERENCES mkt_terms(id) ON DELETE SET NULL,
+      enrollment_open INTEGER NOT NULL DEFAULT 0,
+      status_message TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mkt_registrations (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      term_id TEXT NOT NULL REFERENCES mkt_terms(id),
+      status TEXT NOT NULL DEFAULT 'payment_succeeded',
+      payment_provider TEXT NOT NULL,
+      payment_customer_id TEXT,
+      payment_subscription_id TEXT,
+      payment_session_id TEXT UNIQUE,
+      monthly_amount_cents INTEGER NOT NULL,
+      father_name TEXT,
+      father_phone TEXT,
+      father_email TEXT,
+      mother_name TEXT,
+      mother_phone TEXT,
+      mother_email TEXT,
+      address_line1 TEXT NOT NULL,
+      city TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'GA',
+      postal_code TEXT NOT NULL,
+      country TEXT NOT NULL DEFAULT 'US',
+      children_json TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_mkt_registrations_lookup ON mkt_registrations(masjid_id, term_id, status);
+    CREATE INDEX IF NOT EXISTS idx_mkt_registrations_session ON mkt_registrations(payment_session_id);
+
+    CREATE TABLE IF NOT EXISTS mkt_outbox (
+      id TEXT PRIMARY KEY,
+      registration_id TEXT NOT NULL REFERENCES mkt_registrations(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      attempts INTEGER NOT NULL DEFAULT 0,
+      last_error TEXT,
+      scheduled_at TEXT DEFAULT (datetime('now')),
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_mkt_outbox_poll ON mkt_outbox(status, scheduled_at);
   `);
 
   // Migrate existing local databases created before these columns existed.

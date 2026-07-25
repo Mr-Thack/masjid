@@ -68,6 +68,22 @@ export interface PagePayload {
   recent_announcements: Announcement[];
 }
 
+export interface MaktabInfo {
+  open: boolean;
+  term: {
+    id: string;
+    name: string;
+    length_months: number;
+    prices: { '1': number; '2': number; '3plus': number };
+  } | null;
+  status_message: string | null;
+  square_config: {
+    app_id: string;
+    location_id: string;
+    environment: 'sandbox' | 'production';
+  } | null;
+}
+
 const BASE = '/api/v1/masjids';
 
 export async function fetchPagePayload(
@@ -105,5 +121,31 @@ export async function fetchJumuah(
 ): Promise<{ sessions: JumuahSession[] }> {
   const res = await customFetch(`${BASE}/${slug}/jumuah`);
   if (!res.ok) throw new Error(`Failed to fetch jumuah: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchMaktabInfo(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<MaktabInfo> {
+  const res = await customFetch(`${BASE}/${slug}/maktab`);
+  if (!res.ok) throw new Error(`Failed to fetch maktab info: ${res.status}`);
+  return res.json();
+}
+
+export async function submitMaktabEnrollment(
+  slug: string,
+  body: Record<string, unknown>,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<{ registration_id: string; subscription_id: string; status: string }> {
+  const res = await customFetch(`${BASE}/${slug}/maktab/enroll`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
+    throw new Error(err.error?.message || `Enrollment failed: ${res.status}`);
+  }
   return res.json();
 }

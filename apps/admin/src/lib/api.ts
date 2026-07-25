@@ -110,4 +110,22 @@ export const api = {
 
   getBranches: (masjidId: string) =>
     request('GET', `/api/v1/admin/masjids/${masjidId}/branches`),
+
+  getMaktabSettings: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/settings`),
+
+  updateMaktabSettings: (masjidId: string, data: Record<string, unknown>) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/maktab/settings`, data),
+
+  listMaktabTerms: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/terms`),
+
+  createMaktabTerm: (masjidId: string, data: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/maktab/terms`, data),
+
+  activateMaktabTerm: (masjidId: string, termId: string) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/maktab/terms/${termId}/activate`),
+
+  listMaktabRegistrations: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/registrations`),
 };

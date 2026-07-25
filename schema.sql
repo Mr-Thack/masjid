@@ -152,18 +152,70 @@ CREATE INDEX idx_pages_lookup ON masjid_pages(masjid_id, slug);
 
 
 -- ============================================================
--- Table 7: Maktab Student Registrations (Stage 2)
+-- Table 7: Maktab Program (managed by workers/maktab)
 -- ============================================================
+CREATE TABLE mkt_terms (
+    id TEXT PRIMARY KEY,
+    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    length_months INTEGER NOT NULL,
+    price_cents_1 INTEGER NOT NULL,
+    price_cents_2 INTEGER NOT NULL,
+    price_cents_3plus INTEGER NOT NULL,
+    payment_refs_json TEXT NOT NULL DEFAULT '{}',
+    is_active INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_mkt_terms_masjid ON mkt_terms(masjid_id);
+
+CREATE TABLE mkt_settings (
+    masjid_id TEXT PRIMARY KEY REFERENCES masjids(id) ON DELETE CASCADE,
+    active_term_id TEXT REFERENCES mkt_terms(id) ON DELETE SET NULL,
+    enrollment_open INTEGER NOT NULL DEFAULT 0,
+    status_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE mkt_registrations (
     id TEXT PRIMARY KEY,
-    masjid_id TEXT NOT NULL,
-    student_name TEXT NOT NULL,
-    parent_email TEXT NOT NULL,
-    payment_status TEXT NOT NULL DEFAULT 'PENDING',     -- 'PENDING' | 'PAID'
-    stripe_session_id TEXT UNIQUE,
+    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    term_id TEXT NOT NULL REFERENCES mkt_terms(id),
+    status TEXT NOT NULL DEFAULT 'checkout_created',
+    payment_provider TEXT NOT NULL,                     -- 'stripe' | 'square'
+    payment_customer_id TEXT,
+    payment_subscription_id TEXT,
+    payment_session_id TEXT UNIQUE,
+    monthly_amount_cents INTEGER NOT NULL,
+    father_name TEXT,
+    father_phone TEXT,
+    father_email TEXT,
+    mother_name TEXT,
+    mother_phone TEXT,
+    mother_email TEXT,
+    address_line1 TEXT NOT NULL,
+    city TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'GA',
+    postal_code TEXT NOT NULL,
+    country TEXT NOT NULL DEFAULT 'US',
+    children_json TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX idx_mkt_registrations_lookup ON mkt_registrations(masjid_id, term_id, status);
+CREATE INDEX idx_mkt_registrations_session ON mkt_registrations(payment_session_id);
+
+CREATE TABLE mkt_outbox (
+    id TEXT PRIMARY KEY,
+    registration_id TEXT NOT NULL REFERENCES mkt_registrations(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,                                 -- 'parent_confirmation' | 'admin_notification'
+    status TEXT NOT NULL DEFAULT 'pending',             -- 'pending' | 'sent' | 'failed'
+    attempts INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT,
+    scheduled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_mkt_outbox_poll ON mkt_outbox(status, scheduled_at);
 
 
 -- ============================================================

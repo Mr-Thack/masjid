@@ -33,6 +33,9 @@ function clearSeed() {
   db.delete(schema.jumuahSessions).run();
   db.delete(schema.masjidPages).run();
   db.delete(schema.mktRegistrations).run();
+  db.delete(schema.mktOutbox).run();
+  db.delete(schema.mktTerms).run();
+  db.delete(schema.mktSettings).run();
   db.delete(schema.admins).run();
   db.delete(schema.masjidThemes).run();
   db.delete(schema.masjids).run();
@@ -224,6 +227,35 @@ async function seed() {
       publishedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
     },
   ]).run();
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Maktab seed — Masjid Al-Noor (Fall 2026 term)
+  // ─────────────────────────────────────────────────────────────────────────────
+  db.insert(schema.mktTerms).values({
+    id: 'term-noor-01',
+    masjidId: NOOR_MASJID_ID,
+    name: 'Fall 2026',
+    lengthMonths: 4,
+    priceCents1: 10000,
+    priceCents2: 16000,
+    priceCents3plus: 20000,
+    paymentRefsJson: JSON.stringify({
+      square: {
+        plan_id: 'PLAN_NOOR_FALL_2026',
+        var_1: 'VAR_NOOR_1',
+        var_2: 'VAR_NOOR_2',
+        var_3plus: 'VAR_NOOR_3PLUS',
+      },
+    }),
+    isActive: true,
+  }).run();
+
+  db.insert(schema.mktSettings).values({
+    masjidId: NOOR_MASJID_ID,
+    activeTermId: 'term-noor-01',
+    enrollmentOpen: true,
+    statusMessage: null,
+  }).run();
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Masjid Al-Jabal — Kennesaw, GA

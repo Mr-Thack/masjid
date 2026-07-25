@@ -8,6 +8,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "libphonenumber-js": "^1.12.9",
     "zod": "^3.23.8"
   },
   "devDependencies": {

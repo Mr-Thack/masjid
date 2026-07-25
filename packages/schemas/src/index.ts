@@ -6,3 +6,4 @@ export * from './auth.js';
 export * from './domain.js';
 export * from './common.js';
 export * from './zero-ui.js';
+export * from './maktab.js';

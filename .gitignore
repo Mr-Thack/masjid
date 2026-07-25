@@ -1,9 +1,11 @@
 node_modules/
+suffah-old/
 dist/
 .svelte-kit/
 build/
 .env
 .env.*
+.dev.vars
 *.tsbuildinfo
 .DS_Store
 wrangler.state.*
