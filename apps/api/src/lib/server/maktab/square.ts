@@ -18,7 +18,7 @@ async function squarePost<T>(env: SquareEnv, path: string, body: unknown): Promi
     headers: {
       'Authorization': `Bearer ${env.SQUARE_ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
-      'Square-Version': '2024-08-21',
+      'Square-Version': '2026-07-15',
     },
     body: JSON.stringify(body),
   });

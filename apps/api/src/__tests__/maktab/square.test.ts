@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { hasSquare, createSquareTermPlan, createSquareSubscription } from '../../lib/server/maktab/square';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const FULL_ENV = {
   SQUARE_ACCESS_TOKEN: 'sq0at-test',
@@ -321,4 +323,50 @@ describe('createSquareSubscription', () => {
 
     await expect(createSquareSubscription(parentInput, FULL_ENV)).rejects.toThrow('Square API error');
   });
+});
+
+describe('Square sandbox integration', () => {
+  function loadSandboxEnv(): Record<string, string> {
+    const envPath = path.resolve(import.meta.dirname, '../../../../../.env.dev');
+    if (!fs.existsSync(envPath)) return {};
+    const content = fs.readFileSync(envPath, 'utf8');
+    const env: Record<string, string> = {};
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      env[trimmed.slice(0, eq)] = trimmed.slice(eq + 1);
+    }
+    return env;
+  }
+
+  const sandboxEnv = loadSandboxEnv();
+  const hasSquare = !!(sandboxEnv.SQUARE_ACCESS_TOKEN && sandboxEnv.SQUARE_APP_ID && sandboxEnv.SQUARE_LOCATION_ID);
+  const itSquare = hasSquare ? it : it.skip;
+
+  itSquare('creates a plan against the real Square sandbox', async () => {
+    const result = await createSquareTermPlan(
+      {
+        id: 'test',
+        name: 'Integration Test Term',
+        length_months: 4,
+        price_cents_1: 10000,
+        price_cents_2: 16000,
+        price_cents_3plus: 20000,
+      },
+      {
+        SQUARE_ACCESS_TOKEN: sandboxEnv.SQUARE_ACCESS_TOKEN,
+        SQUARE_APP_ID: sandboxEnv.SQUARE_APP_ID,
+        SQUARE_LOCATION_ID: sandboxEnv.SQUARE_LOCATION_ID,
+        ENVIRONMENT: 'development',
+      },
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.square.plan_id).toBeTruthy();
+    expect(result!.square.var_1).toBeTruthy();
+    expect(result!.square.var_2).toBeTruthy();
+    expect(result!.square.var_3plus).toBeTruthy();
+  }, 15000);
 });
