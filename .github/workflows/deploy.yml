@@ -58,6 +58,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_D1_ID: ${{ vars.CLOUDFLARE_D1_ID || secrets.CLOUDFLARE_D1_ID }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
       SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
@@ -86,18 +87,9 @@ jobs:
       - name: Build worker
         run: npm run build --workspace=${{ matrix.workspace }}
 
-      - name: Debug auth
+      - name: Inject D1 database ID
         run: |
-          echo "::notice::Total env vars: $(env | wc -l)"
-          echo "::notice::Matching CLOUDFLARE vars:"
-          env | grep -i cloudflare || echo "(none)"
-          echo "::notice::All CF/CLOUDFLARE related:"
-          env | grep -iE '^(CF_|CLOUDFLARE)' || echo "(none)"
-          if [ -n "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::notice::CLOUDFLARE_API_TOKEN length: ${#CLOUDFLARE_API_TOKEN}"
-          else
-            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY"
-          fi
+          sed -i "s/placeholder-db-id/$CLOUDFLARE_D1_ID/g" apps/api/wrangler.toml workers/whatsapp/wrangler.toml workers/push/wrangler.toml
 
       - name: Deploy worker
         run: |
