@@ -54,6 +54,19 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.workers_json != '[]'
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+      SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
+      SQUARE_LOCATION_ID: ${{ secrets.SQUARE_LOCATION_ID }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+      WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
+      WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -71,34 +84,24 @@ jobs:
       - name: Build worker
         run: npm run build --workspace=${{ matrix.workspace }}
 
-      - name: Apply D1 migrations (API only)
-        if: matrix.name == 'api'
-        run: npx wrangler d1 migrations apply masjid-db --env production --remote
-        working-directory: ${{ matrix.dir }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Debug auth
+        run: |
+          if [ -n "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN is set (${#CLOUDFLARE_API_TOKEN} chars)"
+          else
+            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY or not set"
+          fi
 
       - name: Deploy worker
         run: npx wrangler deploy --env production
         working-directory: ${{ matrix.dir }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
-          WHATSAPP_PHONE_ID: ${{ secrets.WHATSAPP_PHONE_ID }}
-          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-          SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
-          SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
-          SQUARE_LOCATION_ID: ${{ secrets.SQUARE_LOCATION_ID }}
-          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
-          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
 
   deploy-pages:
     needs: detect-changes
     if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.pages_json != '[]'
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
@@ -118,11 +121,17 @@ jobs:
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
 
+      - name: Debug auth
+        run: |
+          if [ -n "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN is set (${#CLOUDFLARE_API_TOKEN} chars)"
+          else
+            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY or not set"
+          fi
+
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid' || matrix.name == 'tv' && 'tv' || 'madmin' }} --branch=master
         working-directory: ${{ matrix.dir }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
   summary:
     needs: [detect-changes, deploy-workers, deploy-pages]

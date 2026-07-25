@@ -11,4 +11,4 @@ build/
 wrangler.state.*
 .wrangler/
 .masjid/
-/apps/api/drizzle/meta/
+drizzle/
