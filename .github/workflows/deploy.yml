@@ -28,13 +28,27 @@ jobs:
       - name: Detect changed packages
         id: changes
         run: |
-          node tooling/changed-packages.js > /tmp/changes_raw.txt
+          set -e
+          node tooling/changed-packages.js | tee /tmp/changes_raw.txt
           tail -1 /tmp/changes_raw.txt > /tmp/changes.json
-          echo "changed=$(jq -r '.changed' /tmp/changes.json)" >> $GITHUB_OUTPUT
-          echo "workers_json=$(jq -c '.workers' /tmp/changes.json)" >> $GITHUB_OUTPUT
-          echo "pages_json=$(jq -c '.pages' /tmp/changes.json)" >> $GITHUB_OUTPUT
-          cat /tmp/changes_raw.txt
-          echo "::notice::workers=$(jq -r '[.workers[].name] | join(",")' /tmp/changes.json) pages=$(jq -r '[.pages[].name] | join(",")' /tmp/changes.json)"
+
+          if ! jq -e . /tmp/changes.json > /dev/null 2>&1; then
+            echo "::error::Failed to parse changes JSON — deploying nothing"
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "workers_json=[]" >> $GITHUB_OUTPUT
+            echo "pages_json=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          CHANGED=$(jq -r '.changed' /tmp/changes.json)
+          WORKERS=$(jq -c '.workers' /tmp/changes.json)
+          PAGES=$(jq -c '.pages' /tmp/changes.json)
+
+          echo "changed=${CHANGED}" >> $GITHUB_OUTPUT
+          echo "workers_json=${WORKERS}" >> $GITHUB_OUTPUT
+          echo "pages_json=${PAGES}" >> $GITHUB_OUTPUT
+
+          echo "::notice::changed=${CHANGED} workers=$(jq -r '[.workers[].name] | join(",")' /tmp/changes.json) pages=$(jq -r '[.pages[].name] | join(",")' /tmp/changes.json)"
 
   deploy-workers:
     needs: detect-changes

@@ -1,112 +1,88 @@
 import { execSync } from 'node:child_process';
 
-const PACKAGES = {
-  api: { dir: 'apps/api', type: 'worker', workspace: '@masjid/api', deps: ['packages/schemas'] },
-  tv: { dir: 'apps/tv', type: 'page', workspace: '@masjid/tv', deps: ['packages/schemas', 'packages/ui-utils'] },
-  consumer: { dir: 'apps/consumer', type: 'page', workspace: '@masjid/consumer', deps: ['packages/schemas', 'packages/ui-utils'] },
-  admin: { dir: 'apps/admin', type: 'page', workspace: '@masjid/admin', deps: ['packages/schemas', 'packages/ui-utils'] },
-  whatsapp: { dir: 'workers/whatsapp', type: 'worker', workspace: '@masjid/worker-whatsapp', deps: ['packages/schemas', 'packages/agent'] },
-  push: { dir: 'workers/push', type: 'worker', workspace: '@masjid/worker-push', deps: ['packages/schemas'] },
-  agent: { dir: 'packages/agent', type: 'lib', deps: ['packages/schemas'] },
-  schemas: { dir: 'packages/schemas', type: 'lib', deps: [] },
-  'ui-utils': { dir: 'packages/ui-utils', type: 'lib', deps: ['packages/schemas'] },
+const ALL_WORKERS = [
+  { name: 'api', dir: 'apps/api', workspace: '@masjid/api' },
+  { name: 'whatsapp', dir: 'workers/whatsapp', workspace: '@masjid/worker-whatsapp' },
+  { name: 'push', dir: 'workers/push', workspace: '@masjid/worker-push' },
+];
+
+const ALL_PAGES = [
+  { name: 'consumer', dir: 'apps/consumer', workspace: '@masjid/consumer' },
+  { name: 'tv', dir: 'apps/tv', workspace: '@masjid/tv' },
+  { name: 'admin', dir: 'apps/admin', workspace: '@masjid/admin' },
+];
+
+const DEPLOYABLE = {
+  'apps/api': { name: 'api', dir: 'apps/api', workspace: '@masjid/api', type: 'worker', deps: ['packages/schemas'] },
+  'apps/tv': { name: 'tv', dir: 'apps/tv', workspace: '@masjid/tv', type: 'page', deps: ['packages/schemas', 'packages/ui-utils'] },
+  'apps/consumer': { name: 'consumer', dir: 'apps/consumer', workspace: '@masjid/consumer', type: 'page', deps: ['packages/schemas', 'packages/ui-utils'] },
+  'apps/admin': { name: 'admin', dir: 'apps/admin', workspace: '@masjid/admin', type: 'page', deps: ['packages/schemas', 'packages/ui-utils'] },
+  'workers/whatsapp': { name: 'whatsapp', dir: 'workers/whatsapp', workspace: '@masjid/worker-whatsapp', type: 'worker', deps: ['packages/schemas', 'packages/agent'] },
+  'workers/push': { name: 'push', dir: 'workers/push', workspace: '@masjid/worker-push', type: 'worker', deps: ['packages/schemas'] },
 };
 
-function getChangedFiles(base = 'HEAD^') {
+const LIBS = ['packages/schemas', 'packages/ui-utils', 'packages/agent'];
+
+function getChangedFiles() {
+  if (process.env.CI || process.argv.includes('--all')) {
+    return null;
+  }
+
   try {
-    return execSync(`git diff --name-only ${base} HEAD`, { encoding: 'utf8' })
+    const head = execSync('git rev-parse HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    let base;
+    try {
+      base = execSync('git rev-parse HEAD~1', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    } catch {
+      return null;
+    }
+    return execSync(`git diff --name-only ${base} ${head}`, { encoding: 'utf8' })
       .trim()
       .split('\n')
       .filter(Boolean);
   } catch {
-    try {
-      return execSync('git diff --name-only HEAD~1 HEAD', { encoding: 'utf8' })
-        .trim()
-        .split('\n')
-        .filter(Boolean);
-    } catch {
-      try {
-        // single-commit repo: diff against empty tree
-        return execSync('git diff --name-only 4b825dc642cb6eb9a060e54bf899c9cf095e5ab2 HEAD', { encoding: 'utf8' })
-          .trim()
-          .split('\n')
-          .filter(Boolean);
-      } catch {
-        return [];
-      }
-    }
+    return null;
   }
-}
-
-function resolveAffected(changedFiles) {
-  const affected = new Set();
-
-  for (const pkgName of Object.keys(PACKAGES)) {
-    const pkg = PACKAGES[pkgName];
-    if (changedFiles.some((f) => f.startsWith(pkg.dir + '/'))) {
-      affected.add(pkgName);
-    }
-  }
-
-  let expanded = new Set(affected);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const pkgName of Object.keys(PACKAGES)) {
-      if (expanded.has(pkgName)) continue;
-      const pkg = PACKAGES[pkgName];
-      for (const dep of pkg.deps) {
-        const depName = Object.keys(PACKAGES).find((k) => PACKAGES[k].dir === dep);
-        if (depName && expanded.has(depName)) {
-          expanded.add(pkgName);
-          changed = true;
-          break;
-        }
-      }
-    }
-  }
-
-  const libsChanged = [...expanded].some((p) => PACKAGES[p].type === 'lib');
-  if (libsChanged) {
-    for (const pkgName of Object.keys(PACKAGES)) {
-      if (PACKAGES[pkgName].type !== 'lib') {
-        expanded.add(pkgName);
-      }
-    }
-  }
-
-  return [...expanded].filter((p) => PACKAGES[p].type !== 'lib');
 }
 
 function main() {
-  const base = process.argv[2] || 'HEAD^';
-  const changedFiles = getChangedFiles(base);
+  const changedFiles = getChangedFiles();
 
-  if (changedFiles.length === 0) {
-    console.log('No changes detected. Nothing to deploy.');
+  if (changedFiles === null) {
+    console.log('CI or first push — deploying everything.');
+    console.log(JSON.stringify({ workers: ALL_WORKERS, pages: ALL_PAGES, changed: true }));
+    return;
+  }
+
+  const libChanged = changedFiles.some((f) => LIBS.some((l) => f.startsWith(l + '/')));
+  const rootChanged = changedFiles.some((f) => !f.includes('/') || f.startsWith('tooling/') || f.startsWith('.github/') || f.startsWith('.env'));
+
+  if (rootChanged) {
+    console.log('Root/tooling config changed — deploying everything.');
+    console.log(JSON.stringify({ workers: ALL_WORKERS, pages: ALL_PAGES, changed: true }));
+    return;
+  }
+
+  const affectedWorkers = [];
+  const affectedPages = [];
+
+  for (const [dir, pkg] of Object.entries(DEPLOYABLE)) {
+    const direct = changedFiles.some((f) => f.startsWith(dir + '/'));
+    const dep = pkg.deps.some((d) => libChanged);
+    if (direct || dep) {
+      if (pkg.type === 'worker') affectedWorkers.push(pkg);
+      else affectedPages.push(pkg);
+    }
+  }
+
+  if (affectedWorkers.length === 0 && affectedPages.length === 0) {
+    console.log('No deployable packages changed.');
     console.log(JSON.stringify({ workers: [], pages: [], changed: false }));
     return;
   }
 
-  const affected = resolveAffected(changedFiles);
-
-  if (affected.length === 0) {
-    console.log('Only library changes, nothing deployable.');
-    console.log(JSON.stringify({ workers: [], pages: [], changed: false }));
-    return;
-  }
-
-  const workers = affected
-    .filter((p) => PACKAGES[p].type === 'worker')
-    .map((p) => ({ name: p, dir: PACKAGES[p].dir, workspace: PACKAGES[p].workspace }));
-
-  const pages = affected
-    .filter((p) => PACKAGES[p].type === 'page')
-    .map((p) => ({ name: p, dir: PACKAGES[p].dir, workspace: PACKAGES[p].workspace }));
-
-  console.log(`Affected: workers=[${workers.map((w) => w.name).join(',')}] pages=[${pages.map((p) => p.name).join(',')}]`);
-
-  console.log(JSON.stringify({ workers, pages, changed: true }));
+  console.log(`Affected: workers=[${affectedWorkers.map((w) => w.name).join(',')}] pages=[${affectedPages.map((p) => p.name).join(',')}]`);
+  console.log(JSON.stringify({ workers: affectedWorkers, pages: affectedPages, changed: true }));
 }
 
 main();
