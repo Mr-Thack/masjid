@@ -5,7 +5,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as schema from './schema';
 
-const PROJECT_ROOT = path.resolve(import.meta.dirname, '../../../../../..');
+const PROJECT_ROOT = typeof import.meta.dirname !== 'undefined'
+  ? path.resolve(import.meta.dirname, '../../../../../..')
+  : '/dummy';
 const LOCAL_DB_PATH = path.resolve(PROJECT_ROOT, '.masjid/local.db');
 
 let localDb: ReturnType<typeof drizzleSqlite> | null = null;
@@ -328,13 +330,15 @@ function ensureTables(sqlite: Database.Database) {
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
-  // In local Node.js dev, always use our local SQLite — ignore the adapter's mock D1.
-  if (typeof process !== 'undefined') {
-    return getLocalDb();
-  }
-  // In Cloudflare Workers: use the real D1 binding.
   if (d1) {
     return drizzle(d1 as D1Database, { schema }) as unknown as ReturnType<typeof drizzleSqlite>;
+  }
+  // Only use local SQLite in Node.js (not Cloudflare Workers where process is polyfilled)
+  // We detect Workers by checking if 'crypto' exists with a DurableObject-like API or similar.
+  // Safer: check if we're in a non-CF context by looking for the absence of CF-specific globals
+  const isWorker = typeof caches !== 'undefined' && typeof caches.default !== 'undefined';
+  if (!isWorker && typeof process !== 'undefined') {
+    return getLocalDb();
   }
   throw new Error('D1 database binding not available');
 }

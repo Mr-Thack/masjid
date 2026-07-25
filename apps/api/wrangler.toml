@@ -3,10 +3,14 @@ compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 main = ".svelte-kit/cloudflare/_worker.js"
 
+[assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "masjid-db"
-database_id = "placeholder-db-id"
+database_id = "dbd92070-15d9-4442-9b10-fe0eb03b47df"
 
 [[kv_namespaces]]
 binding = "CACHE"
@@ -35,4 +39,8 @@ BOT_NAME = "masjid-api/1.0"
 [[env.production.d1_databases]]
 binding = "DB"
 database_name = "masjid-db"
-database_id = "placeholder-db-id"
+database_id = "dbd92070-15d9-4442-9b10-fe0eb03b47df"
+
+[env.production.assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"

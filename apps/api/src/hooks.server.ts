@@ -10,6 +10,7 @@ const PUBLIC_PATTERNS = [
   /^\/api\/v1\/webhooks\/stripe$/,
   /^\/api\/v1\/masjids\//,
   /^\/api\/v1\/status$/,
+  /^\/api\/v1\/debug$/,
 ];
 
 function isPublicPath(pathname: string): boolean {
