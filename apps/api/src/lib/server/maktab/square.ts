@@ -31,8 +31,8 @@ async function squarePost<T>(env: SquareEnv, path: string, body: unknown): Promi
 function sortPlanVariations(variations: any[]): string[] {
   return variations
     .sort((a, b) => {
-      const numA = parseInt((a.subscriptionPlanVariationData.name as string).match(/\d+/)?.[0] ?? '0', 10);
-      const numB = parseInt((b.subscriptionPlanVariationData.name as string).match(/\d+/)?.[0] ?? '0', 10);
+      const numA = parseInt((a.subscription_plan_variation_data.name as string).match(/\d+/)?.[0] ?? '0', 10);
+      const numB = parseInt((b.subscription_plan_variation_data.name as string).match(/\d+/)?.[0] ?? '0', 10);
       return numA - numB;
     })
     .map((item) => item.id);
@@ -60,39 +60,26 @@ export async function createSquareTermPlan(
     object: {
       type: 'SUBSCRIPTION_PLAN',
       id: '#plan',
-      subscriptionPlanData: {
+      subscription_plan_data: {
         name: term.name,
-        subscriptionPlanVariations: prices.map((amount, i) => ({
-          type: 'SUBSCRIPTION_PLAN_VARIATION',
-          id: `#var_${i}`,
-          subscriptionPlanVariationData: {
-            name: `${i + 1} Student(s)`,
-            phases: [
-              {
-                ordinal: 0,
-                cadence: 'MONTHLY',
-                periods: term.length_months,
-                pricing: {
-                  type: 'STATIC',
-                  priceMoney: { amount: String(amount), currency: 'USD' },
-                },
-              },
-            ],
-          },
+        phases: prices.map((amount, i) => ({
+          cadence: 'MONTHLY',
+          periods: term.length_months,
+          recurring_price_money: { amount: String(amount), currency: 'USD' },
         })),
       },
     },
   };
 
   const response = await squarePost<{
-    catalogObject: {
+    catalog_object: {
       id: string;
-      subscriptionPlanData: { subscriptionPlanVariations: any[] };
+      subscription_plan_data: { phases: any[] };
     };
   }>(fullEnv, '/catalog/object', upsertBody);
 
   const variationIds = sortPlanVariations(
-    response.catalogObject.subscriptionPlanData.subscriptionPlanVariations,
+    response.catalog_object.subscription_plan_data.phases,
   );
 
   if (variationIds.length !== 3) {
@@ -101,7 +88,7 @@ export async function createSquareTermPlan(
 
   return {
     square: {
-      plan_id: response.catalogObject.id,
+      plan_id: response.catalog_object.id,
       var_1: variationIds[0]!,
       var_2: variationIds[1]!,
       var_3plus: variationIds[2]!,
@@ -125,28 +112,28 @@ export async function createSquareSubscription(
   }
   const fullEnv = env as SquareEnv;
   const billingAddress = {
-    addressLine1: input.address.line1,
+    address_line_1: input.address.line1,
     locality: input.address.city,
-    administrativeDistrictLevel1: input.address.state,
-    postalCode: input.address.postal_code,
+    administrative_district_level_1: input.address.state,
+    postal_code: input.address.postal_code,
     country: input.address.country,
   };
 
   const customer = await squarePost<{ customer: { id: string } }>(env, '/customers', {
-    givenName: input.parent.name,
-    emailAddress: input.parent.email,
-    phoneNumber: input.parent.phone,
+    given_name: input.parent.name,
+    email_address: input.parent.email,
+    phone_number: input.parent.phone,
     address: billingAddress,
   });
   const customerId = customer.customer.id;
 
   const card = await squarePost<{ card: { id: string } }>(fullEnv, '/cards', {
-    idempotencyKey: crypto.randomUUID(),
-    sourceId: input.sourceId,
+    idempotency_key: crypto.randomUUID(),
+    source_id: input.sourceId,
     card: {
-      cardHolderName: input.cardHolderName,
-      billingAddress,
-      customerId,
+      cardholder_name: input.cardHolderName,
+      billing_address: billingAddress,
+      customer_id: customerId,
     },
   });
   const cardId = card.card.id;
@@ -160,13 +147,13 @@ export async function createSquareSubscription(
     fullEnv,
     '/subscriptions',
     {
-      idempotencyKey: crypto.randomUUID(),
-      locationId: fullEnv.SQUARE_LOCATION_ID,
-      planVariationId,
-      customerId,
-      startDate: new Date().toISOString().slice(0, 10),
+      idempotency_key: crypto.randomUUID(),
+      location_id: fullEnv.SQUARE_LOCATION_ID,
+      plan_variation_id: planVariationId,
+      customer_id: customerId,
+      start_date: new Date().toISOString().slice(0, 10),
       timezone: 'America/New_York',
-      cardId,
+      card_id: cardId,
     },
   );
 
