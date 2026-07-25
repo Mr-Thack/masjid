@@ -369,4 +369,44 @@ describe('Square sandbox integration', () => {
     expect(result!.square.var_2).toBeTruthy();
     expect(result!.square.var_3plus).toBeTruthy();
   }, 15000);
+
+  itSquare('enrolls a student with dummy data against the real Square sandbox', async () => {
+    const plan = await createSquareTermPlan(
+      {
+        id: 'enroll-test',
+        name: 'Enrollment Test Term',
+        length_months: 6,
+        price_cents_1: 15000,
+        price_cents_2: 25000,
+        price_cents_3plus: 30000,
+      },
+      {
+        SQUARE_ACCESS_TOKEN: sandboxEnv.SQUARE_ACCESS_TOKEN,
+        SQUARE_APP_ID: sandboxEnv.SQUARE_APP_ID,
+        SQUARE_LOCATION_ID: sandboxEnv.SQUARE_LOCATION_ID,
+        ENVIRONMENT: 'development',
+      },
+    );
+    expect(plan).not.toBeNull();
+
+    const result = await createSquareSubscription(
+      {
+        parent: { name: 'Test Parent', email: 'test-parent@example.com', phone: '+14155552671' },
+        address: { line1: '123 Main St', city: 'San Francisco', state: 'CA', postal_code: '94103', country: 'US' },
+        childrenCount: 1,
+        sourceId: 'cnon:card-nonce-ok',
+        cardHolderName: 'Test Parent',
+        refs: plan!.square,
+      },
+      {
+        SQUARE_ACCESS_TOKEN: sandboxEnv.SQUARE_ACCESS_TOKEN,
+        SQUARE_APP_ID: sandboxEnv.SQUARE_APP_ID,
+        SQUARE_LOCATION_ID: sandboxEnv.SQUARE_LOCATION_ID,
+        ENVIRONMENT: 'development',
+      },
+    );
+
+    expect(result.subscriptionId).toBeTruthy();
+    expect(result.customerId).toBeTruthy();
+  }, 15000);
 });
