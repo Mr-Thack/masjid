@@ -2,7 +2,7 @@ name: Deploy to Cloudflare
 
 on:
   push:
-    branches: [main]
+    branches: [master]
 
 concurrency:
   group: deploy-production
@@ -130,7 +130,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           workingDirectory: ${{ matrix.include.dir }}
-          command: pages deploy build --project-name=${{ matrix.include.name == 'consumer' && 'masjid' || matrix.include.name == 'tv' && 'tv' || 'madmin' }} --branch=main
+          command: pages deploy build --project-name=${{ matrix.include.name == 'consumer' && 'masjid' || matrix.include.name == 'tv' && 'tv' || 'madmin' }} --branch=master
 
   summary:
     needs: [detect-changes, deploy-workers, deploy-pages]
