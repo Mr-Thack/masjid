@@ -115,6 +115,7 @@ export const mktTerms = sqliteTable('mkt_terms', {
   masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   lengthMonths: integer('length_months').notNull(),
+  billingMonths: integer('billing_months'),
   priceCents1: integer('price_cents_1').notNull(),
   priceCents2: integer('price_cents_2').notNull(),
   priceCents3plus: integer('price_cents_3plus').notNull(),

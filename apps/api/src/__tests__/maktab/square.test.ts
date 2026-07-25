@@ -169,6 +169,58 @@ describe('createSquareTermPlan', () => {
     )).rejects.toThrow('did not return 3 variations');
   });
 
+  it('uses billing_months for charge periods when set', async () => {
+    let sentBody: any;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      sentBody = JSON.parse(opts.body);
+      return new Response(JSON.stringify({
+        catalog_object: {
+          id: 'PLAN_BILL',
+          subscription_plan_data: {
+            subscription_plan_variations: [
+              { id: 'v1', subscription_plan_variation_data: { name: '1 Student(s)' } },
+              { id: 'v2', subscription_plan_variation_data: { name: '2 Student(s)' } },
+              { id: 'v3', subscription_plan_variation_data: { name: '3 Student(s)' } },
+            ],
+          },
+        },
+      }), { status: 200 });
+    }));
+
+    await createSquareTermPlan(
+      { id: 't8', name: 'Ramadan', length_months: 9, billing_months: 8, price_cents_1: 10000, price_cents_2: 16000, price_cents_3plus: 20000 },
+      FULL_ENV,
+    );
+    const phase = sentBody.object.subscription_plan_data.subscription_plan_variations[0].subscription_plan_variation_data.phases[0];
+    expect(phase.periods).toBe(8);
+  });
+
+  it('falls back to length_months when billing_months is not set', async () => {
+    let sentBody: any;
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (_url: string, opts: any) => {
+      sentBody = JSON.parse(opts.body);
+      return new Response(JSON.stringify({
+        catalog_object: {
+          id: 'PLAN_FB',
+          subscription_plan_data: {
+            subscription_plan_variations: [
+              { id: 'v1', subscription_plan_variation_data: { name: '1 Student(s)' } },
+              { id: 'v2', subscription_plan_variation_data: { name: '2 Student(s)' } },
+              { id: 'v3', subscription_plan_variation_data: { name: '3 Student(s)' } },
+            ],
+          },
+        },
+      }), { status: 200 });
+    }));
+
+    await createSquareTermPlan(
+      { id: 't9', name: 'Normal', length_months: 6, price_cents_1: 5000, price_cents_2: 8000, price_cents_3plus: 10000 },
+      FULL_ENV,
+    );
+    const phase = sentBody.object.subscription_plan_data.subscription_plan_variations[0].subscription_plan_variation_data.phases[0];
+    expect(phase.periods).toBe(6);
+  });
+
   it('uses sandbox URL in development', async () => {
     let calledUrl = '';
     vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {

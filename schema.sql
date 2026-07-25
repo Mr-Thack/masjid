@@ -161,6 +161,7 @@ CREATE TABLE mkt_terms (
     masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     length_months INTEGER NOT NULL,
+    billing_months INTEGER,
     price_cents_1 INTEGER NOT NULL,
     price_cents_2 INTEGER NOT NULL,
     price_cents_3plus INTEGER NOT NULL,

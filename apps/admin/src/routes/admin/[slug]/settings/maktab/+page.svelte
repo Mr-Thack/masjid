@@ -11,6 +11,7 @@
     id: string;
     name: string;
     length_months: number;
+    billing_months: number | null;
     prices: { '1': number; '2': number; '3plus': number };
   };
 
@@ -46,6 +47,7 @@
   let newTerm = $state({
     name: '',
     length_months: 1,
+    billing_months: undefined as number | undefined,
     price_1: '',
     price_2: '',
     price_3plus: '',
@@ -118,12 +120,13 @@
       await api.createMaktabTerm(masjidId, {
         name: newTerm.name,
         length_months: Number(newTerm.length_months),
+        billing_months: newTerm.billing_months,
         price_cents_1: Math.round(Number(newTerm.price_1) * 100),
         price_cents_2: Math.round(Number(newTerm.price_2) * 100),
         price_cents_3plus: Math.round(Number(newTerm.price_3plus) * 100),
       });
       toast.success('Term created');
-      newTerm = { name: '', length_months: 1, price_1: '', price_2: '', price_3plus: '' };
+      newTerm = { name: '', length_months: 1, billing_months: undefined, price_1: '', price_2: '', price_3plus: '' };
       await loadAll();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to create term');
@@ -264,8 +267,14 @@
               <input id="term_name" type="text" bind:value={newTerm.name} placeholder="e.g. 2026–2027 Academic Year" class="w-full" />
             </div>
             <div class="form-group">
-              <label for="term_length">Length (months)</label>
+              <label for="term_length">Term Length (months)</label>
               <input id="term_length" type="number" min="1" max="12" bind:value={newTerm.length_months} class="w-full" />
+              <p class="text-xs text-text-muted mt-1">Total months in the academic year</p>
+            </div>
+            <div class="form-group">
+              <label for="billing_months">Billing Months</label>
+              <input id="billing_months" type="number" min="1" max="12" bind:value={newTerm.billing_months} class="w-full" placeholder="Same as term length" />
+              <p class="text-xs text-text-muted mt-1">Months Square charges (e.g. 8 for a 9-month term with Ramadan break)</p>
             </div>
             <div class="form-group">
               <label for="price_1">Price: 1 child</label>

@@ -46,6 +46,7 @@ export async function createSquareTermPlan(
     id: string;
     name: string;
     length_months: number;
+    billing_months?: number;
     price_cents_1: number;
     price_cents_2: number;
     price_cents_3plus: number;
@@ -56,6 +57,7 @@ export async function createSquareTermPlan(
   const fullEnv = env as SquareEnv;
 
   const prices = [term.price_cents_1, term.price_cents_2, term.price_cents_3plus];
+  const chargeMonths = term.billing_months ?? term.length_months;
   const idempotencyKey = crypto.randomUUID();
 
   const upsertBody = {
@@ -73,7 +75,7 @@ export async function createSquareTermPlan(
             phases: [
               {
                 cadence: 'MONTHLY',
-                periods: term.length_months,
+                periods: chargeMonths,
                 pricing: {
                   type: 'STATIC',
                   price_money: { amount, currency: 'USD' },

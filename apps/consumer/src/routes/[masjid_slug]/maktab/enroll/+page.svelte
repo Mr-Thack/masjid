@@ -224,7 +224,7 @@
             <input
               type="tel"
               bind:value={form.father.phone}
-              placeholder="555-123-4567"
+              placeholder="+1 123 456 7890"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
@@ -235,7 +235,7 @@
             <input
               type="tel"
               bind:value={form.mother.phone}
-              placeholder="555-123-4567"
+              placeholder="+1 123 456 7890"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
@@ -246,6 +246,7 @@
             <input
               type="email"
               bind:value={form.father.email}
+              placeholder="father@email.com"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />
@@ -255,6 +256,7 @@
             <input
               type="email"
               bind:value={form.mother.email}
+              placeholder="mother@email.com"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
               style="border-color: var(--color-border); color: var(--color-text);"
             />

@@ -10,6 +10,7 @@ function termToPublic(term: typeof mktTerms.$inferSelect) {
     id: term.id,
     name: term.name,
     length_months: term.lengthMonths,
+    billing_months: term.billingMonths,
     prices: {
       '1': term.priceCents1,
       '2': term.priceCents2,
@@ -54,11 +55,12 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
     const env = (platform?.env ?? {}) as Record<string, unknown>;
 
     // 1. Create Square plan FIRST — if this fails, nothing is persisted
-    const refs = await createSquareTermPlan(
+const refs = await createSquareTermPlan(
       {
-        id: '', // Square generates the plan ID, we only need to pass data
+        id: '',
         name: body.name,
         length_months: body.length_months,
+        billing_months: body.billing_months ?? body.length_months,
         price_cents_1: body.price_cents_1,
         price_cents_2: body.price_cents_2,
         price_cents_3plus: body.price_cents_3plus,
@@ -79,6 +81,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       masjidId: params.id,
       name: body.name,
       lengthMonths: body.length_months,
+      billingMonths: body.billing_months ?? null,
       priceCents1: body.price_cents_1,
       priceCents2: body.price_cents_2,
       priceCents3plus: body.price_cents_3plus,

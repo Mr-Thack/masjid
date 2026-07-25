@@ -90,6 +90,7 @@ export type SquareEnrollmentInput = z.infer<typeof SquareEnrollmentSchema>;
 export const TermCreateSchema = z.object({
   name: z.string().trim().min(1),
   length_months: z.number().int().min(1).max(12),
+  billing_months: z.number().int().min(1).max(12).optional(),
   price_cents_1: z.number().int().positive(),
   price_cents_2: z.number().int().positive(),
   price_cents_3plus: z.number().int().positive(),
