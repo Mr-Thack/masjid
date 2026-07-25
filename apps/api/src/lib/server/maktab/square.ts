@@ -74,7 +74,10 @@ export async function createSquareTermPlan(
               {
                 cadence: 'MONTHLY',
                 periods: term.length_months,
-                recurring_price_money: { amount, currency: 'USD' },
+                pricing: {
+                  type: 'STATIC',
+                  price_money: { amount, currency: 'USD' },
+                },
               },
             ],
           },
