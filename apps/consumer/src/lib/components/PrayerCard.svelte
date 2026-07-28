@@ -14,6 +14,8 @@
     isNext = false,
     isCurrent = false,
     isPast = false,
+    asrSecondary,
+    asrSecondaryLabel,
   }: {
     name: string;
     adhaan: string;
@@ -27,11 +29,14 @@
     isNext?: boolean;
     isCurrent?: boolean;
     isPast?: boolean;
+    asrSecondary?: string | null;
+    asrSecondaryLabel?: string;
   } = $props();
 
   let formattedAdhaan = $derived(formatTime(adhaan, timeFormat));
   let formattedIqaamah = $derived(formatTime(iqaamah, timeFormat));
   let formattedSunrise = $derived(sunrise ? formatTime(sunrise, timeFormat) : null);
+  let formattedAsrSecondary = $derived(asrSecondary ? formatTime(asrSecondary, timeFormat) : null);
 </script>
 
 <div
@@ -89,6 +94,12 @@
     <div class="mt-1 flex items-center gap-1.5 text-[10px]" style="color: var(--color-text-dim);">
       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>
       <span>{sunriseLabel}: {formattedSunrise}</span>
+    </div>
+  {/if}
+
+  {#if formattedAsrSecondary}
+    <div class="mt-1 flex items-center gap-1.5 text-[10px]" style="color: var(--color-text-dim);">
+      <span>{asrSecondaryLabel ?? 'Asr'}: {formattedAsrSecondary}</span>
     </div>
   {/if}
 </div>

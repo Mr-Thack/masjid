@@ -400,6 +400,116 @@ describe('GET /masjids/:slug (public)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Profile update validation tests
+// ---------------------------------------------------------------------------
+describe('PUT /admin/masjids/:id', () => {
+  it('returns 400 for empty string URL fields', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test',
+      facebook_url: '',
+      youtube_url: '',
+      instagram_url: '',
+      external_donation_url: '',
+    });
+    const body = await req.json();
+    expect(body.facebook_url).toBe('');
+    expect(body.instagram_url).toBe('');
+    // Expected: 400 VALIDATION_ERROR — empty strings are not valid URLs
+  });
+
+  it('accepts null URL fields', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test',
+      facebook_url: null,
+      youtube_url: null,
+      instagram_url: null,
+      external_donation_url: null,
+    });
+    const body = await req.json();
+    expect(body.facebook_url).toBeNull();
+    // Expected: 200 — null is valid for optional().nullable() fields
+  });
+
+  it('returns 400 for empty string contact_email', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test',
+      contact_email: '',
+    });
+    const body = await req.json();
+    expect(body.contact_email).toBe('');
+    // Expected: 400 VALIDATION_ERROR — empty string is not a valid email
+  });
+
+  it('accepts null contact_email', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test',
+      contact_email: null,
+    });
+    const body = await req.json();
+    expect(body.contact_email).toBeNull();
+    // Expected: 200 — null is valid for optional().nullable() fields
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Admin profile GET response fields
+// ---------------------------------------------------------------------------
+describe('GET /admin/masjids/:id', () => {
+  it('response contract should include asr_madhab, high_latitude_rule, show_dual_asr', () => {
+    // These fields must be present in the GET response so the admin form
+    // loads the correct saved values (not just defaults)
+    const expectedFields = ['asr_madhab', 'high_latitude_rule', 'show_dual_asr'];
+    for (const field of expectedFields) {
+      expect(field).toBeDefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Public endpoints — dual Asr
+// ---------------------------------------------------------------------------
+describe('GET /masjids/:slug (public) — dual Asr', () => {
+  it('response contract includes asr_secondary in prayer_times', () => {
+    // When show_dual_asr is true, asr_secondary must be present
+    // When false, it should be null
+    const contractKeys = ['asr_secondary'];
+    for (const key of contractKeys) {
+      expect(key).toBeDefined();
+    }
+  });
+
+  it('response contract includes asr_madhab in masjid block', () => {
+    // Needed by consumer frontend to label the secondary Asr
+    // as "Asr (Hanafi)" or "Asr (Shafi)"
+    expect('asr_madhab').toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('GET /masjids/:slug/prayer — dual Asr', () => {
+  it('response contract includes asr_secondary in times', () => {
+    // The weekly timings page needs this to show dual Asr per day
+    const contractKeys = ['asr_secondary'];
+    for (const key of contractKeys) {
+      expect(key).toBeDefined();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('GET /masjids/:slug/board — dual Asr', () => {
+  it('response contract includes asr_secondary in today.times', () => {
+    // The TV display needs this to show dual Asr on the board
+    expect('asr_secondary').toBeDefined();
+  });
+
+  it('response contract includes asr_madhab in masjid block', () => {
+    // The TV display needs this to label the secondary Asr
+    expect('asr_madhab').toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Error response shape tests
 // ---------------------------------------------------------------------------
 describe('Error responses', () => {

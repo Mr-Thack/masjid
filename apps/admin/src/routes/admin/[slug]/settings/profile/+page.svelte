@@ -98,14 +98,35 @@
     }
   }
 
+  function cleanUrl(val: string): string | null {
+    return val.trim() ? val.trim() : null;
+  }
+
   async function handleSave(e: Event) {
     e.preventDefault();
     saving = true;
     error = null;
     try {
       await api.updateProfile(auth.admin!.masjid_id, {
-        ...form,
+        name: form.name,
+        address_line1: form.address_line1,
+        address_line2: form.address_line2 || null,
+        city: form.city,
+        state: form.state,
+        postal_code: form.postal_code,
+        country: form.country,
+        contact_phone: form.contact_phone,
+        contact_email: cleanUrl(form.contact_email),
+        facebook_url: cleanUrl(form.facebook_url),
+        youtube_url: cleanUrl(form.youtube_url),
+        instagram_url: cleanUrl(form.instagram_url),
+        website_url: cleanUrl(form.website_url),
+        external_donation_url: cleanUrl(form.external_donation_url),
         calculation_method: Number(form.calculation_method),
+        asr_madhab: form.asr_madhab,
+        high_latitude_rule: form.high_latitude_rule,
+        show_dual_asr: form.show_dual_asr,
+        timezone: form.timezone,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
       });

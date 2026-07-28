@@ -4,6 +4,7 @@ export interface BoardPayload {
     name: string;
     city: string | null;
     state: string | null;
+    asr_madhab?: string;
     external_donation_url: string | null;
   };
   theme: {
@@ -31,6 +32,7 @@ export interface BoardPayload {
       sunrise: string;
       dhuhr: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
       asr: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
+      asr_secondary?: string;
       maghrib: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
       isha: { adhaan: string; iqaamah: string; right_after_adhaan?: boolean };
     };

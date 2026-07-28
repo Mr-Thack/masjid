@@ -11,6 +11,7 @@ export interface PrayerTimes {
   sunrise: string;
   dhuhr: PrayerTimeEntry;
   asr: PrayerTimeEntry;
+  asr_secondary?: string | null;
   maghrib: PrayerTimeEntry;
   isha: PrayerTimeEntry;
 }
@@ -27,6 +28,7 @@ export interface PagePayload {
   masjid: {
     slug: string;
     name: string;
+    asr_madhab?: string;
     address_line1: string | null;
     address_line2: string | null;
     city: string | null;

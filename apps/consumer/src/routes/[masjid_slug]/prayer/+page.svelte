@@ -11,7 +11,7 @@
   let theme = $derived(data.theme);
 
   let weekOffset = $state(0);
-  let weekData = $state<Map<string, Record<string, { adhaan: string; iqaamah: string; right_after_adhaan?: boolean }>>>(new Map());
+  let weekData = $state<Map<string, { times: Record<string, { adhaan: string; iqaamah: string; right_after_adhaan?: boolean }>; asr_secondary?: string }>>(new Map());
   let loading = $state(false);
   let error = $state('');
   let today = $state(new Date());
@@ -28,6 +28,11 @@
   let timeFormat = $derived(theme?.time_format ?? '24h');
   let adhaanLabel = $derived(theme?.label_adhaan ?? 'Adhaan');
   let iqaamahLabel = $derived(theme?.label_iqaamah ?? 'Iqaamah');
+
+  let asrSecondaryLabel = $derived.by(() => {
+    const primary = masjid?.asr_madhab ?? 'shafi';
+    return primary === 'shafi' ? 'Asr (Hanafi)' : 'Asr (Shafi)';
+  });
 
   function getWeekDates(offset: number): Date[] {
     const now = new Date(today);
@@ -78,16 +83,18 @@
     if (!masjid?.slug) return;
     loading = true;
     error = '';
-    const newData = new Map<string, Record<string, { adhaan: string; iqaamah: string }>>();
+    const newData = new Map<string, { times: Record<string, { adhaan: string; iqaamah: string }>; asr_secondary?: string }>();
 
     try {
       for (const date of weekDates) {
         const dateStr = formatDate(date);
         const result = await fetchPrayerTimes(masjid.slug, dateStr);
-        newData.set(
-          dateStr,
-          result.times as unknown as Record<string, { adhaan: string; iqaamah: string }>,
-        );
+        const times = result.times as Record<string, { adhaan: string; iqaamah: string }> & { asr_secondary?: string | null };
+        const { asr_secondary, ...prayerTimes } = times;
+        newData.set(dateStr, {
+          times: prayerTimes as unknown as Record<string, { adhaan: string; iqaamah: string }>,
+          asr_secondary: asr_secondary ?? undefined,
+        });
       }
       weekData = newData;
     } catch (e) {
@@ -134,9 +141,12 @@
     <div class="space-y-4">
       {#each weekDates as date, dayIndex}
         {@const dateStr = formatDate(date)}
-        {@const dayTimes = weekData.get(dateStr)}
+        {@const dayData = weekData.get(dateStr)}
+        {@const dayTimes = dayData?.times}
+        {@const asrSecondary = dayData?.asr_secondary}
         {@const prevDateStr = dayIndex > 0 ? formatDate(weekDates[dayIndex - 1]!) : null}
-        {@const prevTimes = prevDateStr ? weekData.get(prevDateStr) : null}
+        {@const prevData = prevDateStr ? weekData.get(prevDateStr) : null}
+        {@const prevTimes = prevData?.times}
         {@const prayerChanges = dayIndex > 0 && prevTimes && dayTimes
           ? Object.fromEntries(
               prayerNames.map((name) => {
@@ -188,6 +198,11 @@
                     >
                       {adhaanLabel}: {formatTime(time.adhaan, timeFormat)}
                     </span>
+                    {#if name === 'asr' && asrSecondary}
+                      <span class="text-[10px] tabular-nums mt-0.5" style="color: var(--color-text-dim);">
+                        {asrSecondaryLabel}: {formatTime(asrSecondary, timeFormat)}
+                      </span>
+                    {/if}
                   </div>
                 {/if}
               {/each}

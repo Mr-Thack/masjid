@@ -45,4 +45,37 @@ describe('PrayerCard', () => {
     const card = screen.getByText('Fajr').closest('.glass-card');
     expect(card?.classList.contains('opacity-100')).toBe(true);
   });
+
+  it('renders secondary Asr time when asrSecondary and asrSecondaryLabel are provided', () => {
+    render(PrayerCard, {
+      props: {
+        name: 'Asr',
+        adhaan: '17:00',
+        iqaamah: '17:30',
+        asrSecondary: '16:45',
+        asrSecondaryLabel: 'Asr (Shafi)',
+      },
+    });
+    expect(screen.getByText('Asr (Shafi): 16:45')).toBeDefined();
+  });
+
+  it('does not render secondary Asr time when asrSecondary is not provided', () => {
+    render(PrayerCard, {
+      props: { name: 'Asr', adhaan: '17:00', iqaamah: '17:30' },
+    });
+    expect(screen.queryByText(/Asr \(Shafi\)/)).toBeNull();
+    expect(screen.queryByText(/Asr \(Hanafi\)/)).toBeNull();
+  });
+
+  it('renders secondary Asr with fallback label when asrSecondaryLabel is not provided', () => {
+    render(PrayerCard, {
+      props: {
+        name: 'Asr',
+        adhaan: '17:00',
+        iqaamah: '17:30',
+        asrSecondary: '16:45',
+      },
+    });
+    expect(screen.getByText('Asr: 16:45')).toBeDefined();
+  });
 });

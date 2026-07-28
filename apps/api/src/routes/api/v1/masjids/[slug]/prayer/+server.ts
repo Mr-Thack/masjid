@@ -72,6 +72,7 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
         sunrise: times.sunrise,
         dhuhr: times.dhuhr,
         asr: times.asr,
+        asr_secondary: times.asr_secondary ?? null,
         maghrib: times.maghrib,
         isha: times.isha,
       },

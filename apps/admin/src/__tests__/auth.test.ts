@@ -59,6 +59,22 @@ describe('auth store', () => {
     expect(auth.isAuthenticated).toBe(false);
   });
 
+  it('login() parses error from {error: {message}} format (actual API response shape)', async () => {
+    const mod = await import('$lib/auth.svelte');
+    const auth = mod.auth;
+    auth.logout();
+
+    const mockRes = {
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: { code: 'VALIDATION_ERROR', message: 'Invalid email' } }),
+    };
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(mockRes as Response);
+
+    // Must throw the real message, not the generic fallback
+    await expect(auth.login('', '')).rejects.toThrow('Invalid email');
+  });
+
   it('logout() clears state and localStorage', async () => {
     const mod = await import('$lib/auth.svelte');
     const auth = mod.auth;

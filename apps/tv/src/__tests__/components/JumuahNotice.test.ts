@@ -13,7 +13,7 @@ describe('JumuahNotice', () => {
         speechLabel: 'Speech',
       },
     });
-    expect(screen.getByText("Jumu'ah")).toBeDefined();
+    expect(screen.getByText("Jumu'ah Sessions")).toBeDefined();
   });
 
   it('renders all session times', () => {
@@ -41,7 +41,7 @@ describe('JumuahNotice', () => {
         speechLabel: 'Speech',
       },
     });
-    expect(screen.getByText('Imam Yusuf')).toBeDefined();
+    expect(screen.getByText('— Imam Yusuf')).toBeDefined();
   });
 
   it('renders speech_time with custom label', () => {
@@ -54,11 +54,11 @@ describe('JumuahNotice', () => {
         speechLabel: 'Bayaan',
       },
     });
-    expect(screen.getByText('Bayaan 13:00')).toBeDefined();
+    expect(screen.getByText('Bayaan @ 13:00')).toBeDefined();
   });
 
   it('renders with empty sessions (still shows label)', () => {
     render(JumuahNotice, { props: { sessions: [], label: "Jumu'ah", speechLabel: 'Speech' } });
-    expect(screen.getByText("Jumu'ah")).toBeDefined();
+    expect(screen.getByText("Jumu'ah Sessions")).toBeDefined();
   });
 });

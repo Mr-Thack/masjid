@@ -27,6 +27,11 @@
     isha: theme?.label_isha ?? 'Isha',
   });
 
+  let asrSecondaryLabel = $derived.by(() => {
+    const primary = masjid?.asr_madhab ?? 'shafi';
+    return primary === 'shafi' ? 'Asr (Hanafi)' : 'Asr (Shafi)';
+  });
+
   let times = $derived(
     prayerNames.map((name) => ({
       name: prayerLabels[name]!,
@@ -34,6 +39,9 @@
       iqaamah: prayerTimes?.[name]?.iqaamah ?? '--:--',
       rightAfterAdhaan: prayerTimes?.[name]?.right_after_adhaan ?? false,
       sunrise: name === 'fajr' ? (prayerTimes?.sunrise ?? undefined) : undefined,
+      ...(name === 'asr' && prayerTimes?.asr_secondary
+        ? { asrSecondary: prayerTimes.asr_secondary, asrSecondaryLabel }
+        : {}),
     })),
   );
 

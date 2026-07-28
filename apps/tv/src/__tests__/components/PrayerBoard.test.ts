@@ -83,4 +83,22 @@ describe('PrayerBoard', () => {
     const cells = container.querySelectorAll('.prayer-cell--flash');
     expect(cells.length).toBeGreaterThan(0);
   });
+
+  it('renders secondary Asr label and time on Asr row when provided', () => {
+    const dualTimes = [
+      { key: 'fajr', label: 'Fajr', adhaan: '05:00', iqaamah: '05:15' },
+      { key: 'dhuhr', label: 'Dhuhr', adhaan: '12:00', iqaamah: '12:15' },
+      { key: 'asr', label: 'Asr', adhaan: '18:00', iqaamah: '18:15', asrSecondary: '17:00', asrSecondaryLabel: 'Asr (Shafi)' },
+      { key: 'maghrib', label: 'Maghrib', adhaan: '20:00', iqaamah: '20:05' },
+      { key: 'isha', label: 'Isha', adhaan: '21:00', iqaamah: '21:15' },
+    ];
+    render(PrayerBoard, { props: { ...defaultProps, times: dualTimes } });
+    expect(screen.getByText('Asr (Shafi) 17:00')).toBeDefined();
+  });
+
+  it('has no prayer-asr-secondary element when asrSecondary is not provided', () => {
+    render(PrayerBoard, { props: defaultProps });
+    // Text "Asr (Shafi)" or "Asr (Hanafi)" should not appear
+    expect(screen.queryByText(/Asr \(/)).toBeNull();
+  });
 });

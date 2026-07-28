@@ -359,6 +359,31 @@ describe('api client', () => {
     await expect(api.getProfile('m1')).rejects.toThrow('Server error');
   });
 
+  it('parses error from {error: {message}} format (actual API response shape)', async () => {
+    // The real API returns errors as {error: {code, message}}, not {message}.
+    // The client must extract err.error.message, not err.message.
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: { code: 'VALIDATION_ERROR', message: 'Invalid url' } }),
+    } as Response);
+
+    const api = await getApi();
+    await expect(api.getProfile('m1')).rejects.toThrow('Invalid url');
+  });
+
+  it('parses error from {error: {message}} format — generic fallback on 400', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: () => Promise.resolve({ error: { code: 'VALIDATION_ERROR', message: 'Invalid url' } }),
+    } as Response);
+
+    const api = await getApi();
+    // Should throw the actual message, not "Request failed (400)"
+    await expect(api.getProfile('m1')).rejects.toThrow('Invalid url');
+  });
+
   it('throws generic error when error response is not JSON', async () => {
     vi.mocked(globalThis.fetch).mockResolvedValueOnce({
       ok: false,

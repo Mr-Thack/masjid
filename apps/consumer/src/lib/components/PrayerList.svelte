@@ -8,6 +8,8 @@
     iqaamah: string;
     sunrise?: string;
     rightAfterAdhaan?: boolean;
+    asrSecondary?: string | null;
+    asrSecondaryLabel?: string;
   }
 
   interface LabelSet {
@@ -43,6 +45,8 @@
         sunrise={entry.sunrise}
         sunriseLabel={labels.sunrise}
         rightAfterAdhaan={entry.rightAfterAdhaan}
+        asrSecondary={entry.asrSecondary}
+        asrSecondaryLabel={entry.asrSecondaryLabel}
         {timeFormat}
         isCurrent={i === currentPrayerIndex}
         isNext={i === nextPrayerIndex}

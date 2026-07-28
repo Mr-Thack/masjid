@@ -88,6 +88,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         name: masjid.name,
         city: masjid.city,
         state: masjid.state,
+        asr_madhab: masjid.asrMadhab ?? 'shafi',
         external_donation_url: masjid.externalDonationUrl,
       },
       theme: {

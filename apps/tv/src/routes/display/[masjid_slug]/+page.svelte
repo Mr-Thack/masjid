@@ -46,6 +46,8 @@
     iqaamah: string;
     adhaanHM: [number, number];
     iqaamahHM: [number, number];
+    asrSecondary?: string;
+    asrSecondaryLabel?: string;
   }
 
   function buildThemeStyle(theme: BoardPayload['theme']): string {
@@ -71,6 +73,9 @@
 
   let times = $derived.by(() => {
     const fmt = timeFormat;
+    const asrSecondaryRaw = payload.today.times.asr_secondary;
+    const primaryMadhab = payload.masjid.asr_madhab ?? 'shafi';
+    const asrSecondaryLabel = primaryMadhab === 'shafi' ? 'Asr (Hanafi)' : 'Asr (Shafi)';
     return prayerNames.map((name) => {
       const t = payload.today.times[name];
       const adhaan = t?.adhaan ?? '--:--';
@@ -84,6 +89,9 @@
         iqaamah: formatTime(iqaamah, fmt),
         adhaanHM: [ah ?? 0, am ?? 0] as [number, number],
         iqaamahHM: [ih ?? 0, im ?? 0] as [number, number],
+        ...(name === 'asr' && asrSecondaryRaw
+          ? { asrSecondary: formatTime(asrSecondaryRaw, fmt), asrSecondaryLabel }
+          : {}),
       };
     });
   });

@@ -4,6 +4,8 @@
     label: string;
     adhaan: string;
     iqaamah: string;
+    asrSecondary?: string;
+    asrSecondaryLabel?: string;
   }
 
   let {
@@ -44,7 +46,12 @@
     <div
       class="prayer-cell {isCurrent ? 'prayer-cell--current' : ''} {isIqaamahFlashing ? 'prayer-cell--flash' : ''}"
     >
-      {entry.iqaamah}
+      <div class="prayer-cell-inner">
+        <span>{entry.iqaamah}</span>
+        {#if entry.asrSecondary}
+          <span class="prayer-asr-secondary">{entry.asrSecondaryLabel} {entry.asrSecondary}</span>
+        {/if}
+      </div>
     </div>
   {/each}
 </div>

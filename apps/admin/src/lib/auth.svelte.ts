@@ -38,7 +38,7 @@ class AuthStore {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'Registration failed' }));
-      throw new Error(err.message || 'Registration failed');
+      throw new Error(err.error?.message || err.message || 'Registration failed');
     }
 
     const result = await res.json();
@@ -63,7 +63,7 @@ class AuthStore {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'Login failed' }));
-      throw new Error(err.message || 'Invalid email or password');
+      throw new Error(err.error?.message || err.message || 'Invalid email or password');
     }
 
     const data = await res.json();

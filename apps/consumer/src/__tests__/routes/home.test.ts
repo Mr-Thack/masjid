@@ -152,9 +152,9 @@ describe('homepage', () => {
       screen.getByRole('heading', { name: "Jumu'ah Timings" }),
     ).toBeInTheDocument();
     expect(screen.getByText('13:30')).toBeInTheDocument();
-    expect(screen.getByText('Sh. Ahmed')).toBeInTheDocument();
+    expect(screen.getByText('— Sh. Ahmed')).toBeInTheDocument();
     expect(screen.getByText('14:00')).toBeInTheDocument();
-    expect(screen.getByText('Sh. Yusuf')).toBeInTheDocument();
+    expect(screen.getByText('— Sh. Yusuf')).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { name: 'Announcement' }),
     ).toBeInTheDocument();
@@ -231,5 +231,47 @@ describe('homepage', () => {
 
     const skeletons = container.querySelectorAll('.animate-shimmer');
     expect(skeletons).toHaveLength(5);
+  });
+
+  it('renders dual Asr when asr_secondary is provided on prayer_times', () => {
+    setPageData({
+      masjid: { name: 'Dual Asr Masjid', asr_madhab: 'hanafi' },
+      prayer_times: {
+        fajr: { adhaan: '05:00', iqaamah: '05:15' },
+        sunrise: '06:00',
+        dhuhr: { adhaan: '12:00', iqaamah: '12:15' },
+        asr: { adhaan: '18:00', iqaamah: '18:15' },
+        asr_secondary: '17:00',
+        maghrib: { adhaan: '20:00', iqaamah: '20:05' },
+        isha: { adhaan: '21:00', iqaamah: '21:15' },
+      },
+      jumuah: [],
+      pinned_announcement: null,
+    });
+
+    render(HomePage);
+
+    // Primary is hanafi, so secondary is Shafi
+    expect(screen.getByText('Asr (Shafi): 17:00')).toBeInTheDocument();
+  });
+
+  it('does not render dual Asr when asr_secondary is not provided', () => {
+    setPageData({
+      masjid: { name: 'Single Asr Masjid', asr_madhab: 'shafi' },
+      prayer_times: {
+        fajr: { adhaan: '05:00', iqaamah: '05:15' },
+        sunrise: '06:00',
+        dhuhr: { adhaan: '12:00', iqaamah: '12:15' },
+        asr: { adhaan: '15:00', iqaamah: '15:15' },
+        maghrib: { adhaan: '18:00', iqaamah: '18:05' },
+        isha: { adhaan: '19:00', iqaamah: '19:15' },
+      },
+      jumuah: [],
+      pinned_announcement: null,
+    });
+
+    render(HomePage);
+
+    expect(screen.queryByText(/Asr \(/)).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ import {
   CreateJumuahSchema,
   LoginSchema,
   UpdateMasjidSchema,
+  DailyTimesSchema,
   PrayerName,
   ConditionSchema,
   ActionSchema,
@@ -526,6 +527,92 @@ describe('UpdateMasjidSchema', () => {
   it('rejects invalid calculation_method', () => {
     expect(() =>
       UpdateMasjidSchema.parse({ calculation_method: 2.5 }),
+    ).toThrow();
+  });
+
+  it('rejects empty string in url fields (must send null)', () => {
+    // Empty string is not a valid URL — the admin form must convert "" → null
+    expect(() =>
+      UpdateMasjidSchema.parse({ facebook_url: '' }),
+    ).toThrow();
+    expect(() =>
+      UpdateMasjidSchema.parse({ youtube_url: '' }),
+    ).toThrow();
+    expect(() =>
+      UpdateMasjidSchema.parse({ instagram_url: '' }),
+    ).toThrow();
+    expect(() =>
+      UpdateMasjidSchema.parse({ external_donation_url: '' }),
+    ).toThrow();
+  });
+
+  it('rejects empty string in contact_email (must send null)', () => {
+    // Empty string is not a valid email
+    expect(() =>
+      UpdateMasjidSchema.parse({ contact_email: '' }),
+    ).toThrow();
+  });
+
+  it('accepts null url and email fields', () => {
+    expect(() =>
+      UpdateMasjidSchema.parse({
+        facebook_url: null,
+        youtube_url: null,
+        instagram_url: null,
+        website_url: null,
+        external_donation_url: null,
+        contact_email: null,
+      }),
+    ).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DailyTimesSchema — dual Asr
+// ---------------------------------------------------------------------------
+describe('DailyTimesSchema', () => {
+  const validBase = {
+    date: '2026-07-25',
+    masjid: { slug: 'test', name: 'Test' },
+    calculation_method: 'ISNA',
+    times: {
+      fajr: { adhaan: '05:00', iqaamah: '05:15' },
+      sunrise: '06:30',
+      dhuhr: { adhaan: '12:00', iqaamah: '12:15' },
+      asr: { adhaan: '17:00', iqaamah: '17:30' },
+      maghrib: { adhaan: '20:00', iqaamah: '20:05' },
+      isha: { adhaan: '21:00', iqaamah: '21:15' },
+    },
+  };
+
+  it('accepts valid daily times without asr_secondary', () => {
+    expect(() => DailyTimesSchema.parse(validBase)).not.toThrow();
+  });
+
+  it('accepts valid daily times with asr_secondary', () => {
+    expect(() =>
+      DailyTimesSchema.parse({
+        ...validBase,
+        times: { ...validBase.times, asr_secondary: '16:45' },
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts null asr_secondary', () => {
+    expect(() =>
+      DailyTimesSchema.parse({
+        ...validBase,
+        times: { ...validBase.times, asr_secondary: null },
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects invalid asr_secondary format', () => {
+    expect(() =>
+      DailyTimesSchema.parse({
+        ...validBase,
+        times: { ...validBase.times, asr_secondary: '25:00' },
+      }),
     ).toThrow();
   });
 });
