@@ -16,6 +16,7 @@
     "@masjid/schemas": "*",
     "@sveltejs/adapter-cloudflare": "^5.0.0",
     "@sveltejs/kit": "^2.15.0",
+    "adhan": "^4.4.4",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.38.0",
     "jose": "^5.9.0",

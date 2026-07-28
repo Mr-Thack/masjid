@@ -12,7 +12,10 @@ CREATE TABLE masjids (
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     timezone TEXT NOT NULL DEFAULT 'America/Chicago',
-    calculation_method INT NOT NULL DEFAULT 2,      -- 2=ISNA, 3=MWL, 4=Umm al-Qura, 5=Egyptian
+    calculation_method INT NOT NULL DEFAULT 2,      -- 2=ISNA, 3=MWL, 4=Umm al-Qura, 5=Egyptian, 6=Tehran, 7=Karachi, 8-13=see method-map.ts
+    asr_madhab TEXT NOT NULL DEFAULT 'shafi',         -- 'shafi' | 'hanafi'
+    high_latitude_rule TEXT NOT NULL DEFAULT 'seventh_of_night',  -- 'seventh_of_night' | 'middle_of_night' | 'twilight_angle' | 'none'
+    show_dual_asr INTEGER NOT NULL DEFAULT 0             -- 0=false, 1=true (display both Shafi + Hanafi Asr)
     tenant_status TEXT NOT NULL DEFAULT 'SHADOW',    -- 'SHADOW' | 'ACTIVE'
 
     -- Contact & location (public-facing)

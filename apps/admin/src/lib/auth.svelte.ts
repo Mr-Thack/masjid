@@ -23,6 +23,9 @@ class AuthStore {
     longitude: number;
     timezone: string;
     calculation_method: number;
+    asr_madhab: string;
+    high_latitude_rule: string;
+    show_dual_asr: boolean;
     admin_email: string;
     admin_password: string;
     admin_display_name?: string;

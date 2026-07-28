@@ -23,6 +23,9 @@ const chicagoMasjid: MasjidLocation = {
   latitude: 41.85,
   longitude: -87.65,
   timezone: 'America/Chicago',
+  asr_madhab: 'shafi',
+  high_latitude_rule: 'seventh_of_night',
+  show_dual_asr: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -99,6 +102,8 @@ describe('calculateAdhaan', () => {
         latitude: 61.22,
         longitude: -149.9,
         timezone: 'America/Anchorage',
+        asr_madhab: 'shafi',
+        high_latitude_rule: 'seventh_of_night',
       };
       const times = calculateAdhaan(anchorage, new Date('2026-07-15'));
       // All values should be strings
@@ -111,6 +116,8 @@ describe('calculateAdhaan', () => {
         latitude: 61.22,
         longitude: -149.9,
         timezone: 'America/Anchorage',
+        asr_madhab: 'shafi',
+        high_latitude_rule: 'seventh_of_night',
       };
       const times = calculateAdhaan(anchorage, new Date('2026-01-15'));
       Object.values(times).forEach((t) => expect(typeof t).toBe('string'));
@@ -122,6 +129,8 @@ describe('calculateAdhaan', () => {
         latitude: 21.42,
         longitude: 39.83,
         timezone: 'Asia/Riyadh',
+        asr_madhab: 'shafi',
+        high_latitude_rule: 'seventh_of_night',
       };
       const summer = calculateAdhaan(mecca, new Date('2026-07-15'));
       const winter = calculateAdhaan(mecca, new Date('2026-01-15'));
@@ -162,6 +171,8 @@ describe('calculateAdhaan', () => {
         latitude: -33.87,
         longitude: 151.21,
         timezone: 'Australia/Sydney',
+        asr_madhab: 'shafi',
+        high_latitude_rule: 'seventh_of_night',
       };
       const jan = calculateAdhaan(sydney, new Date('2026-01-15'));
       const jul = calculateAdhaan(sydney, new Date('2026-07-15'));
@@ -201,7 +212,7 @@ describe('calculateAdhaan', () => {
 
   describe('all methods produce results', () => {
     it('methods 1-5 and 7 produce valid dhuhr/maghrib times', () => {
-      const methods = [1, 2, 3, 4, 5, 7];
+      const methods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
       for (const method of methods) {
         const masjid: MasjidLocation = { ...chicagoMasjid, calculation_method: method };
         const times = calculateAdhaan(masjid, new Date('2026-07-15'));

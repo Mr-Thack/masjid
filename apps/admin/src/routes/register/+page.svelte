@@ -10,6 +10,9 @@
   let longitude = $state('');
   let timezone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
   let calculationMethod = $state('2');
+  let asrMadhab = $state('shafi');
+  let highLatitudeRule = $state('seventh_of_night');
+  let showDualAsr = $state(false);
   let adminEmail = $state('');
   let adminPassword = $state('');
   let adminDisplayName = $state('');
@@ -31,13 +34,32 @@
   ];
 
   const methods: Record<string, string> = {
-    '1': 'University of Islamic Sciences, Karachi',
+    '1': 'ISNA (same as 2)',
     '2': 'ISNA (Islamic Society of North America)',
     '3': 'MWL (Muslim World League)',
     '4': 'Umm al-Qura, Makkah',
     '5': 'Egyptian General Authority of Survey',
-    '7': 'Union of Islamic Organisations of France',
+    '6': 'Institute of Geophysics, Tehran',
+    '7': 'University of Islamic Sciences, Karachi',
+    '8': 'Turkey (Diyanet)',
+    '9': 'Singapore / Malaysia / Indonesia',
+    '10': 'Dubai (UAE)',
+    '11': 'Kuwait',
+    '12': 'Qatar',
+    '13': 'Moonsighting Committee',
   };
+
+  const madhabs = [
+    { value: 'shafi', label: 'Shafi (earlier Asr)' },
+    { value: 'hanafi', label: 'Hanafi (later Asr)' },
+  ];
+
+  const highLatRules = [
+    { value: 'seventh_of_night', label: 'Seventh of Night (recommended)' },
+    { value: 'middle_of_night', label: 'Middle of Night' },
+    { value: 'twilight_angle', label: 'Twilight Angle' },
+    { value: 'none', label: 'None (use raw angles)' },
+  ];
 
   let slugAuto = $state(true);
 
@@ -88,6 +110,9 @@
         longitude: lng,
         timezone,
         calculation_method: parseInt(calculationMethod, 10),
+        asr_madhab: asrMadhab,
+        high_latitude_rule: highLatitudeRule,
+        show_dual_asr: showDualAsr,
         admin_email: adminEmail.trim(),
         admin_password: adminPassword,
         admin_display_name: adminDisplayName.trim() || undefined,
@@ -179,6 +204,34 @@
                 <option value={value}>{label}</option>
               {/each}
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="asrMadhab">Asr Madhab</label>
+            <select id="asrMadhab" class="w-full" bind:value={asrMadhab}>
+              {#each madhabs as m}
+                <option value={m.value}>{m.label}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="highLatRule">High Latitude Rule</label>
+            <select id="highLatRule" class="w-full" bind:value={highLatitudeRule}>
+              {#each highLatRules as r}
+                <option value={r.value}>{r.label}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" class="w-4 h-4" bind:checked={showDualAsr} />
+              <span>Show both Asr times (Shafi + Hanafi)</span>
+            </label>
           </div>
         </div>
 

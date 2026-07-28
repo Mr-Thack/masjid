@@ -11,9 +11,14 @@ Indian/Pakistani communities often use: Adhaan→"Azaan", Iqaamah→"Iqamah", Dh
 Asr→"Asr", Maghrib→"Maghrib", Isha→"Isha", Fajr→"Fajr".
 
 ### PROFILE
-Masjid name, address, contact info, social media links, donation URL, calculation method (1-7),
+Masjid name, address, contact info, social media links, donation URL, calculation method (1-13),
 timezone. Methods: 1=Shia, 2=ISNA (North America), 3=MWL (Muslim World League),
-4=Makkah (Umm al-Qura), 5=Egyptian, 6=Tehran, 7=Karachi (Hanafi).
+4=Makkah (Umm al-Qura), 5=Egyptian, 6=Tehran, 7=Karachi (Hanafi),
+8=Turkey, 9=Singapore, 10=Dubai, 11=Kuwait, 12=Qatar, 13=Moonsighting Committee.
+asr_madhab: 'shafi' (earlier Asr) or 'hanafi' (later Asr, common in Indo-Pak communities).
+high_latitude_rule: 'seventh_of_night' (recommended above 48°N), 'middle_of_night', 'twilight_angle', or 'none'.
+Only configure high_latitude_rule if the masjid is at a high latitude (>48°N). It's safe to leave as 'seventh_of_night' for all locations.
+show_dual_asr: boolean. When true, both Shafi and Hanafi Asr times are computed and displayed (useful for mixed-madhab communities).
 
 ### PRAYER_RULES
 Iqaamah timing rules. Each rule has: prayer_name (fajr/dhuhr/asr/maghrib/isha),

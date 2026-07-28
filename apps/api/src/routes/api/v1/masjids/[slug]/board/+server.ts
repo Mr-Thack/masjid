@@ -53,6 +53,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       latitude: masjid.latitude,
       longitude: masjid.longitude,
       timezone: masjid.timezone,
+      asr_madhab: masjid.asrMadhab ?? 'shafi',
+      high_latitude_rule: masjid.highLatitudeRule ?? 'seventh_of_night',
+      show_dual_asr: !!masjid.showDualAsr,
     };
 
     const today = new Date();

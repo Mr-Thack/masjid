@@ -18,7 +18,10 @@ const RuleOverrideSchema = z.object({
 
 const DryRunSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  calculation_method: z.number().int().min(1).max(7).optional(),
+  calculation_method: z.number().int().min(1).max(13).optional(),
+  asr_madhab: z.enum(['shafi', 'hanafi']).optional(),
+  high_latitude_rule: z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).optional(),
+  show_dual_asr: z.boolean().optional(),
   timezone: z.string().optional(),
   rule_overrides: z.array(RuleOverrideSchema).optional(),
 });
@@ -42,6 +45,9 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
         latitude: masjids.latitude,
         longitude: masjids.longitude,
         timezone: masjids.timezone,
+        asr_madhab: masjids.asrMadhab,
+        high_latitude_rule: masjids.highLatitudeRule,
+        show_dual_asr: masjids.showDualAsr,
       })
       .from(masjids)
       .where(eq(masjids.id, params.id))
@@ -57,6 +63,9 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       latitude: masjid.latitude as number,
       longitude: masjid.longitude as number,
       timezone: body.timezone ?? masjid.timezone as string,
+      asr_madhab: body.asr_madhab ?? masjid.asr_madhab as string ?? 'shafi',
+      high_latitude_rule: body.high_latitude_rule ?? masjid.high_latitude_rule as string ?? 'seventh_of_night',
+      show_dual_asr: body.show_dual_asr ?? !!masjid.show_dual_asr,
     };
 
     const date = body.date ? new Date(body.date + 'T12:00:00Z') : new Date();
@@ -81,7 +90,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
 };
 
 async function computeTimesWithOverrides(
-  config: { id: string; calculation_method: number; latitude: number; longitude: number; timezone: string },
+  config: { id: string; calculation_method: number; latitude: number; longitude: number; timezone: string; asr_madhab: string; high_latitude_rule: string; show_dual_asr: boolean },
   date: Date,
   overrides: z.infer<typeof RuleOverrideSchema>[],
   db: ReturnType<typeof getDb>,

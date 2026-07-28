@@ -166,7 +166,10 @@ export function getToolDefinitions(): ToolDefinition[] {
           instagram_url: stringProp('Instagram profile URL'),
           website_url: stringProp('Website URL'),
           external_donation_url: stringProp('External donation link URL'),
-          calculation_method: { type: 'integer', minimum: 1, description: 'Prayer calculation method (1-7, e.g. 2=ISNA, 3=MWL, 5=Egyptian)' },
+          calculation_method: { type: 'integer', minimum: 1, description: 'Prayer calculation method (1-13, e.g. 2=ISNA, 3=MWL, 4=Umm al-Qura, 7=Karachi)' },
+          asr_madhab: { type: 'string', enum: ['shafi', 'hanafi'], description: 'Asr madhab: shafi (earlier) or hanafi (later, common for Indo-Pak)' },
+          high_latitude_rule: { type: 'string', enum: ['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none'], description: 'High latitude rule for locations above 48°N' },
+          show_dual_asr: { type: 'boolean', description: 'If true, display both Shafi and Hanafi Asr times' },
           timezone: stringProp('IANA timezone (e.g. "America/Chicago", "Europe/London")'),
         },
         required: [],
@@ -193,11 +196,14 @@ export function getToolDefinitions(): ToolDefinition[] {
     },
     {
       name: 'prayer_config_update',
-      description: 'Update prayer calculation method and/or timezone.',
+      description: 'Update prayer calculation method, asr madhab, high latitude rule, and/or timezone.',
       parameters: {
         type: 'object',
         properties: {
-          calculation_method: { type: 'integer', minimum: 1, description: 'Prayer calculation method (1=Shia, 2=ISNA, 3=MWL, 4=Makkah, 5=Egyptian, 6=Tehran, 7=Karachi)' },
+          calculation_method: { type: 'integer', minimum: 1, description: 'Prayer calculation method (1=Shia, 2=ISNA, 3=MWL, 4=Makkah, 5=Egyptian, 6=Tehran, 7=Karachi, 8=Turkey, 9=Singapore, 10=Dubai, 11=Kuwait, 12=Qatar, 13=Moonsighting)' },
+          asr_madhab: { type: 'string', enum: ['shafi', 'hanafi'], description: 'Asr madhab: shafi (earlier Asr) or hanafi (later Asr)' },
+          high_latitude_rule: { type: 'string', enum: ['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none'], description: 'High latitude rule for >48°N' },
+          show_dual_asr: { type: 'boolean', description: 'Display both Shafi + Hanafi Asr times' },
           timezone: stringProp('IANA timezone (e.g. "America/Chicago")'),
         },
         required: [],

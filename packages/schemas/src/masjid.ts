@@ -5,6 +5,10 @@ export type TenantStatus = z.infer<typeof TenantStatus>;
 
 export const CalculationMethod = z.number().int().min(1).default(2);
 
+export const AsrMadhab = z.enum(['shafi', 'hanafi']).default('shafi');
+export const HighLatitudeRule = z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).default('seventh_of_night');
+export const ShowDualAsr = z.boolean().default(false);
+
 export const CreateMasjidSchema = z.object({
   slug: z
     .string()
@@ -16,6 +20,9 @@ export const CreateMasjidSchema = z.object({
   longitude: z.number().min(-180).max(180),
   timezone: z.string().min(1).default('America/Chicago'),
   calculation_method: CalculationMethod,
+  asr_madhab: AsrMadhab,
+  high_latitude_rule: HighLatitudeRule,
+  show_dual_asr: ShowDualAsr,
   admin_email: z.string().email(),
   admin_password: z.string().min(8).max(128),
   admin_display_name: z.string().min(1).max(100).optional(),
@@ -37,6 +44,9 @@ export const UpdateMasjidSchema = z.object({
   website_url: z.string().url().max(500).optional().nullable(),
   external_donation_url: z.string().url().max(500).optional().nullable(),
   calculation_method: CalculationMethod.optional(),
+  asr_madhab: AsrMadhab.optional(),
+  high_latitude_rule: HighLatitudeRule.optional(),
+  show_dual_asr: ShowDualAsr.optional(),
   timezone: z.string().min(1).optional(),
 });
 
@@ -71,6 +81,9 @@ export const MasjidProfileSchema = z.object({
   longitude: z.number(),
   timezone: z.string(),
   calculation_method: z.number().int(),
+  asr_madhab: z.string(),
+  high_latitude_rule: z.string(),
+  show_dual_asr: z.boolean(),
   tenant_status: TenantStatus,
   address_line1: z.string().nullable(),
   address_line2: z.string().nullable(),

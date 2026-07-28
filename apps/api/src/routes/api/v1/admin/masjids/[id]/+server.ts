@@ -127,6 +127,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.website_url !== undefined) masjidData.websiteUrl = masjidUpdate.website_url;
     if (masjidUpdate.external_donation_url !== undefined) masjidData.externalDonationUrl = masjidUpdate.external_donation_url;
     if (masjidUpdate.calculation_method !== undefined) masjidData.calculationMethod = masjidUpdate.calculation_method;
+    if (masjidUpdate.asr_madhab !== undefined) masjidData.asrMadhab = masjidUpdate.asr_madhab;
+    if (masjidUpdate.high_latitude_rule !== undefined) masjidData.highLatitudeRule = masjidUpdate.high_latitude_rule;
+    if (masjidUpdate.show_dual_asr !== undefined) masjidData.showDualAsr = masjidUpdate.show_dual_asr;
     if (masjidUpdate.timezone !== undefined) masjidData.timezone = masjidUpdate.timezone;
 
     if (Object.keys(masjidData).length > 0) {
@@ -170,6 +173,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       longitude: updated?.longitude,
       timezone: updated?.timezone,
       calculation_method: updated?.calculationMethod,
+      asr_madhab: updated?.asrMadhab,
+      high_latitude_rule: updated?.highLatitudeRule,
+      show_dual_asr: !!updated?.showDualAsr,
       tenant_status: updated?.tenantStatus,
       address_line1: updated?.addressLine1,
       address_line2: updated?.addressLine2,

@@ -21,6 +21,9 @@ interface MasjidConfig {
   latitude: number;
   longitude: number;
   timezone: string;
+  asr_madhab: string;
+  high_latitude_rule: string;
+  show_dual_asr: boolean;
 }
 
 interface DbRule {
@@ -400,6 +403,9 @@ describe('computeIqaamah', () => {
     latitude: 41.85,
     longitude: -87.65,
     timezone: 'America/Chicago',
+    asr_madhab: 'shafi',
+    high_latitude_rule: 'seventh_of_night',
+    show_dual_asr: false,
   };
 
   const mondayDate = new Date('2026-07-13T12:00:00Z');
@@ -456,6 +462,9 @@ describe('computeIqaamah', () => {
       latitude: 34.0234,
       longitude: -84.6157,
       timezone: 'America/New_York',
+      asr_madhab: 'shafi',
+      high_latitude_rule: 'seventh_of_night',
+      show_dual_asr: false,
     };
     const db = createDb();
     const result = await computeIqaamah(kennesawMasjid, new Date('2026-07-20T12:00:00Z'), db);

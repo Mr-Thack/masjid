@@ -8,6 +8,9 @@ import type { RequestHandler } from './$types';
 
 const PrayerConfigUpdateSchema = z.object({
   calculation_method: z.number().int().min(1).optional(),
+  asr_madhab: z.enum(['shafi', 'hanafi']).optional(),
+  high_latitude_rule: z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).optional(),
+  show_dual_asr: z.boolean().optional(),
   timezone: z.string().min(1).optional(),
 });
 
@@ -24,6 +27,9 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
     const masjid = await db
       .select({
         calculation_method: masjids.calculationMethod,
+        asr_madhab: masjids.asrMadhab,
+        high_latitude_rule: masjids.highLatitudeRule,
+        show_dual_asr: masjids.showDualAsr,
         timezone: masjids.timezone,
       })
       .from(masjids)
@@ -36,6 +42,9 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 
     return JsonResponse({
       calculation_method: masjid.calculation_method,
+      asr_madhab: masjid.asr_madhab,
+      high_latitude_rule: masjid.high_latitude_rule,
+      show_dual_asr: masjid.show_dual_asr,
       timezone: masjid.timezone,
     });
   } catch {
@@ -67,6 +76,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
 
     const updateData: Record<string, unknown> = {};
     if (body.calculation_method !== undefined) updateData.calculationMethod = body.calculation_method;
+    if (body.asr_madhab !== undefined) updateData.asrMadhab = body.asr_madhab;
+    if (body.high_latitude_rule !== undefined) updateData.highLatitudeRule = body.high_latitude_rule;
+    if (body.show_dual_asr !== undefined) updateData.showDualAsr = body.show_dual_asr;
     if (body.timezone !== undefined) updateData.timezone = body.timezone;
 
     if (Object.keys(updateData).length > 0) {
@@ -79,6 +91,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
     const updated = await db
       .select({
         calculation_method: masjids.calculationMethod,
+        asr_madhab: masjids.asrMadhab,
+        high_latitude_rule: masjids.highLatitudeRule,
+        show_dual_asr: masjids.showDualAsr,
         timezone: masjids.timezone,
       })
       .from(masjids)
@@ -87,6 +102,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
 
     return JsonResponse({
       calculation_method: updated?.calculation_method,
+      asr_madhab: updated?.asr_madhab,
+      high_latitude_rule: updated?.high_latitude_rule,
+      show_dual_asr: updated?.show_dual_asr,
       timezone: updated?.timezone,
     });
   } catch (e: unknown) {

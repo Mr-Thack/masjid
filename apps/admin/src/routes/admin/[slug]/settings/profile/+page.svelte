@@ -17,16 +17,36 @@
     postal_code: '', country: 'US', contact_phone: '', contact_email: '',
     facebook_url: '', youtube_url: '', instagram_url: '', website_url: '',
     external_donation_url: '', calculation_method: 2, timezone: 'America/Chicago',
+    asr_madhab: 'shafi', high_latitude_rule: 'seventh_of_night',
+    show_dual_asr: false,
     latitude: 0, longitude: 0,
   });
 
   const methods = [
-    { value: 1, label: '1 — University of Islamic Sciences, Karachi' },
-    { value: 2, label: '2 — ISNA (default)' },
-    { value: 3, label: '3 — Muslim World League' },
-    { value: 4, label: '4 — Umm Al-Qura' },
-    { value: 5, label: '5 — Egyptian General Authority' },
-    { value: 7, label: '7 — Gulf Region' },
+    { value: 2, label: 'ISNA (North America, default)' },
+    { value: 3, label: 'Muslim World League' },
+    { value: 4, label: 'Umm Al-Qura (Makkah)' },
+    { value: 5, label: 'Egyptian General Authority' },
+    { value: 7, label: 'University of Islamic Sciences, Karachi' },
+    { value: 6, label: 'Institute of Geophysics, Tehran' },
+    { value: 8, label: 'Turkey (Diyanet)' },
+    { value: 9, label: 'Singapore / Malaysia / Indonesia' },
+    { value: 10, label: 'Dubai (UAE)' },
+    { value: 11, label: 'Kuwait' },
+    { value: 12, label: 'Qatar' },
+    { value: 13, label: 'Moonsighting Committee' },
+  ];
+
+  const madhabs = [
+    { value: 'shafi', label: 'Shafi (earlier Asr)' },
+    { value: 'hanafi', label: 'Hanafi (later Asr)' },
+  ];
+
+  const highLatRules = [
+    { value: 'seventh_of_night', label: 'Seventh of Night (recommended for >48°N)' },
+    { value: 'middle_of_night', label: 'Middle of Night' },
+    { value: 'twilight_angle', label: 'Twilight Angle' },
+    { value: 'none', label: 'None (use raw angles)' },
   ];
 
   const timezones = [
@@ -64,6 +84,9 @@
         website_url: profile.website_url || '',
         external_donation_url: profile.external_donation_url || '',
         calculation_method: profile.calculation_method || 2,
+        asr_madhab: profile.asr_madhab || 'shafi',
+        high_latitude_rule: profile.high_latitude_rule || 'seventh_of_night',
+        show_dual_asr: !!profile.show_dual_asr,
         timezone: profile.timezone || 'America/Chicago',
         latitude: profile.latitude || 0,
         longitude: profile.longitude || 0,
@@ -197,6 +220,34 @@
                 <option value={tz}>{tz}</option>
               {/each}
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="asr_madhab">Asr Madhab</label>
+            <select id="asr_madhab" class="w-full" bind:value={form.asr_madhab} onchange={handleChange}>
+              {#each madhabs as m}
+                <option value={m.value}>{m.label}</option>
+              {/each}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="high_latitude_rule">High Latitude Rule</label>
+            <select id="high_latitude_rule" class="w-full" bind:value={form.high_latitude_rule} onchange={handleChange}>
+              {#each highLatRules as r}
+                <option value={r.value}>{r.label}</option>
+              {/each}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" class="w-4 h-4" bind:checked={form.show_dual_asr} onchange={handleChange} />
+              <span>Show both Asr times (Shafi + Hanafi)</span>
+            </label>
           </div>
         </div>
 

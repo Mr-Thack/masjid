@@ -36,6 +36,9 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
         latitude: masjid.latitude,
         longitude: masjid.longitude,
         timezone: masjid.timezone,
+        asr_madhab: masjid.asrMadhab ?? 'shafi',
+        high_latitude_rule: masjid.highLatitudeRule ?? 'seventh_of_night',
+        show_dual_asr: !!masjid.showDualAsr,
       },
       date,
       db,
@@ -47,7 +50,14 @@ export const GET: RequestHandler = async ({ params, url, platform }) => {
       3: 'MWL',
       4: 'Umm al-Qura',
       5: 'Egyptian',
-      7: 'University of Islamic Sciences, Karachi',
+      6: 'Tehran',
+      7: 'Karachi',
+      8: 'Turkey',
+      9: 'Singapore',
+      10: 'Dubai',
+      11: 'Kuwait',
+      12: 'Qatar',
+      13: 'Moonsighting Committee',
     };
 
     return JsonResponse({

@@ -13,6 +13,9 @@ interface MasjidConfig {
   latitude: number;
   longitude: number;
   timezone: string;
+  asr_madhab: string;
+  high_latitude_rule: string;
+  show_dual_asr: boolean;
 }
 
 function parseTime(time: string): number {
@@ -100,7 +103,7 @@ export type PrayerTimeResult = {
   right_after_adhaan?: boolean;
 };
 
-export type ComputedTimes = Record<PrayerName, PrayerTimeResult> & { sunrise: string };
+export type ComputedTimes = Record<PrayerName, PrayerTimeResult> & { sunrise: string; asr_secondary?: string };
 
 function parseHM(time: string): number {
   const [h, m] = time.split(':').map(Number) as [number, number];
@@ -213,6 +216,7 @@ export async function computeIqaamah(
     asr: result.asr,
     maghrib: result.maghrib,
     isha: result.isha,
+    ...(adhaan.asr_secondary ? { asr_secondary: adhaan.asr_secondary } : {}),
   } as ComputedTimes;
 
   verifyComputedTimes(computed);
