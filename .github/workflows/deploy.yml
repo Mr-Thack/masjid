@@ -28,7 +28,7 @@ detect-changes:
       - name: Detect changed packages
         id: changes
         run: |
-          set -e
+          set -eo pipefail
           node tooling/changed-packages.js | tee /tmp/changes_raw.txt
           tail -1 /tmp/changes_raw.txt > /tmp/changes.json
 
@@ -115,7 +115,7 @@ detect-changes:
 
   deploy-pages:
     needs: detect-changes
-    if: needs.detect-changes.outputs.pages_changed == 'true'
+    if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.pages_changed == 'true'
     runs-on: ubuntu-latest
     environment: Prod
     env:
