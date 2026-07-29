@@ -183,4 +183,39 @@ describe('auth store', () => {
     expect(localStorage.setItem).toHaveBeenCalledWith('admin_token', 'jwt456');
     expect(localStorage.setItem).toHaveBeenCalledWith('admin_user', JSON.stringify({ id: 'a2', email: 'test@org.com', display_name: 'Test', masjid_id: 'm2' }));
   });
+
+  it('checkAuth() mutates auth.admin/auth.token synchronously from localStorage BEFORE the awaited fetch result', async () => {
+    // Documents a known sharp edge: checkAuth() sets $state fields
+    // (this.admin, this.token) from localStorage during its synchronous phase,
+    // before the network call resolves. When checkAuth() is called from within
+    // a $effect, these mutations happen during the synchronous phase of the
+    // effect. If the effect also reads auth.isAuthenticated (which reads these
+    // fields), Svelte 5 will defer the mutations. If the fetch later fails and
+    // logout() resets them, the double-mutation pattern can trigger effect
+    // re-execution. The fix is to guard effects with a one-shot flag.
+    const mod = await import('$lib/auth.svelte');
+    const auth = mod.auth;
+    auth.logout();
+
+    localStorage.setItem('admin_token', 'stale-jwt');
+    localStorage.setItem('admin_user', JSON.stringify({ id: 'a1', email: 'a@b.org', display_name: 'A', masjid_id: 'm1' }));
+
+    let resolveFetch: (value: Response) => void;
+    vi.mocked(globalThis.fetch).mockImplementationOnce(() => {
+      return new Promise(resolve => { resolveFetch = resolve; });
+    });
+
+    // Start checkAuth — don't await it
+    const promise = auth.checkAuth();
+
+    // auth.admin and auth.token are set synchronously from localStorage
+    // BEFORE the fetch promise resolves (the promise is still pending)
+    expect(auth.admin).not.toBeNull();
+    expect(auth.token).toBe('stale-jwt');
+
+    // Now resolve the fetch — auth stays authenticated
+    resolveFetch!({ ok: true, json: () => Promise.resolve({ id: 'm1' }) } as Response);
+    await promise;
+    expect(auth.isAuthenticated).toBe(true);
+  });
 });

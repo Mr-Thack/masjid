@@ -7,8 +7,15 @@ const DOMAIN_GUIDE = `
 Colors (primary_color, accent_color as 6-digit hex), fonts (font_heading, font_body),
 time format (12h/24h), and labels (label_adhaan, label_iqaamah, label_jumuah, label_sunrise,
 label_fajr, label_dhuhr, label_asr, label_maghrib, label_isha).
-Indian/Pakistani communities often use: Adhaan→"Azaan", Iqaamah→"Iqamah", Dhuhr→"Zuhr", Jumu'ah→"Jummah",
-Asr→"Asr", Maghrib→"Maghrib", Isha→"Isha", Fajr→"Fajr".
+Common transliteration presets:
+  Indo-Pak: Adhaan→"Azaan", Iqaamah→"Iqamah", Dhuhr→"Zuhr", Jumu'ah→"Jummah", Speech→"Bayaan"
+  Arabic: Adhaan→"Adhan", Iqaamah→"Iqama", Jumu'ah→"Jumu'ah", Speech→"Khutbah", Asr→"Asr"
+  Turkish: Adhaan→"Ezan", Iqaamah→"Kamet", Dhuhr→"Öğle", Jumu'ah→"Cuma",
+           Speech→"Hutbe", Sunrise→"Güneş", Fajr→"Sabah", Asr→"İkindi", Maghrib→"Akşam", Isha→"Yatsı"
+  Malay: Adhaan→"Azan", Iqaamah→"Iqamat", Dhuhr→"Zohor", Jumu'ah→"Jumaat",
+         Speech→"Khutbah", Asr→"Asar", Maghrib→"Maghrib"
+  Bosnian: Adhaan→"Ezan", Iqaamah→"Ikamet", Dhuhr→"Podne", Jumu'ah→"Džuma",
+           Speech→"Hutba", Asr→"Ikindija", Maghrib→"Akšam", Isha→"Jacija"
 
 ### PROFILE
 Masjid name, address, contact info, social media links, donation URL, calculation method (1-13),
@@ -62,6 +69,9 @@ User: "Add a Jumu'ah session at 1:15 PM with Khateeb Imam Abdullah"
 
 User: "Use Karachi calculation method and change labels to Azaan and Iqamah"
 → call prayer_config_update({calculation_method: 7}) AND call theme_update({label_adhaan:"Azaan", label_iqaamah:"Iqamah"})
+
+User: "Use Turkish labels and set calculation to Turkey"
+→ call prayer_config_update({calculation_method: 8}) AND call theme_update({label_adhaan:"Ezan", label_iqaamah:"Kamet", label_dhuhr:"Öğle", label_jumuah:"Cuma", label_speech:"Hutbe", label_fajr:"Sabah", label_asr:"İkindi", label_maghrib:"Akşam", label_isha:"Yatsı", label_sunrise:"Güneş"})
 `;
 
 export function buildSystemPrompt(
@@ -88,7 +98,7 @@ ${DOMAIN_GUIDE}
 3. When creating prayer rules, ensure execution_order is correct (lower numbers first, chain properly).
 4. For multiple changes, make all the tool calls needed in one response.
 5. Be thorough — if the user mentions multiple things, handle all of them.
-6. For theme changes, if the user uses cultural terms (Azaan, Zuhr, Jummah), map them correctly.
+6. For theme/label changes, map cultural terms correctly: Azaan/Zuhr/Jummah→Indo-Pak, Adhan/Iqama/Khutbah→Arabic, Ezan/Kamet/Hutbe→Turkish, Azan/Zohor/Jumaat→Malay, Ezan/Ikamet/Džuma/Hutba→Bosnian.
 7. If you're unsure about something, ask the user for clarification instead of guessing.
 8. After making changes, provide a brief summary of what was done.
 

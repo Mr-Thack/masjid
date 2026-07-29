@@ -28,6 +28,7 @@
     label_asr: '',
     label_maghrib: '',
     label_isha: '',
+    label_speech: '',
   });
 
   const presets = [
@@ -45,6 +46,7 @@
     label_adhaan: 'Adhaan', label_iqaamah: 'Iqaamah', label_jumuah: "Jumu'ah",
     label_sunrise: 'Sunrise', label_fajr: 'Fajr', label_dhuhr: 'Dhuhr',
     label_asr: 'Asr', label_maghrib: 'Maghrib', label_isha: 'Isha',
+    label_speech: 'Speech',
   };
 
   function indoPakPreset() {
@@ -53,10 +55,79 @@
     form.label_iqaamah = 'Iqamah';
     form.label_jumuah = 'Jummah';
     form.label_dhuhr = 'Zuhr';
+    form.label_speech = 'Bayaan';
     form.time_format = '12h';
     form.font_body = 'Roboto';
     form.font_heading = 'Inter';
     toast.success('Indo-Pak preset applied');
+  }
+
+  function englishStandardPreset() {
+    dirty = true;
+    form.label_adhaan = 'Adhaan';
+    form.label_iqaamah = 'Iqaamah';
+    form.label_jumuah = "Jumu'ah";
+    form.label_dhuhr = 'Dhuhr';
+    form.label_speech = 'Speech';
+    form.label_sunrise = 'Sunrise';
+    form.label_fajr = 'Fajr';
+    form.label_asr = 'Asr';
+    form.label_maghrib = 'Maghrib';
+    form.label_isha = 'Isha';
+    toast.success('Standard English preset applied');
+  }
+
+  function arabicPreset() {
+    dirty = true;
+    form.label_adhaan = 'Adhan';
+    form.label_iqaamah = 'Iqama';
+    form.label_jumuah = "Jumu'ah";
+    form.label_dhuhr = 'Dhuhr';
+    form.label_speech = 'Khutbah';
+    form.label_asr = 'Asr';
+    toast.success('Arabic transliteration preset applied');
+  }
+
+  function turkishPreset() {
+    dirty = true;
+    form.label_adhaan = 'Ezan';
+    form.label_iqaamah = 'Kamet';
+    form.label_jumuah = 'Cuma';
+    form.label_dhuhr = 'Öğle';
+    form.label_speech = 'Hutbe';
+    form.label_sunrise = 'Güneş';
+    form.label_fajr = 'Sabah';
+    form.label_asr = 'İkindi';
+    form.label_maghrib = 'Akşam';
+    form.label_isha = 'Yatsı';
+    form.time_format = '24h';
+    toast.success('Turkish preset applied');
+  }
+
+  function malayPreset() {
+    dirty = true;
+    form.label_adhaan = 'Azan';
+    form.label_iqaamah = 'Iqamat';
+    form.label_jumuah = 'Jumaat';
+    form.label_dhuhr = 'Zohor';
+    form.label_speech = 'Khutbah';
+    form.label_asr = 'Asar';
+    form.label_maghrib = 'Maghrib';
+    toast.success('Malay preset applied');
+  }
+
+  function bosnianPreset() {
+    dirty = true;
+    form.label_adhaan = 'Ezan';
+    form.label_iqaamah = 'Ikamet';
+    form.label_jumuah = 'Džuma';
+    form.label_dhuhr = 'Podne';
+    form.label_speech = 'Hutba';
+    form.label_asr = 'Ikindija';
+    form.label_maghrib = 'Akšam';
+    form.label_isha = 'Jacija';
+    form.time_format = '24h';
+    toast.success('Bosnian preset applied');
   }
 
   $effect(() => {
@@ -86,6 +157,7 @@
           label_asr: t.label_asr || '',
           label_maghrib: t.label_maghrib || '',
           label_isha: t.label_isha || '',
+            label_speech: t.label_speech || '',
         };
       }
     } catch (e: unknown) {
@@ -208,12 +280,7 @@
 
         <!-- Labels -->
         <div class="bg-surface border border-border rounded-xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-heading font-semibold text-text">Labels</h2>
-            <button type="button" class="btn-secondary text-xs" onclick={indoPakPreset}>
-              Indo-Pak Preset
-            </button>
-          </div>
+          <h2 class="font-heading font-semibold text-text mb-4">Labels</h2>
           <p class="text-xs text-text-muted mb-4">Customize prayer time labels. Leave empty to use defaults.</p>
           <div class="grid grid-cols-2 gap-4">
             {#each Object.keys(labelDefaults) as key}
@@ -229,6 +296,18 @@
                 />
               </div>
             {/each}
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-border">
+            <p class="text-xs text-text-muted mb-3">Apply Preset</p>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="btn-secondary text-xs" onclick={indoPakPreset} title="Azaan, Iqamah, Zuhr, Jummah, Bayaan · 12h, Roboto">Indo-Pak</button>
+              <button type="button" class="btn-secondary text-xs" onclick={englishStandardPreset} title="Adhaan, Iqaamah, Dhuhr, Jumu'ah, Speech, Sunrise, Fajr, Asr, Maghrib, Isha">Standard English</button>
+              <button type="button" class="btn-secondary text-xs" onclick={arabicPreset} title="Adhan, Iqama, Dhuhr, Jumu'ah, Khutbah">Arabic</button>
+              <button type="button" class="btn-secondary text-xs" onclick={turkishPreset} title="Ezan, Kamet, Öğle, Cuma, Hutbe, Güneş, Sabah, İkindi, Akşam, Yatsı · 24h">Turkish</button>
+              <button type="button" class="btn-secondary text-xs" onclick={malayPreset} title="Azan, Iqamat, Zohor, Jumaat, Khutbah, Asar">Malay</button>
+              <button type="button" class="btn-secondary text-xs" onclick={bosnianPreset} title="Ezan, Ikamet, Podne, Džuma, Hutba, Ikindija, Akšam, Jacija · 24h">Bosnian</button>
+            </div>
           </div>
         </div>
 

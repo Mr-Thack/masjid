@@ -30,17 +30,35 @@
     }
   }
 
+  let checkedExisting = $state(false);
+
   $effect(() => {
-    if (auth.isAuthenticated) {
-      auth.checkAuth().then(valid => {
-        if (valid && auth.admin) {
-          fetch(`${API_BASE}/api/v1/admin/masjids/${auth.admin.masjid_id}`, {
-            headers: { Authorization: `Bearer ${auth.token}` },
-          }).then(r => r.json()).then(profile => {
-            goto(`/admin/${profile.slug}`);
-          });
+    if (checkedExisting || !localStorage.getItem('admin_token')) return;
+    checkedExisting = true;
+
+    try {
+      const stored = localStorage.getItem('admin_token')!;
+      const userStr = localStorage.getItem('admin_user');
+      if (!userStr) return;
+      const user = JSON.parse(userStr);
+
+      fetch(`${API_BASE}/api/v1/admin/masjids/${user.masjid_id}`, {
+        headers: { Authorization: `Bearer ${stored}` },
+      }).then(async (r) => {
+        if (!r.ok) {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_user');
+          return;
         }
+        auth.token = stored;
+        auth.admin = user;
+        const profile = await r.json();
+        goto(`/admin/${profile.slug}`);
+}).catch(() => {
+        // ignore — network error on existing token check is non-fatal
       });
+    } catch {
+      // ignore, stay on login page
     }
   });
 </script>

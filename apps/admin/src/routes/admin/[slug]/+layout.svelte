@@ -12,7 +12,12 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
+  let initDone = $state(false);
+
   $effect(() => {
+    if (initDone) return;
+    initDone = true;
+
     if (!auth.isAuthenticated) {
       auth.checkAuth().then(valid => {
         if (!valid) goto('/login');
@@ -20,6 +25,12 @@
       });
     } else {
       loadProfile();
+    }
+  });
+
+  $effect(() => {
+    if (initDone && !auth.isAuthenticated && !auth.loading) {
+      goto('/login');
     }
   });
 
