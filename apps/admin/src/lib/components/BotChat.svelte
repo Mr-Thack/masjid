@@ -3,7 +3,7 @@
   import { auth } from '$lib/auth.svelte';
   import ChatInput from './ChatInput.svelte';
   import DiffReceiptCard from './DiffReceiptCard.svelte';
-  import { Bot, User, Check, X, Loader } from 'lucide-svelte';
+  import { Sparkles, User, Check, X, Loader } from 'lucide-svelte';
 
   let { masjidId }: { masjidId: string } = $props();
 
@@ -74,7 +74,7 @@
   <div class="flex-1 overflow-y-auto space-y-4 p-4">
     {#if messages.length === 0}
       <div class="text-center py-12">
-        <Bot size={40} class="mx-auto mb-3 text-text-muted" />
+        <Sparkles size={40} class="mx-auto mb-3 text-text-muted" />
         <p class="text-text-muted">Ask the AI to configure your masjid</p>
         <p class="text-xs text-text-muted mt-2">e.g. "Set Fajr iqaamah 15 min after adhaan on weekdays"</p>
       </div>
@@ -85,7 +85,7 @@
             {#if msg.role === 'user'}
               <User size={16} />
             {:else}
-              <Bot size={16} />
+              <Sparkles size={16} />
             {/if}
           </div>
           <div class="max-w-[75%] {msg.role === 'user' ? 'items-end' : 'items-start'}">
@@ -119,7 +119,7 @@
     {#if thinking}
       <div class="flex gap-3">
         <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-          <Bot size={16} class="text-primary" />
+          <Sparkles size={16} class="text-primary" />
         </div>
         <div class="bg-surface border border-border rounded-xl px-4 py-2.5">
           <div class="flex gap-1">

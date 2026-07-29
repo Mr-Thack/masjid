@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import {
-    LayoutDashboard, Bot, Building2, Palette, Clock, Users, Megaphone,
+    LayoutDashboard, Sparkles, Building2, Palette, Clock, Users, Megaphone,
     Globe, History, UserCog, BookOpen, Menu, X, LogOut, ChevronDown
   } from 'lucide-svelte';
   import { auth } from '$lib/auth.svelte';
@@ -15,7 +15,7 @@
 
   const navItems = [
     { href: `/admin/${masjidSlug}`, label: 'Dashboard', icon: LayoutDashboard },
-    { href: `/admin/${masjidSlug}/bot`, label: 'AI Assistant', icon: Bot },
+    { href: `/admin/${masjidSlug}/bot`, label: 'AI Assistant', icon: Sparkles },
     { type: 'section' as const, label: 'Settings' },
     { href: `/admin/${masjidSlug}/settings/profile`, label: 'Profile', icon: Building2 },
     { href: `/admin/${masjidSlug}/settings/theme`, label: 'Theme', icon: Palette },

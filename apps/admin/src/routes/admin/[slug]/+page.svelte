@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { Loader, Plus, ExternalLink, Bot } from 'lucide-svelte';
+  import { Loader, Plus, ExternalLink, Sparkles } from 'lucide-svelte';
 
   let { data }: { data: { masjidSlug: string } } = $props();
 
@@ -143,7 +143,7 @@
           New Announcement
         </a>
         <a href="/admin/{data.masjidSlug}/bot" class="btn-secondary text-sm">
-          <Bot size={16} />
+          <Sparkles size={16} />
           Chat with AI
         </a>
         <a href={publicPageUrl} target="_blank" rel="noopener" class="btn-secondary text-sm">

@@ -13,6 +13,7 @@ export const MoveVertical = Icon;
 export const Send = Icon;
 export const Paperclip = Icon;
 export const Bot = Icon;
+export const Sparkles = Icon;
 export const User = Icon;
 export const Check = Icon;
 export const X = Icon;
