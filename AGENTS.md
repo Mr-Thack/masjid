@@ -395,6 +395,37 @@ npm run test
 - Maktab dev secrets (Square/Brevo) go in `apps/api/.dev.vars`; put real values there for live sandbox testing
 - Debug endpoint: `GET /api/v1/debug` — public, no auth; returns DB connectivity, bcrypt test, admin info
 - Status endpoint: `GET /api/v1/status` — public, no auth; returns worker health, env vars presence, D1 connectivity
+
+## Multi-agent parallel work (worktrees)
+
+Rules from the 2026-07-29 incident: maktab-export feature files were copied
+into the main tree as uncommitted changes and got committed to master by
+another agent working there. The branch was never merged — the content
+arrived via a stray direct commit. Don't let that happen again.
+
+1. **One agent per worktree, one branch per agent.**
+   ```bash
+   git worktree add ../masjid-<feature> -b <feature> master
+   ```
+   Tell each agent its worktree path and instruct it to NEVER read or write
+   outside that directory.
+2. **The main tree (`~/code/masjid`) is single-tenant.** Only one effort at
+   a time. Never copy files between trees — integrate by merging the branch
+   (`git merge <feature>`), not by duplicating content.
+3. **Commit hygiene (every agent, every commit):** run `git status` and
+   `git branch --show-current` first; stage files by explicit name (never
+   `git add -A` in a tree anyone else might touch); verify with
+   `git show --stat HEAD` after committing.
+4. **Per-worktree setup:** each worktree needs its own `npm install` and its
+   own dev DB (`npx tsx tooling/seed.ts` — `.masjid/local.db` resolves
+   per-worktree).
+5. **Ports are shared.** Dev servers bind fixed ports (API 5173, TV 5174,
+   consumer 5175, admin 5176) — only ONE agent may run dev servers at a
+   time. Other agents use `npm run test*` (no servers needed).
+6. **Only the main tree deploys.** Feature agents never run wrangler or
+   otherwise deploy. Deploys happen from master after merge + CI.
+7. **Keep branches short-lived** and rebase onto master before merging
+   (`git rebase master`) so conflicts surface in the branch, not on master.
 - Production status: `curl https://mapi.mr-thack.workers.dev/api/v1/status`
 - Term `billing_months` column exists on `mkt_terms` — set it to charge fewer months than the term length (e.g. 8 for a 9-month Ramadan term)
 
