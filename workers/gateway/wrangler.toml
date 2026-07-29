@@ -1,0 +1,16 @@
+name = "masjid-gateway"
+compatibility_date = "2024-12-01"
+main = "src/index.js"
+workers_dev = true
+
+[observability]
+enabled = true
+
+# Serves the merged static output of consumer + tv + admin (tooling/merge-pages.js).
+# Matching assets are served directly at the edge; misses fall through to the
+# Worker below, which maps the path to the correct SPA fallback HTML.
+[assets]
+binding = "ASSETS"
+directory = "../../.merged"
+html_handling = "none"
+not_found_handling = "none"

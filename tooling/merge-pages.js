@@ -15,6 +15,14 @@ const APPS = [
 
 const results = {};
 
+if (!process.env.VITE_API_URL) {
+  console.warn(
+    '\nWARNING: VITE_API_URL is not set. Consumer/admin apps will fall back\n' +
+      'to relative API paths and break when deployed. For deploys, run:\n' +
+      '  VITE_API_URL=https://mapi.mr-thack.workers.dev node tooling/merge-pages.js\n',
+  );
+}
+
 for (const app of APPS) {
   const buildDir = path.join(ROOT, app.dir, 'build');
   console.log(`\n[${app.name}] Building...`);
@@ -78,17 +86,17 @@ for (const app of APPS) {
   console.log(`[${app.name}] Copied build → merged`);
 }
 
-writeFileSync(
-  path.join(MERGED, '_redirects'),
-  `/display/* /__tv_spa.html 200
-/admin/* /__admin_spa.html 200
-/login /__admin_spa.html 200
-/register /__admin_spa.html 200
-/* /__consumer_spa.html 200
-`,
-);
-console.log('Wrote _redirects (edge rewrite rules for SPA routing)');
+// NOTE: no `_redirects` — SPA routing is handled by the gateway Worker
+// (workers/gateway). `_redirects` 200-rewrites and Pages Functions were both
+// tried and failed in production (trapped fallback / fetch(self) loop).
+// `_headers` below IS honored by Workers Static Assets.
 
+// _headers is honored by Workers Static Assets, but ALL matching rules are
+// combined (values comma-appended). So never put Cache-Control on a broad
+// pattern like `/*` or `/*.js` — it would poison the immutable rule below
+// (this exact bug shipped once: `no-store` + `immutable` on every chunk).
+// SPA fallbacks (__*_spa.html) get their no-store header from the gateway
+// Worker instead.
 writeFileSync(
   path.join(MERGED, '_headers'),
   `/*
@@ -96,40 +104,13 @@ writeFileSync(
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Access-Control-Allow-Origin: *
 
 /_app/immutable/*
   Cache-Control: public, max-age=31536000, immutable
 
-/*.js
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.css
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.png
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.svg
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.ico
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.woff2
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.webmanifest
-  Cache-Control: public, max-age=31536000, immutable
-
-/*.json
-  Cache-Control: public, max-age=31536000, immutable
-
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
-
-/*
-  Cache-Control: no-cache, no-store, must-revalidate
-  Access-Control-Allow-Origin: *
 `,
 );
 console.log('Wrote merged _headers');
@@ -137,4 +118,4 @@ console.log('Wrote merged _headers');
 const fileCount = execSync(`find ${MERGED} -type f | wc -l`, { encoding: 'utf8' }).trim();
 console.log(`\nMerge complete. ${fileCount} files in ${MERGED}`);
 console.log('Fallback files:', fallbackFiles.join(', ') || 'none');
-console.log(`\nTo deploy: npx wrangler pages deploy ${MERGED} --project-name=masjid-live --branch=master`);
+console.log(`\nTo deploy: npx wrangler deploy --cwd workers/gateway`);

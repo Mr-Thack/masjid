@@ -30,6 +30,12 @@ const DEPLOYABLE = {
     name: 'push', dir: 'workers/push', workspace: '@masjid/worker-push', type: 'worker',
     deps: ['packages/schemas'],
   },
+  // Gateway is deployed by the deploy-gateway job (it needs .merged built first),
+  // not the per-worker matrix. Mark it 'page' so changes trigger that job.
+  'workers/gateway': {
+    name: 'gateway', dir: 'workers/gateway', workspace: '@masjid/gateway', type: 'page',
+    deps: [],
+  },
 };
 
 const LIBS = ['packages/schemas', 'packages/ui-utils', 'packages/agent'];

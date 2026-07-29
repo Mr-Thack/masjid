@@ -36,13 +36,8 @@ describe('merge-pages output', () => {
     expect(existsSync(path.join(MERGED, '404.html'))).toBe(false);
   });
 
-  it('has _redirects with correct SPA rewrite rules', () => {
-    const redirects = readFileSync(path.join(MERGED, '_redirects'), 'utf8');
-    expect(redirects).toContain('/display/* /__tv_spa.html 200');
-    expect(redirects).toContain('/admin/* /__admin_spa.html 200');
-    expect(redirects).toContain('/login /__admin_spa.html 200');
-    expect(redirects).toContain('/register /__admin_spa.html 200');
-    expect(redirects).toContain('/* /__consumer_spa.html 200');
+  it('has NO _redirects (SPA routing handled by the gateway Worker)', () => {
+    expect(existsSync(path.join(MERGED, '_redirects'))).toBe(false);
   });
 
   it('has NO _routes.json (no Pages Functions needed)', () => {

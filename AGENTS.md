@@ -10,7 +10,8 @@ The project is a fully implemented monorepo with:
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
 - **670+ tests passing** (416 API + 215 WhatsApp + 48 consumer)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
-- **Production deployed** — API on mapi.mr-thack.workers.dev, all 3 page apps (consumer + TV + admin) unified on masjid-live.pages.dev (merged build + Pages Function router)
+- **Production deployed** — API on mapi.mr-thack.workers.dev; 3 page apps (consumer + TV + admin) still on 3 separate Pages projects in prod
+- **Unified gateway staging live (2026-07-29)** — all 3 page apps served by ONE Worker + Static Assets at masjid-gateway.mr-thack.workers.dev (branch `unified-pages-deploy`). **Read `docs/gateway-deploy.md` before touching deployment.** Cutover to prod pending.
 
 ## How to start everything
 ```bash
@@ -76,6 +77,7 @@ masjid/
   apps/admin/                — SvelteKit static/SPA, admin dashboard (settings + AI bot chat)
   workers/push/              — Cloudflare Worker for push notifications (skeleton)
   workers/whatsapp/          — Cloudflare Worker for WhatsApp Zero-UI (imports bot logic from @masjid/agent)
+  workers/gateway/           — Unified Worker + Static Assets host for consumer+tv+admin (see docs/gateway-deploy.md)
   apps/api/src/lib/server/maktab/ — Maktab registration/enrollment module (Square only)
   tooling/seed.ts            — DB seed script
   vitest.config.ts           — Root vitest (API only, node)
@@ -213,6 +215,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - `docs/admin-manual-settings.md` — Admin microservice manual settings UI (profile, theme, prayer rules, jumu'ah, announcements, domains, snapshots, account)
 - `docs/admin-ai-capabilities.md` — Admin AI bot chat panel design (DiffReceiptCard, vision, SSE streaming)
 - `docs/admin-tests.md` — Admin app test strategy (~202 tests: unit + integration + E2E)
+- **`docs/gateway-deploy.md` — Unified gateway deployment (Worker + Static Assets), merge pipeline, deploy/verify runbook, cutover plan (read before any deploy work)**
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
@@ -676,3 +679,76 @@ npx vitest run apps/api/src/__tests__/maktab/square.test.ts -t sandbox
 Add `[observability] enabled = true` to every worker's `wrangler.toml`.
 This enables Workers Logs in the Cloudflare dashboard, letting you see
 `console.error()` output from production without websocket tail sessions.
+
+## Unified gateway deployment lessons (2026-07-29)
+
+Full detail in `docs/gateway-deploy.md`. These came from consolidating the
+3 Pages projects into one Worker + Static Assets deployment.
+
+### 24. Pages Functions `_redirects`/subrequests cannot route multiple SPAs — use Worker + Static Assets
+
+**Pitfall**: Two obvious approaches both failed in production:
+(a) a Pages Function doing `fetch(self)` to grab the right SPA fallback →
+the subrequest re-entered the same Function → infinite loop;
+(b) `_redirects` with 200 rewrites (`/display/* /__tv_spa.html 200`) →
+Pages evaluates rewrites before static assets, trapping every path
+(including real assets) at one fallback.
+
+**How we fixed it**: One Worker (`workers/gateway`) with an `[assets]`
+binding pointing at the merged build. Real assets are served at the edge
+before the Worker runs; the Worker only sees misses and maps them to
+`__consumer_spa.html` / `__tv_spa.html` / `__admin_spa.html` via
+`env.ASSETS.fetch()` — a direct manifest read, not an HTTP subrequest, so
+it cannot loop.
+
+### 25. `_headers` rules COMBINE — Cache-Control only on narrow patterns
+
+**Pitfall**: Cloudflare appends the values of *every* matching `_headers`
+pattern. A `/*` catch-all with `Cache-Control: no-store` plus a
+`/_app/immutable/*` rule with `immutable` produced
+`no-cache, no-store, must-revalidate, public, max-age=31536000, immutable`
+on every chunk — browsers honor the strictest directive, so immutable
+caching was silently defeated.
+
+**How we fixed it**: Security headers stay on `/*`; `Cache-Control` appears
+only on `/_app/immutable/*` (immutable) and `/sw.js` (no-store). SPA
+fallbacks get `no-store` from the gateway Worker code instead.
+
+### 26. `wrangler deploy` does NOT build — you can deploy stale code
+
+**Pitfall**: For `apps/api`, wrangler uploads the prebuilt
+`.svelte-kit/cloudflare/_worker.js`. A CORS source edit "didn't work" in
+production because the deploy uploaded the previous build.
+
+**How we fixed it**: Always `npm run build --workspace=@masjid/api` before
+`wrangler deploy` (CI already does this; manual deploys must too).
+
+### 27. Manual API deploys: `--keep-vars` and loop-built `--var` args
+
+**Pitfall**: (a) Wrangler v4 deletes dashboard-set vars not present in
+config/`--var` (e.g. `LLM_API_KEY` is empty in `.env.prod` but set on the
+deployed worker). (b) Building `--var` args with `&&` chains aborts the
+whole chain silently when one var is empty (`[ -n "$X" ] && …` → exit 1).
+
+**How we fixed it**: Deploy with `--keep-vars`; build args in a `for` loop
+(see `docs/gateway-deploy.md` for the copy-paste block).
+
+### 28. SPA verification requires hashes + a real browser, not curl content checks
+
+**Pitfall**: All 3 apps are pure SPAs with no prerendering — page content
+never appears in the served HTML, so `curl … | grep "some text"` always
+fails even when everything works. Also, right after a Worker deploy,
+different edge nodes serve old vs new versions for ~30s — two curls seconds
+apart returned different SPA hashes.
+
+**How we fixed it**: Verify route→SPA mapping by sha256-comparing served
+bodies against local `.merged/__*_spa.html`; verify rendered content in a
+real browser; retry with `?cb=N` cache-busters before debugging "broken"
+deploys.
+
+### 29. Root `/` must NOT redirect to a masjid
+
+The consumer root page (`apps/consumer/src/routes/+page.svelte`) shows
+"**Please Verify Your URL — You seem to have made a mistake.**" A previous
+version redirected `/` → `/masjid-al-noor`, which confused users who
+landed on the wrong masjid's page. Do not re-add a redirect.

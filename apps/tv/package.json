@@ -7,7 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "deploy": "node ../../tooling/merge-pages.js && npx wrangler pages deploy ../../.merged --project-name=masjid-live --branch=master"
+    "deploy": "node ../../tooling/merge-pages.js && npx wrangler deploy --cwd ../../workers/gateway"
   },
   "dependencies": {
     "@masjid/schemas": "*",

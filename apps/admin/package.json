@@ -7,7 +7,7 @@
     "dev": "vite dev --port 5176",
     "build": "vite build",
     "preview": "vite preview --port 5176",
-    "deploy": "node ../../tooling/merge-pages.js && npx wrangler pages deploy ../../.merged --project-name=masjid-live --branch=master"
+    "deploy": "node ../../tooling/merge-pages.js && npx wrangler deploy --cwd ../../workers/gateway"
   },
   "dependencies": {
     "@masjid/schemas": "*",
