@@ -1,27 +1,14 @@
 import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const pages = [
-  { name: 'consumer', pkg: '@masjid/consumer', project: 'masjid-live' },
-  { name: 'tv', pkg: '@masjid/tv', project: 'masjid-live-tv' },
-  { name: 'admin', pkg: '@masjid/admin', project: 'masjid-live-admin' },
-];
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, '..');
 
-const argv = process.argv.slice(2);
-const filter = argv.find((a) => a.startsWith('--only='))?.replace('--only=', '');
-
-async function deploy() {
-  for (const page of pages) {
-    if (filter && page.name !== filter) continue;
-
-    console.log(`\n=== Building ${page.pkg} ===`);
-    execSync(`npm run build --workspace=${page.pkg}`, { stdio: 'inherit' });
-
-    console.log(`\n=== Deploying ${page.pkg} to Cloudflare Pages (${page.project}) ===`);
-    execSync(`npm run deploy --workspace=${page.pkg}`, { stdio: 'inherit' });
-  }
-}
-
-deploy().catch((err) => {
-  console.error('Deploy failed:', err.message);
-  process.exit(1);
+console.log('Building & merging all page apps, then deploying to masjid-live.pages.dev...');
+execSync('node tooling/merge-pages.js', { cwd: ROOT, stdio: 'inherit' });
+execSync('npx wrangler pages deploy .merged --project-name=masjid-live --branch=master', {
+  cwd: ROOT,
+  stdio: 'inherit',
 });
+console.log('Done.');

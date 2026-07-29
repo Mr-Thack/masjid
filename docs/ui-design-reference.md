@@ -13,11 +13,11 @@
 | **WhatsApp Worker** | — | Admins via WhatsApp | Cloudflare Worker |
 | **@masjid/agent** | — | Shared bot logic | Pure TypeScript package |
 
-**Production URLs:**
+**Production URL (all apps):**
+- All 3 page apps (Consumer + TV + Admin) unified on: `masjid-live.pages.dev`
+- URL routing: `/{masjid_slug}` → Consumer, `/display/{masjid_slug}` → TV, `/admin/{slug}` → Admin
 - API: `mapi.mr-thack.workers.dev`
-- Consumer: `masjid-live.pages.dev`
-- TV: `masjid-live-tv.pages.dev`
-- Admin: `masjid-live-admin.pages.dev`
+- Deploy: single Pages project with merged build + Pages Function SPA router
 
 ---
 

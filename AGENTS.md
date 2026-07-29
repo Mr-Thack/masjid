@@ -10,7 +10,7 @@ The project is a fully implemented monorepo with:
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
 - **670+ tests passing** (416 API + 215 WhatsApp + 48 consumer)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
-- **Production deployed** — API on mapi.mr-thack.workers.dev, consumer on masjid-live.pages.dev, TV on masjid-live-tv.pages.dev, admin on masjid-live-admin.pages.dev
+- **Production deployed** — API on mapi.mr-thack.workers.dev, all 3 page apps (consumer + TV + admin) unified on masjid-live.pages.dev (merged build + Pages Function router)
 
 ## How to start everything
 ```bash
@@ -30,14 +30,16 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test          # API tests, 416 (no external deps)
-npm run test:tv       # TV frontend, 28 tests (jsdom + testing-library)
-npm run test:consumer # Consumer frontend, 48 tests (jsdom + testing-library; 1 pre-existing Jumuah homepage failure)
-npm run test:whatsapp # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
-npm run test:sw       # Service worker integration, 26 tests (Playwright, requires running dev servers)
-npm run test:agent    # Agent package tests (pending: ~175 expected)
-npm run test:admin    # Admin app tests (pending: ~202 expected)
-npm run test:all      # everything (excluding test:sw and test:admin since they need servers running)
+npm run test             # API unit tests, 433 (no server needed)
+npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
+npm run test:tv          # TV frontend, 30 tests (jsdom + testing-library)
+npm run test:consumer    # Consumer frontend, 53 tests (jsdom + testing-library)
+npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
+npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
+npm run test:agent       # Agent package tests (pending: ~175 expected)
+npm run test:admin       # Admin app tests, 115 tests (jsdom + testing-library)
+npm run test:tooling     # Tooling tests (merge-pages, build integrity — 12 tests)
+npm run test:all         # everything (excluding test:sw and test:admin since they need servers running)
 ```
 
 ## Seed data

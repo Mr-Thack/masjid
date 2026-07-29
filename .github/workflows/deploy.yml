@@ -9,11 +9,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  detect-changes:
+detect-changes:
     runs-on: ubuntu-latest
     outputs:
       workers_json: ${{ steps.changes.outputs.workers_json }}
-      pages_json: ${{ steps.changes.outputs.pages_json }}
+      pages_changed: ${{ steps.changes.outputs.pages_changed }}
       changed: ${{ steps.changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
@@ -36,19 +36,19 @@ jobs:
             echo "::error::Failed to parse changes JSON — deploying nothing"
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "workers_json=[]" >> $GITHUB_OUTPUT
-            echo "pages_json=[]" >> $GITHUB_OUTPUT
+            echo "pages_changed=false" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           CHANGED=$(jq -r '.changed' /tmp/changes.json)
           WORKERS=$(jq -c '.workers' /tmp/changes.json)
-          PAGES=$(jq -c '.pages' /tmp/changes.json)
+          PAGES_CHANGED=$(jq -r '.pages_changed' /tmp/changes.json)
 
           echo "changed=${CHANGED}" >> $GITHUB_OUTPUT
           echo "workers_json=${WORKERS}" >> $GITHUB_OUTPUT
-          echo "pages_json=${PAGES}" >> $GITHUB_OUTPUT
+          echo "pages_changed=${PAGES_CHANGED}" >> $GITHUB_OUTPUT
 
-          echo "::notice::changed=${CHANGED} workers=$(jq -r '[.workers[].name] | join(",")' /tmp/changes.json) pages=$(jq -r '[.pages[].name] | join(",")' /tmp/changes.json)"
+          echo "::notice::changed=${CHANGED} workers=$(jq -r '[.workers[].name] | join(",")' /tmp/changes.json) pages_changed=${PAGES_CHANGED}"
 
   deploy-workers:
     needs: detect-changes
@@ -115,16 +115,13 @@ jobs:
 
   deploy-pages:
     needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.pages_json != '[]'
+    if: needs.detect-changes.outputs.pages_changed == 'true'
     runs-on: ubuntu-latest
     environment: Prod
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(needs.detect-changes.outputs.pages_json) }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -135,27 +132,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Build page
-        run: npm run build --workspace=${{ matrix.workspace }}
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || '' }}
-
-      - name: Debug auth
-        run: |
-          echo "::notice::Total env vars: $(env | wc -l)"
-          echo "::notice::Matching CLOUDFLARE vars:"
-          env | grep -i cloudflare || echo "(none)"
-          echo "::notice::All CF/CLOUDFLARE related:"
-          env | grep -iE '^(CF_|CLOUDFLARE)' || echo "(none)"
-          if [ -n "${CLOUDFLARE_API_TOKEN}" ]; then
-            echo "::notice::CLOUDFLARE_API_TOKEN length: ${#CLOUDFLARE_API_TOKEN}"
-          else
-            echo "::error::CLOUDFLARE_API_TOKEN is EMPTY"
-          fi
+      - name: Build & merge all page apps
+        run: node tooling/merge-pages.js
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@latest pages deploy build --project-name=${{ matrix.name == 'consumer' && 'masjid-live' || matrix.name == 'tv' && 'masjid-live-tv' || 'masjid-live-admin' }} --branch=master
-        working-directory: ${{ matrix.dir }}
+        run: npx wrangler@latest pages deploy .merged --project-name=masjid-live --branch=master
 
   summary:
     needs: [detect-changes, deploy-workers, deploy-pages]
