@@ -61,6 +61,7 @@
 
   $effect(() => {
     if (!masjidId || loading) return;
+    void selectedTermId;
     loadRegistrations();
   });
 
@@ -80,6 +81,9 @@
         status_message: settingsRes.status_message ?? '',
         active_term_id: settingsRes.active_term?.id ?? '',
       };
+      if (settingsRes.active_term?.id && !selectedTermId) {
+        selectedTermId = settingsRes.active_term.id;
+      }
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load Maktab settings';
     } finally {
