@@ -36,8 +36,17 @@ describe('merge-pages output', () => {
     expect(existsSync(path.join(MERGED, '404.html'))).toBe(false);
   });
 
-  it('has NO _redirects (SPA routing handled by the gateway Worker)', () => {
+  it('has NO _redirects (SPA routing handled by _worker.js)', () => {
     expect(existsSync(path.join(MERGED, '_redirects'))).toBe(false);
+  });
+
+  it('ships _worker.js (Pages advanced-mode SPA router)', () => {
+    const worker = readFileSync(path.join(MERGED, '_worker.js'), 'utf8');
+    expect(worker.length).toBeGreaterThan(500);
+    expect(worker).toContain('__consumer_spa.html');
+    expect(worker).toContain('__tv_spa.html');
+    expect(worker).toContain('__admin_spa.html');
+    expect(worker).toContain('env.ASSETS.fetch');
   });
 
   it('has NO _routes.json (no Pages Functions needed)', () => {

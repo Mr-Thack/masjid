@@ -113,7 +113,7 @@ jobs:
           npx wrangler@latest deploy --env production --keep-vars --var ENVIRONMENT:production "${VAR_ARGS[@]}"
         working-directory: ${{ matrix.dir }}
 
-  deploy-gateway:
+  deploy-pages:
     needs: detect-changes
     if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.pages_changed == 'true'
     runs-on: ubuntu-latest
@@ -135,12 +135,11 @@ jobs:
       - name: Build & merge all page apps
         run: node tooling/merge-pages.js
 
-      - name: Deploy gateway worker (unified static assets host)
-        run: npx wrangler@latest deploy
-        working-directory: workers/gateway
+      - name: Deploy unified Pages project (advanced-mode _worker.js router)
+        run: npx wrangler@latest pages deploy .merged --project-name=masjid-live --branch=master
 
   summary:
-    needs: [detect-changes, deploy-workers, deploy-gateway]
+    needs: [detect-changes, deploy-workers, deploy-pages]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
@@ -152,4 +151,4 @@ jobs:
           fi
           echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "Workers: ${{ needs.deploy-workers.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "Gateway: ${{ needs.deploy-gateway.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Pages: ${{ needs.deploy-pages.result }}" >> $GITHUB_STEP_SUMMARY

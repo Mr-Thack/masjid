@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test:sw": "node tests/sw-integration.test.js",
-    "deploy": "node ../../tooling/merge-pages.js && npx wrangler deploy --cwd ../../workers/gateway"
+    "deploy": "node ../../tooling/deploy-pages.js"
   },
   "dependencies": {
     "@masjid/schemas": "*",

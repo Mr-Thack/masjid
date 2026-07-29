@@ -1,12 +1,14 @@
-// masjid-gateway — unified static host for consumer + tv + admin apps.
+// masjid-live SPA router — shipped as `_worker.js` in the merged Pages deploy
+// (Pages "advanced mode"), produced by tooling/merge-pages.js. It can also be
+// deployed standalone as the masjid-gateway staging Worker.
 //
-// Static assets (js/css/images, sw.js, manifest.json, …) are served directly
-// by the Workers Static Assets binding. When no asset matches the path, this
-// Worker picks the SPA fallback for the route namespace:
+// Every request arrives here. Real assets (js/css/images, sw.js,
+// manifest.json, …) are served via the ASSETS binding; when no asset matches
+// the path, we pick the SPA fallback for the route namespace:
 //
-//   /display/*           → __tv_spa.html
+//   /display/*                → __tv_spa.html
 //   /admin/*, /login, /register → __admin_spa.html
-//   everything else      → __consumer_spa.html
+//   everything else           → __consumer_spa.html
 //
 // The fallback files are produced by tooling/merge-pages.js (each app's
 // adapter-static fallback renamed so they can't collide).
@@ -26,13 +28,14 @@ function pickSpaFallback(pathname) {
 
 export default {
   async fetch(request, env) {
-    // Defensive: with default config the Worker only runs on asset misses,
-    // but if run_worker_first is ever enabled, real assets still win.
+    // Real assets always win.
     const asset = await env.ASSETS.fetch(request);
     if (asset.status !== 404) return asset;
 
     const url = new URL(request.url);
-    const spa = await env.ASSETS.fetch(new URL(pickSpaFallback(url.pathname), url));
+    const spa = await env.ASSETS.fetch(
+      new Request(new URL(pickSpaFallback(url.pathname), url)),
+    );
     if (!spa.ok) {
       return new Response('Not found', { status: 404 });
     }

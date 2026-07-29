@@ -86,17 +86,26 @@ for (const app of APPS) {
   console.log(`[${app.name}] Copied build → merged`);
 }
 
-// NOTE: no `_redirects` — SPA routing is handled by the gateway Worker
-// (workers/gateway). `_redirects` 200-rewrites and Pages Functions were both
-// tried and failed in production (trapped fallback / fetch(self) loop).
-// `_headers` below IS honored by Workers Static Assets.
+// NOTE: no `_redirects` — SPA routing is handled by the `_worker.js` emitted
+// below (Pages "advanced mode": the masjid-live Pages project runs this
+// Worker for every request). `_redirects` 200-rewrites and Pages Functions
+// were both tried and failed in production (trapped fallback / fetch(self)
+// loop).
 
-// _headers is honored by Workers Static Assets, but ALL matching rules are
+// Ship the SPA router as Pages advanced-mode _worker.js. The source of truth
+// lives in workers/gateway/src/index.js (kept there so it can also be
+// deployed standalone for staging).
+cpSync(
+  path.join(ROOT, 'workers', 'gateway', 'src', 'index.js'),
+  path.join(MERGED, '_worker.js'),
+);
+console.log('Wrote _worker.js (Pages advanced-mode SPA router)');
+
+// _headers is honored by the Pages asset server, but ALL matching rules are
 // combined (values comma-appended). So never put Cache-Control on a broad
 // pattern like `/*` or `/*.js` — it would poison the immutable rule below
 // (this exact bug shipped once: `no-store` + `immutable` on every chunk).
-// SPA fallbacks (__*_spa.html) get their no-store header from the gateway
-// Worker instead.
+// SPA fallbacks (__*_spa.html) get their no-store header from _worker.js.
 writeFileSync(
   path.join(MERGED, '_headers'),
   `/*
@@ -118,4 +127,4 @@ console.log('Wrote merged _headers');
 const fileCount = execSync(`find ${MERGED} -type f | wc -l`, { encoding: 'utf8' }).trim();
 console.log(`\nMerge complete. ${fileCount} files in ${MERGED}`);
 console.log('Fallback files:', fallbackFiles.join(', ') || 'none');
-console.log(`\nTo deploy: npx wrangler deploy --cwd workers/gateway`);
+console.log(`\nTo deploy: node tooling/deploy-pages.js`);

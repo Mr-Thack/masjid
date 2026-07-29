@@ -7,10 +7,9 @@ import type { Handle } from '@sveltejs/kit';
 
 const ALLOWED_ORIGINS = [
   'https://masjid-live.pages.dev',
-  // Old per-app Pages projects — remove after cutover to the gateway Worker.
+  // Old per-app Pages projects — remove after all TVs/admins move to masjid-live.
   'https://masjid-live-admin.pages.dev',
   'https://masjid-live-tv.pages.dev',
-  'https://masjid-gateway.mr-thack.workers.dev',
   'http://localhost:5175',
   'http://localhost:5176',
 ];

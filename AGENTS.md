@@ -10,8 +10,8 @@ The project is a fully implemented monorepo with:
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
 - **670+ tests passing** (416 API + 215 WhatsApp + 48 consumer)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
-- **Production deployed** — API on mapi.mr-thack.workers.dev; 3 page apps (consumer + TV + admin) still on 3 separate Pages projects in prod
-- **Unified gateway staging live (2026-07-29)** — all 3 page apps served by ONE Worker + Static Assets at masjid-gateway.mr-thack.workers.dev (branch `unified-pages-deploy`). **Read `docs/gateway-deploy.md` before touching deployment.** Cutover to prod pending.
+- **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
+- **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects are redundant; retire after devices move (cutover steps in the doc).
 
 ## How to start everything
 ```bash
@@ -39,7 +39,7 @@ npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:agent       # Agent package tests (pending: ~175 expected)
 npm run test:admin       # Admin app tests, 115 tests (jsdom + testing-library)
-npm run test:tooling     # Tooling tests (merge-pages, build integrity — 12 tests)
+npm run test:tooling     # Tooling tests (merge-pages, build integrity — 13 tests)
 npm run test:all         # everything (excluding test:sw and test:admin since they need servers running)
 ```
 
@@ -77,7 +77,7 @@ masjid/
   apps/admin/                — SvelteKit static/SPA, admin dashboard (settings + AI bot chat)
   workers/push/              — Cloudflare Worker for push notifications (skeleton)
   workers/whatsapp/          — Cloudflare Worker for WhatsApp Zero-UI (imports bot logic from @masjid/agent)
-  workers/gateway/           — Unified Worker + Static Assets host for consumer+tv+admin (see docs/gateway-deploy.md)
+  workers/gateway/           — SPA router source (shipped as _worker.js in the merged Pages deploy; see docs/unified-deploy.md)
   apps/api/src/lib/server/maktab/ — Maktab registration/enrollment module (Square only)
   tooling/seed.ts            — DB seed script
   vitest.config.ts           — Root vitest (API only, node)
@@ -215,7 +215,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - `docs/admin-manual-settings.md` — Admin microservice manual settings UI (profile, theme, prayer rules, jumu'ah, announcements, domains, snapshots, account)
 - `docs/admin-ai-capabilities.md` — Admin AI bot chat panel design (DiffReceiptCard, vision, SSE streaming)
 - `docs/admin-tests.md` — Admin app test strategy (~202 tests: unit + integration + E2E)
-- **`docs/gateway-deploy.md` — Unified gateway deployment (Worker + Static Assets), merge pipeline, deploy/verify runbook, cutover plan (read before any deploy work)**
+- **`docs/unified-deploy.md` — Unified deployment (all apps on masjid-live.pages.dev via Pages advanced mode), merge pipeline, deploy/verify runbook, cutover plan (read before any deploy work)**
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
@@ -680,26 +680,28 @@ Add `[observability] enabled = true` to every worker's `wrangler.toml`.
 This enables Workers Logs in the Cloudflare dashboard, letting you see
 `console.error()` output from production without websocket tail sessions.
 
-## Unified gateway deployment lessons (2026-07-29)
+## Unified deployment lessons (2026-07-29)
 
-Full detail in `docs/gateway-deploy.md`. These came from consolidating the
-3 Pages projects into one Worker + Static Assets deployment.
+Full detail in `docs/unified-deploy.md`. These came from consolidating the
+3 Pages projects into one unified deployment on masjid-live.pages.dev.
 
-### 24. Pages Functions `_redirects`/subrequests cannot route multiple SPAs — use Worker + Static Assets
+### 24. Pages Functions `_redirects`/subrequests cannot route multiple SPAs — use Pages advanced mode (`_worker.js`)
 
 **Pitfall**: Two obvious approaches both failed in production:
 (a) a Pages Function doing `fetch(self)` to grab the right SPA fallback →
 the subrequest re-entered the same Function → infinite loop;
 (b) `_redirects` with 200 rewrites (`/display/* /__tv_spa.html 200`) →
 Pages evaluates rewrites before static assets, trapping every path
-(including real assets) at one fallback.
+(including real assets) at one fallback. And a standalone Worker can't be
+used either: `*.pages.dev` hostnames belong to Pages projects and cannot
+be attached to Workers.
 
-**How we fixed it**: One Worker (`workers/gateway`) with an `[assets]`
-binding pointing at the merged build. Real assets are served at the edge
-before the Worker runs; the Worker only sees misses and maps them to
-`__consumer_spa.html` / `__tv_spa.html` / `__admin_spa.html` via
-`env.ASSETS.fetch()` — a direct manifest read, not an HTTP subrequest, so
-it cannot loop.
+**How we fixed it**: Pages "advanced mode" — the merged deploy output
+contains a `_worker.js` (source: `workers/gateway/src/index.js`, copied by
+`tooling/merge-pages.js`) that the masjid-live Pages project runs for every
+request. It serves real assets via `env.ASSETS.fetch(request)` and maps
+misses to `__consumer_spa.html` / `__tv_spa.html` / `__admin_spa.html` —
+a direct manifest read, not an HTTP subrequest, so it cannot loop.
 
 ### 25. `_headers` rules COMBINE — Cache-Control only on narrow patterns
 
@@ -752,3 +754,19 @@ The consumer root page (`apps/consumer/src/routes/+page.svelte`) shows
 "**Please Verify Your URL — You seem to have made a mistake.**" A previous
 version redirected `/` → `/masjid-al-noor`, which confused users who
 landed on the wrong masjid's page. Do not re-add a redirect.
+
+### 30. Stale pages.dev CDN cache survives redeploys
+
+**Pitfall**: The old consumer Pages deployment sent cacheable HTML; those
+responses sat in the pages.dev shared CDN with `s-maxage=604800` (7 days).
+After the unified deploy, plain-URL requests to `/`, `/masjid-al-noor`,
+`/admin/*` kept serving the OLD consumer SPA from cache — while `?cb=1`
+cache-busted requests proved the new deployment was correct. Neither
+redeploying nor any API purge endpoint clears these entries (the Pages
+purge API path returns `method_not_allowed`).
+
+**How we fixed it**: No code fix possible — the entries expire on their
+own; affected users hard-refresh (Ctrl+Shift+R sends `no-cache`, forcing
+revalidation). The NEW deployment's `no-store` SPA responses can never be
+poisoned this way. Lesson: always verify deploys with `?cb=N` before
+concluding content is wrong, and never ship cacheable HTML for SPA routes.
