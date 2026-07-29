@@ -3,27 +3,35 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { BookOpen, Users, ExternalLink } from 'lucide-svelte';
+  import { BookOpen, Users, ExternalLink, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
   import ErrorCard from '$lib/components/ErrorCard.svelte';
+  import {
+    type Registration,
+    type Term as ExTerm,
+    exportStudentCSV,
+    exportApplicationsCSV,
+    downloadCsv,
+    buildBulkReportHtml,
+    downloadHtml,
+  } from '$lib/maktab-export';
 
-  type Term = {
-    id: string;
-    name: string;
-    length_months: number;
-    billing_months: number | null;
-    prices: { '1': number; '2': number; '3plus': number };
-  };
+  type Term = ExTerm;
 
-  type Registration = {
-    id: string;
-    status: string;
-    monthly_amount_cents: number;
-    father_name: string | null;
-    mother_name: string | null;
-    father_email: string | null;
-    mother_email: string | null;
+  type FlatStudent = {
+    regId: string;
     created_at: string;
+    childIndex: number;
+    name: string;
+    sex: string;
+    dob: string;
+    ageDisplay: string;
+    fatherName: string | null;
+    motherName: string | null;
+    fatherEmail: string | null;
+    motherEmail: string | null;
+    monthly_amount_cents: number;
+    status: string;
   };
 
   let masjidSlug = $derived($page.params.slug);
@@ -38,6 +46,63 @@
 
   let saving = $state(false);
   let creating = $state(false);
+
+  let sexFilter = $state<'all' | 'male' | 'female'>('all');
+  let sortColumn = $state<'name' | 'sex' | 'age'>('name');
+  let sortDir = $state<'asc' | 'desc'>('asc');
+
+  let flatStudents = $derived.by(() => {
+    const students: FlatStudent[] = [];
+    for (const reg of registrations) {
+      for (let i = 0; i < reg.children.length; i++) {
+        const child = reg.children[i];
+        const dob = new Date(child.dob);
+        const now = new Date();
+        let years = now.getFullYear() - dob.getFullYear();
+        let months = now.getMonth() - dob.getMonth();
+        if (months < 0) { years--; months += 12; }
+        const ageDisplay = years === 0 ? `${months}m` : `${years}y ${months}m`;
+
+        students.push({
+          regId: reg.id,
+          created_at: reg.created_at,
+          childIndex: i,
+          name: child.name,
+          sex: child.sex,
+          dob: child.dob,
+          ageDisplay,
+          fatherName: reg.father_name,
+          motherName: reg.mother_name,
+          fatherEmail: reg.father_email,
+          motherEmail: reg.mother_email,
+          monthly_amount_cents: reg.monthly_amount_cents,
+          status: reg.status,
+        });
+      }
+    }
+    return students;
+  });
+
+  let displayedStudents = $derived.by(() => {
+    let filtered = flatStudents;
+    if (sexFilter === 'male') {
+      filtered = flatStudents.filter(s => s.sex === 'male');
+    } else if (sexFilter === 'female') {
+      filtered = flatStudents.filter(s => s.sex === 'female');
+    }
+
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      if (sortColumn === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortColumn === 'sex') cmp = a.sex.localeCompare(b.sex);
+      else if (sortColumn === 'age') cmp = a.dob.localeCompare(b.dob);
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  });
+
+  let studentsActiveCount = $derived(
+    flatStudents.filter(s => s.status === 'active' || s.status === 'subscribed').length
+  );
 
   let settingsForm = $state({
     enrollment_open: false,
@@ -152,6 +217,70 @@
     } finally {
       creating = false;
     }
+  }
+
+  function toggleSort(column: 'name' | 'sex' | 'age') {
+    if (sortColumn === column) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortColumn = column;
+      sortDir = 'asc';
+    }
+  }
+
+  function sortIcon(column: 'name' | 'sex' | 'age') {
+    if (sortColumn !== column) return ArrowUpDown;
+    return sortDir === 'asc' ? ArrowUp : ArrowDown;
+  }
+
+  function cycleSexFilter() {
+    if (sexFilter === 'all') sexFilter = 'male';
+    else if (sexFilter === 'male') sexFilter = 'female';
+    else sexFilter = 'all';
+  }
+
+  function sexFilterLabel() {
+    if (sexFilter === 'all') return 'All';
+    if (sexFilter === 'male') return 'Male';
+    return 'Female';
+  }
+
+  function handleExportBulkReport() {
+    if (registrations.length === 0) {
+      toast.error('No registrations to export');
+      return;
+    }
+    const term = settings?.active_term ?? terms[0] ?? null;
+    if (!term) {
+      toast.error('No term selected');
+      return;
+    }
+    const html = buildBulkReportHtml(registrations, term);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadHtml(html, `maktab-report-${date}.html`);
+    toast.success('Report downloaded — open in browser and Print as PDF');
+  }
+
+  function handleExportStudentCSV() {
+    if (registrations.length === 0) {
+      toast.error('No registrations to export');
+      return;
+    }
+    const csv = exportStudentCSV(registrations);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `maktab-students-${date}.csv`);
+    toast.success('Student CSV downloaded');
+  }
+
+  function handleExportApplicationsCSV() {
+    if (registrations.length === 0) {
+      toast.error('No registrations to export');
+      return;
+    }
+    const csv = exportApplicationsCSV(registrations);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `maktab-applications-${date}.csv`);
+    toast.success('Applications CSV downloaded');
   }
 
   function formatCents(cents: number): string {
@@ -319,44 +448,87 @@
           <div class="flex items-center gap-2">
             <Users class="text-accent" size={20} />
             <h2 class="font-heading font-semibold text-text">
-              Registrations
+              Students
               {#if selectedTermId}
                 — {terms.find(t => t.id === selectedTermId)?.name ?? ''}
               {/if}
-              ({registrations.length})
             </h2>
+            <span class="badge badge-green text-xs">
+              {studentsActiveCount} active
+            </span>
+            <span class="text-sm text-text-muted">
+              {flatStudents.length} total
+            </span>
           </div>
-          <select class="w-full sm:w-auto" bind:value={selectedTermId}>
-            <option value="">All Terms</option>
-            {#each terms as term}
-              <option value={term.id}>{term.name}</option>
-            {/each}
-          </select>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" class="btn-secondary text-xs" onclick={cycleSexFilter} class:badge-blue={sexFilter === 'male'} class:badge-purple={sexFilter === 'female'}>
+              {sexFilterLabel()}
+            </button>
+            <select class="w-full sm:w-auto text-xs" bind:value={selectedTermId}>
+              <option value="">All Terms</option>
+              {#each terms as term}
+                <option value={term.id}>{term.name}</option>
+              {/each}
+            </select>
+            <div class="flex gap-1">
+              <button type="button" class="btn-secondary text-xs" onclick={handleExportBulkReport} title="Generate printable HTML report">
+                <FileDown size={14} /> Report
+              </button>
+              <button type="button" class="btn-secondary text-xs" onclick={handleExportStudentCSV} title="Download student list as CSV">
+                <Download size={14} /> Students CSV
+              </button>
+              <button type="button" class="btn-secondary text-xs" onclick={handleExportApplicationsCSV} title="Download full applications as CSV">
+                <Download size={14} /> Apps CSV
+              </button>
+            </div>
+          </div>
         </div>
 
-        {#if registrations.length === 0}
+        {#if flatStudents.length === 0}
           <p class="text-text-muted text-sm">No registrations yet.</p>
         {:else}
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead class="border-b border-border text-text-muted">
                 <tr>
-                  <th class="text-left py-2 pr-4">Date</th>
+                  <th class="text-left py-2 pr-4">
+                    <button type="button" class="inline-flex items-center gap-1 hover:text-text" onclick={() => toggleSort('name')}>
+                      Student {#if sortColumn === 'name'}<svelte:component this={sortIcon('name')} size={12} />{/if}
+                    </button>
+                  </th>
+                  <th class="text-left py-2 pr-4 w-24">
+                    <button type="button" class="inline-flex items-center gap-1 hover:text-text" onclick={() => toggleSort('sex')}>
+                      Sex {#if sortColumn === 'sex'}<svelte:component this={sortIcon('sex')} size={12} />{/if}
+                    </button>
+                  </th>
+                  <th class="text-left py-2 pr-4 w-24">
+                    <button type="button" class="inline-flex items-center gap-1 hover:text-text" onclick={() => toggleSort('age')}>
+                      Age {#if sortColumn === 'age'}<svelte:component this={sortIcon('age')} size={12} />{/if}
+                    </button>
+                  </th>
                   <th class="text-left py-2 pr-4">Parent</th>
-                  <th class="text-left py-2 pr-4">Status</th>
-                  <th class="text-left py-2">Monthly</th>
+                  <th class="text-left py-2 pr-4 w-24">Status</th>
+                  <th class="text-left py-2 pr-4 w-28">Monthly</th>
+                  <th class="text-left py-2 w-28">Registered</th>
                 </tr>
               </thead>
               <tbody class="text-text">
-                {#each registrations as reg}
+                {#each displayedStudents as student (student.regId + '-' + student.childIndex)}
                   <tr class="border-b border-border/50 last:border-0">
-                    <td class="py-3 pr-4">{formatDate(reg.created_at)}</td>
+                    <td class="py-3 pr-4 font-medium">{student.name}</td>
+                    <td class="py-3 pr-4 capitalize">{student.sex}</td>
+                    <td class="py-3 pr-4">{student.ageDisplay}</td>
                     <td class="py-3 pr-4">
-                      {reg.father_name || reg.mother_name || '—'}
-                      <div class="text-xs text-text-muted">{reg.father_email || reg.mother_email || ''}</div>
+                      {student.fatherName || student.motherName || '—'}
+                      <div class="text-xs text-text-muted">{student.fatherEmail || student.motherEmail || ''}</div>
                     </td>
-                    <td class="py-3 pr-4 capitalize">{reg.status}</td>
-                    <td class="py-3">{formatCents(reg.monthly_amount_cents)}</td>
+                    <td class="py-3 pr-4 capitalize">
+                      <span class="badge" class:badge-green={student.status === 'active' || student.status === 'subscribed'} class:badge-yellow={student.status === 'pending'} class:badge-grey={student.status !== 'active' && student.status !== 'subscribed' && student.status !== 'pending'}>
+                        {student.status}
+                      </span>
+                    </td>
+                    <td class="py-3 pr-4">{formatCents(student.monthly_amount_cents)}</td>
+                    <td class="py-3">{formatDate(student.created_at)}</td>
                   </tr>
                 {/each}
               </tbody>
