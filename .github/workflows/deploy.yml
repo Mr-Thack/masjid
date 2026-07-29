@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-detect-changes:
+  detect-changes:
     runs-on: ubuntu-latest
     outputs:
       workers_json: ${{ steps.changes.outputs.workers_json }}
