@@ -3,9 +3,8 @@
 **Status**: LIVE in production (2026-07-29). Consumer, TV, and admin are all
 served from **one Cloudflare Pages project: `masjid-live`**
 (https://masjid-live.pages.dev). The old per-app Pages projects
-(`masjid-live-tv`, `masjid-live-admin`) still exist but are redundant —
-retire them once all TVs/admins have moved over (see "Remaining cutover
-steps").
+(`masjid-live-tv`, `masjid-live-admin`) have been **deleted** and their CORS
+origins removed from the API — cutover is complete.
 
 ## What this is
 
@@ -191,14 +190,9 @@ It does **NOT** redirect to any specific masjid. A redirect confused people
     first line of the worker (`env.ASSETS.fetch(request)`) is therefore not
     just defensive — it IS the asset-serving path.
 
-## Remaining cutover steps
+## Cutover history
 
-1. Move any TVs still pointing at `masjid-live-tv.pages.dev/display/<slug>`
-   to `masjid-live.pages.dev/display/<slug>`; same for admins using
-   `masjid-live-admin.pages.dev` → `masjid-live.pages.dev/admin/...`.
-   (If a device shows a stale error page after the switch, hard-refresh it —
-   see lesson 8.)
-2. Delete the `masjid-live-tv` and `masjid-live-admin` Pages projects
-   (Cloudflare dashboard → Workers & Pages).
-3. Remove their origins from `ALLOWED_ORIGINS` in
-   `apps/api/src/hooks.server.ts` and redeploy the API.
+Completed 2026-07-29: unified deploy went live on masjid-live.pages.dev;
+the `masjid-live-tv` and `masjid-live-admin` Pages projects were deleted
+(nobody was using them) and their origins removed from `ALLOWED_ORIGINS`
+in `apps/api/src/hooks.server.ts`.

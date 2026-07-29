@@ -11,7 +11,7 @@ The project is a fully implemented monorepo with:
 - **670+ tests passing** (416 API + 215 WhatsApp + 48 consumer)
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
-- **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects are redundant; retire after devices move (cutover steps in the doc).
+- **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
 
 ## How to start everything
 ```bash
@@ -31,7 +31,7 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test             # API unit tests, 433 (no server needed)
+npm run test             # API unit tests, 438 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
 npm run test:tv          # TV frontend, 30 tests (jsdom + testing-library)
 npm run test:consumer    # Consumer frontend, 53 tests (jsdom + testing-library)
