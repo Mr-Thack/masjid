@@ -191,8 +191,15 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - **Non-blocking fonts** — Google Fonts loaded with `media="print" onload="this.media='all'"`, `<noscript>` fallback.
 - **`formatTime()` utility** — copied from consumer (`src/lib/time.ts`), handles 12h/24h from admin config.
 
+## Naming & design language (canonical — see docs/design-language.md)
+- **Mihraab** = the platform (mihraab.pro). **Sakeenah** = the minimal style system (what exists today: `glass-dark`, `minimal-light`). **Mishkaat** = the flagship style system (soul-forward: RTL layout, frames, ceremony states, ambient palette — spec in the doc).
+- Terminology: **style system** (`style_system` column) → **preset** (`layout_preset`) → **theme options** (`style_options` JSON). Don't say "theme engine".
+- Admin UI uses plain-English labels only ("Screen Appearance", "Hadith of the Day", "Quiet Hours"); code identifiers stay plain English too.
+- Reserved preset names: `manara` (portrait), `mashrabiya` (pattern), `qandeel` (seasonal). Never name anything `sakina` or `mihrab`.
+
 ## Design documents (always useful)
 - `Background.md` — original vision/spec
+- **`docs/design-language.md` — CANONICAL naming + Sakeenah/Mishkaat style-system spec (read before any UI work)**
 - `schema.sql` — complete D1 schema (9 tables + indexes)
 - `docs/api.md` — API route reference (including board endpoint)
 - `docs/tv-display.md` — TV display architecture & design decisions
