@@ -33,6 +33,7 @@
   let settings = $state<{ enrollment_open: boolean; active_term: Term | null; status_message: string | null } | null>(null);
   let terms = $state<Term[]>([]);
   let registrations = $state<Registration[]>([]);
+  let selectedTermId = $state<string>('');
   let error = $state<string | null>(null);
 
   let saving = $state(false);
@@ -54,7 +55,13 @@
   });
 
   $effect(() => {
+    if (!masjidId) return;
     loadAll();
+  });
+
+  $effect(() => {
+    if (!masjidId || loading) return;
+    loadRegistrations();
   });
 
   async function loadAll() {
@@ -62,14 +69,12 @@
     loading = true;
     error = null;
     try {
-      const [settingsRes, termsRes, registrationsRes] = await Promise.all([
+      const [settingsRes, termsRes] = await Promise.all([
         api.getMaktabSettings(masjidId),
         api.listMaktabTerms(masjidId),
-        api.listMaktabRegistrations(masjidId),
       ]);
       settings = settingsRes;
       terms = termsRes.terms ?? [];
-      registrations = registrationsRes.registrations ?? [];
       settingsForm = {
         enrollment_open: settingsRes.enrollment_open,
         status_message: settingsRes.status_message ?? '',
@@ -79,6 +84,16 @@
       error = e instanceof Error ? e.message : 'Failed to load Maktab settings';
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadRegistrations() {
+    if (!masjidId) return;
+    try {
+      const registrationsRes = await api.listMaktabRegistrations(masjidId, selectedTermId || undefined);
+      registrations = registrationsRes.registrations ?? [];
+    } catch (e: unknown) {
+      // silently ignore; registrations table will show empty
     }
   }
 
@@ -296,9 +311,23 @@
       </div>
 
       <div class="bg-surface border border-border rounded-xl p-6">
-        <div class="flex items-center gap-2 mb-4">
-          <Users class="text-accent" size={20} />
-          <h2 class="font-heading font-semibold text-text">Registrations ({registrations.length})</h2>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div class="flex items-center gap-2">
+            <Users class="text-accent" size={20} />
+            <h2 class="font-heading font-semibold text-text">
+              Registrations
+              {#if selectedTermId}
+                — {terms.find(t => t.id === selectedTermId)?.name ?? ''}
+              {/if}
+              ({registrations.length})
+            </h2>
+          </div>
+          <select class="w-full sm:w-auto" bind:value={selectedTermId}>
+            <option value="">All Terms</option>
+            {#each terms as term}
+              <option value={term.id}>{term.name}</option>
+            {/each}
+          </select>
         </div>
 
         {#if registrations.length === 0}

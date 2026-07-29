@@ -128,6 +128,8 @@ export const api = {
   activateMaktabTerm: (masjidId: string, termId: string) =>
     request('POST', `/api/v1/admin/masjids/${masjidId}/maktab/terms/${termId}/activate`),
 
-  listMaktabRegistrations: (masjidId: string) =>
-    request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/registrations`),
+  listMaktabRegistrations: (masjidId: string, termId?: string) => {
+    const qs = termId ? `?term_id=${encodeURIComponent(termId)}` : '';
+    return request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/registrations${qs}`);
+  },
 };
