@@ -36,19 +36,21 @@ describe('merge-pages output', () => {
     expect(existsSync(path.join(MERGED, '404.html'))).toBe(false);
   });
 
-  it('has NO _redirects file', () => {
-    expect(existsSync(path.join(MERGED, '_redirects'))).toBe(false);
+  it('has _redirects with correct SPA rewrite rules', () => {
+    const redirects = readFileSync(path.join(MERGED, '_redirects'), 'utf8');
+    expect(redirects).toContain('/display/* /__tv_spa.html 200');
+    expect(redirects).toContain('/admin/* /__admin_spa.html 200');
+    expect(redirects).toContain('/login /__admin_spa.html 200');
+    expect(redirects).toContain('/register /__admin_spa.html 200');
+    expect(redirects).toContain('/* /__consumer_spa.html 200');
   });
 
-  it('has _routes.json with correct structure', () => {
-    const routes = JSON.parse(
-      readFileSync(path.join(MERGED, '_routes.json'), 'utf8'),
-    );
-    expect(routes.version).toBe(1);
-    expect(routes.include).toEqual(['/*']);
-    expect(routes.exclude).toContain('/_app/*');
-    expect(routes.exclude).toContain('/__*');
-    expect(routes.exclude).toContain('/sw.js');
+  it('has NO _routes.json (no Pages Functions needed)', () => {
+    expect(existsSync(path.join(MERGED, '_routes.json'))).toBe(false);
+  });
+
+  it('has NO functions directory (no Pages Functions needed)', () => {
+    expect(existsSync(path.join(MERGED, 'functions'))).toBe(false);
   });
 
   it('has _headers with security and caching rules', () => {
@@ -59,21 +61,6 @@ describe('merge-pages output', () => {
     expect(headers).toContain('Cache-Control: no-cache, no-store, must-revalidate');
     // ensure no SPA-poisoning headers
     expect(headers).not.toContain('stale-while-revalidate');
-  });
-
-  it('has functions/[[path]].js with correct routing logic', () => {
-    const funcContent = readFileSync(
-      path.join(MERGED, 'functions', '[[path]].js'),
-      'utf8',
-    );
-    expect(funcContent).toContain("export async function onRequest");
-    expect(funcContent).toContain("'/__consumer_spa.html'");
-    expect(funcContent).toContain("'/__tv_spa.html'");
-    expect(funcContent).toContain("'/__admin_spa.html'");
-    expect(funcContent).toContain("path.startsWith('/display/')");
-    expect(funcContent).toContain("path.startsWith('/admin/')");
-    expect(funcContent).toContain("path === '/login'");
-    expect(funcContent).toContain("path === '/register'");
   });
 
   it('has consumer static assets', () => {

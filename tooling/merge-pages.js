@@ -78,11 +78,16 @@ for (const app of APPS) {
   console.log(`[${app.name}] Copied build → merged`);
 }
 
-const redirectsPath = path.join(MERGED, '_redirects');
-if (existsSync(redirectsPath)) {
-  rmSync(redirectsPath);
-  console.log('Removed _redirects (Pages Function handles SPA routing)');
-}
+writeFileSync(
+  path.join(MERGED, '_redirects'),
+  `/display/* /__tv_spa.html 200
+/admin/* /__admin_spa.html 200
+/login /__admin_spa.html 200
+/register /__admin_spa.html 200
+/* /__consumer_spa.html 200
+`,
+);
+console.log('Wrote _redirects (edge rewrite rules for SPA routing)');
 
 writeFileSync(
   path.join(MERGED, '_headers'),
@@ -128,55 +133,6 @@ writeFileSync(
 `,
 );
 console.log('Wrote merged _headers');
-
-writeFileSync(
-  path.join(MERGED, '_routes.json'),
-  JSON.stringify(
-    {
-      version: 1,
-      include: ['/*'],
-      exclude: [
-        '/_app/*',
-        '/__*',
-        '/sw.js',
-        '/sw-kill',
-        '/manifest.json',
-        '/icon-192.png',
-        '/icon-512.png',
-        '/favicon.*',
-      ],
-    },
-    null,
-    2,
-  ),
-);
-console.log('Wrote _routes.json');
-
-const mkdir = { recursive: true };
-mkdirSync(path.join(MERGED, 'functions'), mkdir);
-
-writeFileSync(
-  path.join(MERGED, 'functions', '[[path]].js'),
-  `export async function onRequest(context) {
-  const url = new URL(context.request.url);
-  const path = url.pathname;
-
-  let fallback = '/__consumer_spa.html';
-  if (path.startsWith('/display/')) {
-    fallback = '/__tv_spa.html';
-  } else if (path.startsWith('/admin/') || path === '/login' || path === '/register') {
-    fallback = '/__admin_spa.html';
-  }
-
-  const response = await fetch(new URL(fallback, url.origin));
-  return new Response(response.body, {
-    status: 200,
-    headers: { 'content-type': 'text/html;charset=UTF-8' },
-  });
-}
-`,
-);
-console.log('Wrote functions/[[path]].js');
 
 const fileCount = execSync(`find ${MERGED} -type f | wc -l`, { encoding: 'utf8' }).trim();
 console.log(`\nMerge complete. ${fileCount} files in ${MERGED}`);
