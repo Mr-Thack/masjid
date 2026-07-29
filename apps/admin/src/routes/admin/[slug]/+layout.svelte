@@ -37,10 +37,15 @@
   async function loadProfile() {
     try {
       const profile = await api.getProfile(auth.admin!.masjid_id);
+      if (profile.slug !== data.masjidSlug) {
+        loading = false;
+        goto(`/admin/${profile.slug}`);
+        return;
+      }
       masjidName = profile.name;
+      loading = false;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load profile';
-    } finally {
       loading = false;
     }
   }

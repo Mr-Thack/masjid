@@ -56,7 +56,7 @@ describe('Admin layout', () => {
   it('skips checkAuth when already authenticated, loads profile directly', async () => {
     mockAdmin.admin = { id: 'a1', email: 'a@b.org', display_name: 'Admin', masjid_id: 'm1' };
     mockAdmin.token = 'valid-token';
-    mockGetProfile.mockResolvedValueOnce({ name: 'Masjid Al-Noor' });
+    mockGetProfile.mockResolvedValueOnce({ name: 'Masjid Al-Noor', slug: 'masjid-al-noor' });
 
     render(AdminLayout, { props: { data: { masjidSlug: 'masjid-al-noor' }, children: () => 'child' } });
 
@@ -70,7 +70,7 @@ describe('Admin layout', () => {
   it('protects against effect re-entry via initDone guard (checkAuth not called twice)', async () => {
     // Start not authenticated — checkAuth will be called in the effect
     mockAdmin.checkAuth.mockResolvedValueOnce(true);
-    mockGetProfile.mockResolvedValueOnce({ name: 'Masjid Al-Noor' });
+    mockGetProfile.mockResolvedValueOnce({ name: 'Masjid Al-Noor', slug: 'masjid-al-noor' });
 
     render(AdminLayout, { props: { data: { masjidSlug: 'masjid-al-noor' }, children: () => 'child' } });
 
@@ -102,5 +102,34 @@ describe('Admin layout', () => {
     await vi.waitFor(() => {
       expect(mockGetProfile).toHaveBeenCalledWith('m1');
     });
+  });
+
+  it('redirects to correct URL when URL slug does not match admin masjid slug', async () => {
+    mockAdmin.admin = { id: 'a1', email: 'a@b.org', display_name: 'Admin', masjid_id: 'm1' };
+    mockAdmin.token = 'valid-token';
+    // Admin's profile slug is 'masjid-al-noor' but URL says 'masjid-al-jabal'
+    mockGetProfile.mockResolvedValueOnce({ name: 'Masjid Al-Noor', slug: 'masjid-al-noor' });
+
+    render(AdminLayout, { props: { data: { masjidSlug: 'masjid-al-jabal' }, children: () => 'child' } });
+
+    // Should redirect to the correct masjid URL
+    await vi.waitFor(() => {
+      expect(mockGoto).toHaveBeenCalledWith('/admin/masjid-al-noor');
+    });
+  });
+
+  it('does not redirect when URL slug matches admin masjid slug', async () => {
+    mockAdmin.admin = { id: 'a1', email: 'a@b.org', display_name: 'Admin', masjid_id: 'm1' };
+    mockAdmin.token = 'valid-token';
+    mockGetProfile.mockResolvedValueOnce({ name: 'Masjid Al-Noor', slug: 'masjid-al-noor' });
+
+    render(AdminLayout, { props: { data: { masjidSlug: 'masjid-al-noor' }, children: () => 'child' } });
+
+    await vi.waitFor(() => {
+      expect(mockGetProfile).toHaveBeenCalledWith('m1');
+    });
+
+    // No redirect — slug matches
+    expect(mockGoto).not.toHaveBeenCalled();
   });
 });
