@@ -139,10 +139,12 @@
   }
 
   function handleReorder(e: MouseEvent) {
+    console.log('[handleReorder] called', e.type, e.currentTarget);
     const btn = e.currentTarget as HTMLButtonElement;
     const prayer = btn.dataset.prayer!;
     const index = parseInt(btn.dataset.index!, 10);
     const dir = parseInt(btn.dataset.dir!, 10);
+    console.log('[handleReorder] prayer=%s index=%d dir=%d', prayer, index, dir);
     reorderWithinPrayer(prayer, index, dir);
   }
 
@@ -410,19 +412,17 @@
                     <td class="p-3">
                       <div class="flex items-center gap-1">
                         <button
-    class="p-0.5 text-text-muted hover:text-text disabled:opacity-30"
+    type="button"
+    class="px-1 py-0.5 text-text-muted hover:text-text disabled:opacity-30 text-lg leading-none"
     disabled={gi === 0}
-    data-prayer={prayer} data-index={gi} data-dir={-1}
-    onclick={handleReorder}>
-  <ChevronUp size={14} />
-</button>
+    data-prayer={rule.prayer_name} data-index={gi} data-dir={-1}
+    onclick={handleReorder}>▲</button>
 <button
-    class="p-0.5 text-text-muted hover:text-text disabled:opacity-30"
+    type="button"
+    class="px-1 py-0.5 text-text-muted hover:text-text disabled:opacity-30 text-lg leading-none"
     disabled={gi === group.length - 1}
-    data-prayer={prayer} data-index={gi} data-dir={1}
-    onclick={handleReorder}>
-  <ChevronDown size={14} />
-</button>
+    data-prayer={rule.prayer_name} data-index={gi} data-dir={1}
+    onclick={handleReorder}>▼</button>
                         <span class="ml-1 text-text-muted text-xs font-mono">{gi + 1}</span>
                       </div>
                     </td>
