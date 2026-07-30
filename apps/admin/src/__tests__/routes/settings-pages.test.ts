@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 
 vi.mock('$lib/auth.svelte', () => ({
   auth: {
@@ -30,19 +30,28 @@ const mockGetProfile = vi.fn().mockResolvedValue({
   label_isha: '',
 });
 
+const mockUpdateProfile = vi.fn().mockResolvedValue({ success: true });
+const mockCreateJumuah = vi.fn().mockResolvedValue({ id: 'j1' });
+const mockUpdateJumuah = vi.fn().mockResolvedValue({ success: true });
+const mockCreateAnnouncement = vi.fn().mockResolvedValue({ id: 'a1' });
+const mockUpdateAnnouncement = vi.fn().mockResolvedValue({ success: true });
+
 vi.mock('$lib/api', () => ({
   api: {
     getProfile: (...args: unknown[]) => mockGetProfile(...args),
-    updateProfile: vi.fn().mockResolvedValue({ success: true }),
+    updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
     getPrayerRules: vi.fn().mockResolvedValue({ rules: [] }),
     createPrayerRule: vi.fn().mockResolvedValue({ id: 'r1' }),
     deletePrayerRule: vi.fn().mockResolvedValue({ success: true }),
     getJumuah: vi.fn().mockResolvedValue({ sessions: [] }),
-    createJumuah: vi.fn().mockResolvedValue({ id: 'j1' }),
+    createJumuah: (...args: unknown[]) => mockCreateJumuah(...args),
+    updateJumuah: (...args: unknown[]) => mockUpdateJumuah(...args),
     deleteJumuah: vi.fn().mockResolvedValue({ success: true }),
     getAnnouncements: vi.fn().mockResolvedValue({ announcements: [] }),
-    createAnnouncement: vi.fn().mockResolvedValue({ id: 'a1' }),
+    createAnnouncement: (...args: unknown[]) => mockCreateAnnouncement(...args),
+    updateAnnouncement: (...args: unknown[]) => mockUpdateAnnouncement(...args),
     deleteAnnouncement: vi.fn().mockResolvedValue({ success: true }),
+    pinAnnouncement: vi.fn().mockResolvedValue({ success: true }),
     getDomains: vi.fn().mockResolvedValue({ domain: null }),
     createDomain: vi.fn().mockResolvedValue({ domain: { domain: 'test.com' } }),
     deleteDomain: vi.fn().mockResolvedValue({ success: true }),
@@ -219,5 +228,151 @@ describe('Account settings page', () => {
   it('renders Change Password button', () => {
     render(AccountPage, { props: slugData });
     expect(screen.getByText('Change Password')).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression: Theme save payload includes all theme fields
+// ---------------------------------------------------------------------------
+describe('Theme page — save payload', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        layout_preset: 'glass-dark',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: 'Adhaan',
+        label_iqaamah: 'Iqaamah',
+        label_jumuah: "Jumu'ah",
+        label_speech: 'Speech',
+        label_sunrise: 'Sunrise',
+        label_fajr: 'Fajr',
+        label_dhuhr: 'Dhuhr',
+        label_asr: 'Asr',
+        label_maghrib: 'Maghrib',
+        label_isha: 'Isha',
+      },
+    });
+  });
+
+  it('calls updateProfile with theme fields on save', async () => {
+    render(ThemePage, { props: slugData });
+
+    const saveBtn = await screen.findByText('Save Changes');
+    expect(saveBtn).toBeDisabled();
+
+    const primaryInput = (await screen.findAllByPlaceholderText('#1e3a8a'))[0];
+    await fireEvent.input(primaryInput, { target: { value: '#ff0000' } });
+
+    expect(saveBtn).not.toBeDisabled();
+
+    await fireEvent.click(saveBtn);
+
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+
+    const callArgs = mockUpdateProfile.mock.calls[0] as [string, Record<string, unknown>];
+    const body = callArgs[1];
+    expect(body.layout_preset).toBe('glass-dark');
+    expect(body.primary_color).toBe('#ff0000');
+    expect(body.label_adhaan).toBeDefined();
+    expect(body.label_isha).toBeDefined();
+  });
+
+  it('sends empty string labels to server (not null/undefined)', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: null,
+    });
+
+    render(ThemePage, { props: slugData });
+
+    const saveBtn = await screen.findByText('Save Changes');
+    // Click the accent input to make the form dirty
+    const accentInput = (await screen.findAllByPlaceholderText('#10b981'))[0];
+    await fireEvent.input(accentInput, { target: { value: '#999999' } });
+
+    await fireEvent.click(saveBtn);
+
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    const body = mockUpdateProfile.mock.calls[0][1] as Record<string, unknown>;
+
+    // Empty string labels should be present in the payload (server accepts them)
+    expect(body.label_adhaan).toBe('');
+    expect(body.label_dhuhr).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression: Jumuah saves empty speech_time as null
+// ---------------------------------------------------------------------------
+describe('Jumuah page — save payload', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('converts empty speech_time to null on create', async () => {
+    render(JumuahPage, { props: slugData });
+
+    const addBtn = await screen.findByText('Add Session');
+    await fireEvent.click(addBtn);
+
+    const labelInput = screen.getByPlaceholderText('e.g. English');
+    await fireEvent.input(labelInput, { target: { value: 'English' } });
+
+    const addSubmitBtn = screen.getByText('Add');
+    await fireEvent.click(addSubmitBtn);
+
+    expect(mockCreateJumuah).toHaveBeenCalledTimes(1);
+    const body = mockCreateJumuah.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.speech_time).toBeNull();
+    expect(body.label).toBe('English');
+  });
+
+  it('sends non-empty speech_time as-is on create', async () => {
+    render(JumuahPage, { props: slugData });
+
+    const addBtn = await screen.findByText('Add Session');
+    await fireEvent.click(addBtn);
+
+    const labelInput = screen.getByPlaceholderText('e.g. English');
+    await fireEvent.input(labelInput, { target: { value: 'English' } });
+
+    const speechInput = screen.getByPlaceholderText('13:00');
+    await fireEvent.input(speechInput, { target: { value: '12:45' } });
+
+    const addSubmitBtn = screen.getByText('Add');
+    await fireEvent.click(addSubmitBtn);
+
+    expect(mockCreateJumuah).toHaveBeenCalledTimes(1);
+    const body = mockCreateJumuah.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.speech_time).toBe('12:45');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression: Announcements saves empty expires_at as null
+// ---------------------------------------------------------------------------
+describe('Announcements page — save payload', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('converts empty expires_at to ISO string on create', async () => {
+    render(AnnouncementsPage, { props: slugData });
+
+    const newBtn = await screen.findByText('New');
+    await fireEvent.click(newBtn);
+
+    const textboxes = screen.getAllByRole('textbox');
+    await fireEvent.input(textboxes[0], { target: { value: 'Test Announcement' } });
+    await fireEvent.input(textboxes[1], { target: { value: 'Test content' } });
+
+    const createBtn = screen.getByText('Create');
+    await fireEvent.click(createBtn);
+
+    expect(mockCreateAnnouncement).toHaveBeenCalledTimes(1);
+    const body = mockCreateAnnouncement.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.expires_at).toBeNull();
   });
 });

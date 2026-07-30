@@ -60,7 +60,8 @@
     e.preventDefault();
     saving = true;
     try {
-      await api.updateAnnouncement(auth.admin!.masjid_id, editingSlug!, editForm);
+      const expires_at = (editForm.expires_at as string) ? new Date(editForm.expires_at as string).toISOString() : null;
+      await api.updateAnnouncement(auth.admin!.masjid_id, editingSlug!, { ...editForm, expires_at });
       editingSlug = null;
       toast.success('Announcement updated');
       await load();

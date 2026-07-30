@@ -653,3 +653,80 @@ describe('createTestRequest helper', () => {
     expect(body.name).toBe('Updated Masjid Name');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Admin PUT latitude/longitude
+// ---------------------------------------------------------------------------
+describe('PUT /admin/masjids/:id — latitude/longitude', () => {
+  it('accepts lat/lng in update body', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test',
+      latitude: 41.8827,
+      longitude: -87.6233,
+    });
+    const body = await req.json();
+    expect(body.latitude).toBe(41.8827);
+    expect(body.longitude).toBe(-87.6233);
+  });
+
+  it('accepts update body without lat/lng (optional fields)', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test',
+    });
+    const body = await req.json();
+    expect(body.latitude).toBeUndefined();
+    expect(body.longitude).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Admin PUT theme vs profile isolation
+// ---------------------------------------------------------------------------
+describe('PUT /admin/masjids/:id — theme/profile isolation', () => {
+  it('profile-only body has no theme keys', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test Masjid',
+      city: 'Chicago',
+      latitude: 41.88,
+    });
+    const body = await req.json();
+    expect(body.name).toBe('Test Masjid');
+    expect(body.layout_preset).toBeUndefined();
+    expect(body.label_adhaan).toBeUndefined();
+  });
+
+  it('theme body has theme keys', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      layout_preset: 'glass-dark',
+      primary_color: '#1e3a8a',
+      label_adhaan: 'Adhaan',
+      label_dhuhr: 'Dhuhr',
+    });
+    const body = await req.json();
+    expect(body.layout_preset).toBe('glass-dark');
+    expect(body.label_adhaan).toBe('Adhaan');
+  });
+
+  it('mixed body has both profile and theme keys', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      name: 'Test Masjid',
+      city: 'Chicago',
+      layout_preset: 'minimal-light',
+      label_fajr: 'Fajr',
+    });
+    const body = await req.json();
+    expect(body.name).toBe('Test Masjid');
+    expect(body.layout_preset).toBe('minimal-light');
+  });
+
+  it('empty theme labels in body are present as empty strings', async () => {
+    const req = createTestRequest('PUT', '/api/v1/admin/masjids/masjid-test-1', {
+      layout_preset: 'glass-dark',
+      label_adhaan: '',
+      label_dhuhr: '',
+    });
+    const body = await req.json();
+    expect(body.label_adhaan).toBe('');
+    expect(body.label_dhuhr).toBe('');
+  });
+});

@@ -35,7 +35,8 @@
     e.preventDefault();
     saving = true;
     try {
-      await api.createJumuah(auth.admin!.masjid_id, newSession);
+      const speech_time = newSession.speech_time.trim() || null;
+      await api.createJumuah(auth.admin!.masjid_id, { ...newSession, speech_time });
       showAdd = false;
       newSession = { label: '', time: '13:30', khateeb: '', location: '', speech_time: '' };
       toast.success('Session added');
@@ -51,7 +52,8 @@
     e.preventDefault();
     saving = true;
     try {
-      await api.updateJumuah(auth.admin!.masjid_id, editingId!, editForm);
+      const speech_time = ((editForm.speech_time as string) || '').trim() || null;
+      await api.updateJumuah(auth.admin!.masjid_id, editingId!, { ...editForm, speech_time });
       editingId = null;
       toast.success('Session updated');
       await loadSessions();

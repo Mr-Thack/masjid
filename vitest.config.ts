@@ -9,7 +9,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    include: ['apps/api/src/__tests__/**/*.test.ts'],
+    include: ['apps/api/src/__tests__/**/*.test.ts', 'packages/schemas/src/__tests__/**/*.test.ts'],
     exclude: ['**/integration/**'],
     environment: 'node',
     env: {
