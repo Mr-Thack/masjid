@@ -42,40 +42,59 @@ export const POST: RequestHandler = async ({ request, platform }) => {
     const passwordHash = await hashPassword(body.admin_password);
     const now = new Date().toISOString();
 
+    const masjidValues = {
+      id: masjidId,
+      slug: body.slug,
+      name: body.name,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      timezone: body.timezone,
+      calculationMethod: body.calculation_method,
+      asrMadhab: body.asr_madhab,
+      highLatitudeRule: body.high_latitude_rule,
+      showDualAsr: body.show_dual_asr,
+      adminEmail: body.admin_email,
+      tenantStatus: 'ACTIVE' as const,
+      createdAt: now,
+    };
+    const themeValues = {
+      masjidId,
+      // New masjids default to the Mishkaat flagship style system
+      // (docs/design-language.md §8); existing masjids keep Sakeenah.
+      styleSystem: 'mishkaat',
+      styleOptions: '{}',
+      layoutPreset: 'mishkaat',
+      primaryColor: '#9c7c1e',
+      accentColor: '#d4af37',
+      fontHeading: 'Amiri',
+      fontBody: 'Inter',
+    };
+    const adminValues = {
+      id: adminId,
+      masjidId,
+      email: body.admin_email.toLowerCase().trim(),
+      passwordHash,
+      displayName: body.admin_display_name ?? null,
+      createdAt: now,
+    };
+
     try {
-      await db.batch([
-        db.insert(masjids).values({
-          id: masjidId,
-          slug: body.slug,
-          name: body.name,
-          latitude: body.latitude,
-          longitude: body.longitude,
-          timezone: body.timezone,
-          calculationMethod: body.calculation_method,
-          asrMadhab: body.asr_madhab,
-          highLatitudeRule: body.high_latitude_rule,
-          showDualAsr: body.show_dual_asr,
-          adminEmail: body.admin_email,
-          tenantStatus: 'ACTIVE',
-          createdAt: now,
-        }),
-        db.insert(masjidThemes).values({
-          masjidId,
-          layoutPreset: 'modern_minimal',
-          primaryColor: '#1e3a8a',
-          accentColor: '#10b981',
-          fontHeading: 'Inter',
-          fontBody: 'Roboto',
-        }),
-        db.insert(admins).values({
-          id: adminId,
-          masjidId,
-          email: body.admin_email.toLowerCase().trim(),
-          passwordHash,
-          displayName: body.admin_display_name ?? null,
-          createdAt: now,
-        }),
-      ]);
+      // D1 (production) supports db.batch for atomic multi-table inserts;
+      // better-sqlite3 (local dev) uses a synchronous transaction instead.
+      const batched = db as unknown as { batch?: (ops: unknown[]) => Promise<unknown> };
+      if (typeof batched.batch === 'function') {
+        await batched.batch([
+          db.insert(masjids).values(masjidValues),
+          db.insert(masjidThemes).values(themeValues),
+          db.insert(admins).values(adminValues),
+        ]);
+      } else {
+        db.transaction((tx) => {
+          tx.insert(masjids).values(masjidValues).run();
+          tx.insert(masjidThemes).values(themeValues).run();
+          tx.insert(admins).values(adminValues).run();
+        });
+      }
     } catch (e) {
       return ErrorJsonResponse('INTERNAL_ERROR', `batch insert failed: ${String(e)}`);
     }

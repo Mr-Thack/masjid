@@ -48,6 +48,12 @@ CREATE INDEX idx_masjids_slug ON masjids(slug);
 -- ============================================================
 CREATE TABLE masjid_themes (
     masjid_id TEXT PRIMARY KEY,
+
+    -- Style system: 'sakeenah' (minimal) | 'mishkaat' (flagship)
+    style_system TEXT NOT NULL DEFAULT 'sakeenah',
+    -- JSON theme options interpreted per style system (metal, motif, arch, ...)
+    style_options TEXT NOT NULL DEFAULT '{}',
+
     layout_preset TEXT NOT NULL DEFAULT 'modern_minimal',
     primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
     accent_color TEXT NOT NULL DEFAULT '#10b981',
@@ -59,7 +65,6 @@ CREATE TABLE masjid_themes (
     label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
     label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
     label_jumuah TEXT NOT NULL DEFAULT "Jumu'ah",
-    label_speech TEXT NOT NULL DEFAULT 'Speech',
     label_speech TEXT NOT NULL DEFAULT 'Speech',
     label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
     label_fajr TEXT NOT NULL DEFAULT 'Fajr',

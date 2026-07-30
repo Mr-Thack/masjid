@@ -8,6 +8,7 @@ import {
 } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
+import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -96,6 +97,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       },
       theme: theme
         ? {
+            style_system: theme.styleSystem,
+            style_options: parseStyleOptionsJson(theme.styleOptions),
             layout_preset: theme.layoutPreset,
             primary_color: theme.primaryColor,
             accent_color: theme.accentColor,

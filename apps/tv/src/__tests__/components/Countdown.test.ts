@@ -18,7 +18,10 @@ describe('Countdown', () => {
   });
 
   it('shows Xh Ym format for longer durations', () => {
-    render(Countdown, { props: { nextPrayerIqaamah: '01:00' } });
+    // Use a relative time so the test is deterministic at any time of day
+    // (a hardcoded '01:00' is under an hour away when run between 00:00–01:00).
+    const far = makeTimeNearNow(150);
+    render(Countdown, { props: { nextPrayerIqaamah: far } });
     expect(screen.getByText(/\d+h \d{2}m/)).toBeDefined();
   });
 

@@ -1,12 +1,30 @@
 <script lang="ts">
   import type { BoardPayload } from '$lib/api';
   import { formatTime } from '$lib/time';
-  import { applyTheme, presetTokens, findNearestIqaamahChanges } from '@masjid/ui-utils';
+  import {
+    applyTheme,
+    buildThemeVars,
+    resolveStyleSystem,
+    parseStyleOptions,
+    resolveStyleOptions,
+    findNearestIqaamahChanges,
+    getHadithOfTheDay,
+  } from '@masjid/ui-utils';
+  import { syncServerTime, serverNow } from '$lib/server-clock';
+  import { buildFrames, hadithTagsForContext, MAX_ANNOUNCEMENT_FRAMES, FRAME_TRANSITION_MS } from '$lib/frames';
+  import { computeCeremony, getHijriPartsCached, type PrayerKey } from '$lib/ceremony';
+  import { fade } from 'svelte/transition';
   import PrayerBoard from '$lib/components/PrayerBoard.svelte';
   import AnnouncementBanner from '$lib/components/AnnouncementBanner.svelte';
   import Countdown from '$lib/components/Countdown.svelte';
   import JumuahNotice from '$lib/components/JumuahNotice.svelte';
   import AnalogClock from '$lib/components/AnalogClock.svelte';
+  import Rosette from '$lib/components/Rosette.svelte';
+  import HoneycombFrame from '$lib/components/HoneycombFrame.svelte';
+  import StarBandFrame from '$lib/components/StarBandFrame.svelte';
+  import ArchCrest from '$lib/components/ArchCrest.svelte';
+  import SoulColumn from '$lib/components/SoulColumn.svelte';
+  import CeremonyOverlay from '$lib/components/CeremonyOverlay.svelte';
 
   const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -15,6 +33,7 @@
   let payload = $state(data);
   let now = $state(new Date());
   let compact = $state(false);
+  let reducedMotion = $state(false);
 
   $effect(() => {
     function check() {
@@ -25,7 +44,18 @@
     return () => window.removeEventListener('resize', check);
   });
 
+  // Motion budget (§4): prefers-reduced-motion disables frame rotation.
+  $effect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => (reducedMotion = query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  });
+
   let theme = $derived(payload.theme);
+  let styleSystem = $derived(resolveStyleSystem(theme));
+  let styleOptions = $derived(resolveStyleOptions(parseStyleOptions(theme.style_options)));
   let timeFormat = $derived(theme.time_format);
 
   let prayerLabels = $derived({
@@ -37,7 +67,6 @@
   });
 
   const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
-  type PrayerKey = (typeof prayerNames)[number];
 
   interface PrayerEntry {
     key: PrayerKey;
@@ -51,20 +80,7 @@
   }
 
   function buildThemeStyle(theme: BoardPayload['theme']): string {
-    const preset = presetTokens[theme.layout_preset ?? ''] ?? presetTokens['glass-dark'];
-    const vars: Record<string, string> = {
-      '--color-primary': theme.primary_color,
-      '--color-accent': theme.accent_color,
-      '--font-heading': `'${theme.font_heading}', sans-serif`,
-      '--font-body': `'${theme.font_body}', sans-serif`,
-      ...preset,
-    };
-    if (theme.layout_preset === 'minimal-light') {
-      vars['--color-primary-light'] = '#3b5cb8';
-      vars['--color-primary-dark'] = '#13265e';
-      vars['--color-accent-light'] = '#34d399';
-    }
-    return Object.entries(vars)
+    return Object.entries(buildThemeVars(theme))
       .map(([k, v]) => `${k}: ${v}`)
       .join('; ');
   }
@@ -223,20 +239,96 @@
     }));
   });
 
+  // --- Soul column frames (§7.5) -----------------------------------------
+  let framesList = $derived(
+    buildFrames({
+      jumuahSessionCount: formattedJumuahSessions.length,
+      announcementCount: payload.recent_announcements?.length ?? 0,
+      changeCount: upcomingChanges.length,
+      donationUrl: payload.masjid.external_donation_url,
+      dayOfWeek: now.getDay(),
+      enabledFrames: styleOptions.frames,
+    }),
+  );
+
+  let hadithEntry = $derived(
+    getHadithOfTheDay(
+      now,
+      hadithTagsForContext({
+        dayOfWeek: now.getDay(),
+        currentPrayer: currentPrayerIndex != null ? prayerNames[currentPrayerIndex] : null,
+      }),
+    ),
+  );
+
+  let announcementsForFrames = $derived(
+    (payload.recent_announcements ?? [])
+      .slice(0, MAX_ANNOUNCEMENT_FRAMES)
+      .map((a) => ({ title: a.title, html: a.compiled_html })),
+  );
+
+  // --- Ceremony states (§7.6) --------------------------------------------
+  let nowSeconds = $derived(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds());
+
+  let prayerWindows = $derived.by(() => {
+    const windows = {} as Record<PrayerKey, { adhaan: number; iqaamah: number }>;
+    for (const t of times) {
+      windows[t.key] = {
+        adhaan: t.adhaanHM[0] * 60 + t.adhaanHM[1],
+        iqaamah: t.iqaamahHM[0] * 60 + t.iqaamahHM[1],
+      };
+    }
+    return windows;
+  });
+
+  let sunriseMinutes = $derived.by(() => {
+    const [sh, sm] = sunriseRaw.split(':').map(Number);
+    return (sh ?? 0) * 60 + (sm ?? 0);
+  });
+
+  let ceremony = $derived(
+    computeCeremony({
+      nowSeconds,
+      dayOfWeek: now.getDay(),
+      prayers: prayerWindows,
+      sunriseMinutes,
+      hijri: getHijriPartsCached(now),
+      quietHours: styleOptions.quietHours,
+      ambientEnabled: styleOptions.ambient,
+    }),
+  );
+
+  let nextPrayerKey = $derived.by((): PrayerKey => {
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    for (let i = 0; i < prayerNames.length; i++) {
+      const t = times[i]!;
+      const im = t.iqaamahHM[0] * 60 + t.iqaamahHM[1];
+      if (im > nowMins) return t.key;
+    }
+    return times[0]!.key;
+  });
+
   async function refresh() {
     try {
       const res = await fetch(`${API_BASE}/api/v1/masjids/${payload.masjid.slug}/board`);
       if (res.ok) {
         payload = await res.json();
-        now = new Date();
+        now = serverNow();
       }
     } catch {
       // silently continue with stale data
     }
   }
 
+  // Server-time integrity (§7.7): correct the local clock against every
+  // board payload so ceremony states and the clock face stay honest.
   $effect(() => {
-    const tick = setInterval(() => (now = new Date()), 1000);
+    syncServerTime(payload.server_time);
+    now = serverNow();
+  });
+
+  $effect(() => {
+    const tick = setInterval(() => (now = serverNow()), 1000);
     const poll = setInterval(() => refresh(), 60000);
     return () => {
       clearInterval(tick);
@@ -249,72 +341,193 @@
   });
 </script>
 
-<div class="tv-page" class:tv-page--compact={compact} style={themeStyle}>
-  <header class="tv-header">
-    <div class="flex flex-col">
-      <h1 class="tv-header-name">{payload.masjid.name}</h1>
-      {#if payload.masjid.city}
-        <p class="tv-header-city">
-          {payload.masjid.city}{#if payload.masjid.state}, {payload.masjid.state}{/if}
-        </p>
-      {/if}
-    </div>
-    <div class="tv-header-date-block">
-      <p class="tv-header-date">{formattedDate}</p>
-      <p class="tv-header-hijri">{hijriDate}</p>
-    </div>
-  </header>
+{#if styleSystem === 'mishkaat'}
+  <!-- ============================================================
+       Mishkaat layout (docs/design-language.md §7.1):
+       RTL reading grammar — prayer board right (~70%), soul column
+       left (~30%), mirrored header (name right, dates left).
+       ============================================================ -->
+  <div
+    class="tv-page tv-page--mishkaat"
+    class:tv-page--compact={compact}
+    style={themeStyle}
+    data-ambient-phase={ceremony.ambientPhase ?? undefined}
+  >
+    <header class="tv-header tv-header--mishkaat">
+      <div class="tv-header-name-block">
+        <h1 class="tv-header-name">{payload.masjid.name}</h1>
+        {#if payload.masjid.city}
+          <p class="tv-header-city">
+            {payload.masjid.city}{#if payload.masjid.state}, {payload.masjid.state}{/if}
+          </p>
+        {/if}
+      </div>
+      <div class="tv-header-rosette"><Rosette size={22} stroke /></div>
+      <div class="tv-header-date-block tv-header-date-block--mishkaat">
+        <p class="tv-header-hijri tv-header-hijri--prominent">{hijriDate}</p>
+        <p class="tv-header-date">{formattedDate}</p>
+      </div>
+    </header>
 
-  <main class="tv-main">
-    <div class="tv-columns">
-      <aside class="tv-info-panel">
-        <AnalogClock {now} />
-        <p class="tv-digital-time">{digitalTime}</p>
-        <p class="tv-sunrise">{theme.label_sunrise} @ {sunrise}</p>
-        <p class="tv-countdown-label">
-          {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamahRaw} />
-        </p>
-
-        <div class="tv-jumuah-wrapper">
-          <JumuahNotice sessions={formattedJumuahSessions} label={theme.label_jumuah} speechLabel={theme.label_speech} />
-        </div>
-      </aside>
-
-      <section class="tv-grid-section">
-        <PrayerBoard
-          {times}
-          currentPrayerIndex={currentPrayerIndex}
-          {flashAdhaan}
-          {flashIqaamah}
-          adhaanLabel={theme.label_adhaan}
-          iqaamahLabel={theme.label_iqaamah}
-        />
-
-        {#if upcomingChanges.length > 0}
-          <div class="tv-coming-up-strip">
-  <p class="tv-coming-up-heading">Upcoming <br> Changes</p>
-            <div class="tv-coming-up-grid">
-              {#each upcomingChanges as change}
-                <div class="tv-coming-up-card">
-                  <span class="tv-coming-up-date">{change.date}</span>
-                  <div class="tv-coming-up-line">
-                    <span class="tv-coming-up-prayer">{change.label}</span>
-                    <span class="tv-coming-up-times">
-                      <span class="tv-coming-up-from">{change.from}</span>
-                      <span class="tv-coming-up-arrow">→</span>
-                      <span class="tv-coming-up-to">{change.to}</span>
-                    </span>
-                  </div>
-                </div>
-              {/each}
+    <main class="tv-main">
+      <div class="tv-columns tv-columns--mishkaat">
+        <aside class="tv-soul-column">
+          {#if ceremony.modifiers.eid}
+            <div class="tv-eid-greeting">
+              <p class="tv-eid-arabic" dir="rtl" lang="ar">عيد مبارك</p>
+              <p class="tv-eid-english">
+                {ceremony.modifiers.eidName === 'adha' ? 'Eid al-Adha Mubarak' : 'Eid al-Fitr Mubarak'}
+              </p>
+            </div>
+          {/if}
+          <!-- §7.3: one mihrab arch per screen — an integrated niche holding
+               the clock, digital time, and next-prayer indicators, the way a
+               mihrab frames the imam. Bare mode (arch off / compact) flows
+               the same content without the outline. -->
+          <div class="tv-clock-niche" class:tv-clock-niche--bare={!styleOptions.arch || compact}>
+            {#if styleOptions.arch && !compact}
+              <ArchCrest width={300} />
+            {/if}
+            <div class="tv-niche-body">
+              <AnalogClock {now} classic />
+              <p class="tv-digital-time">{digitalTime}</p>
+              <p class="tv-sunrise">{theme.label_sunrise} @ {sunrise}</p>
+              <p class="tv-countdown-label">
+                {#if ceremony.modifiers.ramadan && nextPrayerKey === 'maghrib'}
+                  Iftar in <Countdown nextPrayerIqaamah={nextIqaamahRaw} />
+                {:else}
+                  {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamahRaw} />
+                {/if}
+              </p>
             </div>
           </div>
-        {/if}
-      </section>
-    </div>
-  </main>
+          {#if ceremony.modifiers.ramadan && nowSeconds < prayerWindows.fajr.iqaamah * 60}
+            <p class="tv-suhoor-line">Suhoor ends {times[0]?.adhaan}</p>
+          {/if}
+          {#if ceremony.modifiers.friday}
+            <p class="tv-kahf-reminder">Don't forget Surah al-Kahf</p>
+          {/if}
 
-  {#if payload.pinned_announcement}
-    <AnnouncementBanner announcement={payload.pinned_announcement} />
-  {/if}
-</div>
+          <SoulColumn
+            frames={framesList}
+            {reducedMotion}
+            hadith={hadithEntry}
+            jumuahSessions={formattedJumuahSessions}
+            jumuahLabel={theme.label_jumuah}
+            speechLabel={theme.label_speech}
+            announcements={announcementsForFrames}
+            changes={upcomingChanges}
+            donationUrl={payload.masjid.external_donation_url}
+            appeal={styleOptions.donateAppeal}
+          />
+        </aside>
+
+        <section class="tv-grid-section">
+          <div class="prayer-board-panel">
+            {#if styleOptions.motif === 'eight-point-star'}
+              <StarBandFrame />
+            {:else if styleOptions.motif === 'honeycomb'}
+              <HoneycombFrame />
+            {/if}
+            <PrayerBoard
+              {times}
+              currentPrayerIndex={currentPrayerIndex}
+              {flashAdhaan}
+              {flashIqaamah}
+              adhaanLabel={theme.label_adhaan}
+              iqaamahLabel={theme.label_iqaamah}
+              rosetteMarker
+            />
+          </div>
+        </section>
+      </div>
+    </main>
+
+    {#if ceremony.state === 'night-calm'}
+      <!-- §7.6.5 night calm: 20% veil — noticeably calmer, times stay readable. -->
+      <div class="tv-night-veil" transition:fade={{ duration: FRAME_TRANSITION_MS * 2 }} data-ceremony="night-calm"></div>
+    {/if}
+
+    {#if ceremony.state !== 'normal' && ceremony.state !== 'night-calm'}
+      <CeremonyOverlay
+        state={ceremony.state}
+        prayer={ceremony.prayer}
+        prayerLabel={ceremony.prayer ? prayerLabels[ceremony.prayer] : ''}
+        countdownEndsAtSeconds={ceremony.countdownEndsAtSeconds}
+        {now}
+        adhaanLabel={theme.label_adhaan}
+        iqaamahLabel={theme.label_iqaamah}
+      />
+    {/if}
+  </div>
+{:else}
+  <div class="tv-page" class:tv-page--compact={compact} style={themeStyle}>
+    <header class="tv-header">
+      <div class="flex flex-col">
+        <h1 class="tv-header-name">{payload.masjid.name}</h1>
+        {#if payload.masjid.city}
+          <p class="tv-header-city">
+            {payload.masjid.city}{#if payload.masjid.state}, {payload.masjid.state}{/if}
+          </p>
+        {/if}
+      </div>
+      <div class="tv-header-date-block">
+        <p class="tv-header-date">{formattedDate}</p>
+        <p class="tv-header-hijri">{hijriDate}</p>
+      </div>
+    </header>
+
+    <main class="tv-main">
+      <div class="tv-columns">
+        <aside class="tv-info-panel">
+          <AnalogClock {now} />
+          <p class="tv-digital-time">{digitalTime}</p>
+          <p class="tv-sunrise">{theme.label_sunrise} @ {sunrise}</p>
+          <p class="tv-countdown-label">
+            {nextIqaamahLabel} in <Countdown nextPrayerIqaamah={nextIqaamahRaw} />
+          </p>
+
+          <div class="tv-jumuah-wrapper">
+            <JumuahNotice sessions={formattedJumuahSessions} label={theme.label_jumuah} speechLabel={theme.label_speech} />
+          </div>
+        </aside>
+
+        <section class="tv-grid-section">
+          <PrayerBoard
+            {times}
+            currentPrayerIndex={currentPrayerIndex}
+            {flashAdhaan}
+            {flashIqaamah}
+            adhaanLabel={theme.label_adhaan}
+            iqaamahLabel={theme.label_iqaamah}
+          />
+
+          {#if upcomingChanges.length > 0}
+            <div class="tv-coming-up-strip">
+  <p class="tv-coming-up-heading">Upcoming <br> Changes</p>
+              <div class="tv-coming-up-grid">
+                {#each upcomingChanges as change}
+                  <div class="tv-coming-up-card">
+                    <span class="tv-coming-up-date">{change.date}</span>
+                    <div class="tv-coming-up-line">
+                      <span class="tv-coming-up-prayer">{change.label}</span>
+                      <span class="tv-coming-up-times">
+                        <span class="tv-coming-up-from">{change.from}</span>
+                        <span class="tv-coming-up-arrow">→</span>
+                        <span class="tv-coming-up-to">{change.to}</span>
+                      </span>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            </div>
+          {/if}
+        </section>
+      </div>
+    </main>
+
+    {#if payload.pinned_announcement}
+      <AnnouncementBanner announcement={payload.pinned_announcement} />
+    {/if}
+  </div>
+{/if}

@@ -96,6 +96,8 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       if (m.theme && typeof m.theme === 'object') {
         const t = m.theme as Record<string, unknown>;
         const themeData: Record<string, unknown> = {};
+        if (typeof t.style_system === 'string') themeData.styleSystem = t.style_system;
+        if (t.style_options !== undefined) themeData.styleOptions = typeof t.style_options === 'string' ? t.style_options : JSON.stringify(t.style_options ?? {});
         if (typeof t.layout_preset === 'string') themeData.layoutPreset = t.layout_preset;
         if (typeof t.primary_color === 'string') themeData.primaryColor = t.primary_color;
         if (typeof t.accent_color === 'string') themeData.accentColor = t.accent_color;

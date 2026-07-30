@@ -3,6 +3,7 @@ import { getDb } from '$lib/server/db';
 import { masjids, masjidThemes, jumuahSessions, announcements } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
+import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -92,6 +93,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         external_donation_url: masjid.externalDonationUrl,
       },
       theme: {
+        style_system: theme?.styleSystem ?? 'sakeenah',
+        style_options: parseStyleOptionsJson(theme?.styleOptions),
         primary_color: theme?.primaryColor ?? '#1e3a8a',
         accent_color: theme?.accentColor ?? '#10b981',
         font_heading: theme?.fontHeading ?? 'Inter',
@@ -113,6 +116,10 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         date: today.toISOString().split('T')[0],
         times: todayTimes,
       },
+      // Server-synchronized time (docs/design-language.md §7.7): the TV
+      // corrects its clock against this so ceremony states stay honest even
+      // when smart-TV hardware clocks drift.
+      server_time: today.toISOString(),
       upcoming_days: upcomingDays,
       jumuah: activeSessions,
       pinned_announcement: pinnedAnnouncement

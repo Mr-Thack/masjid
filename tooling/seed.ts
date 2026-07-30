@@ -81,13 +81,17 @@ async function seed() {
     adminEmail: 'admin@masjid-alnoor.org',
   }).run();
 
+  // Al-Noor runs the Mishkaat flagship style system (docs/design-language.md);
+  // Al-Jabal stays on Sakeenah — one seed masjid per style system.
   db.insert(schema.masjidThemes).values({
     masjidId: NOOR_MASJID_ID,
-    layoutPreset: 'modern_minimal',
-    primaryColor: '#1e3a8a',
-    accentColor: '#10b981',
-    fontHeading: 'Inter',
-    fontBody: 'Roboto',
+    styleSystem: 'mishkaat',
+    styleOptions: '{}',
+    layoutPreset: 'mishkaat',
+    primaryColor: '#9c7c1e',
+    accentColor: '#d4af37',
+    fontHeading: 'Amiri',
+    fontBody: 'Inter',
     labelSpeech: 'Speech',
   }).run();
 
@@ -292,6 +296,8 @@ async function seed() {
 
   db.insert(schema.masjidThemes).values({
     masjidId: JABAL_MASJID_ID,
+    styleSystem: 'sakeenah',
+    styleOptions: '{}',
     layoutPreset: 'minimal-light',
     primaryColor: '#7c3aed',
     accentColor: '#d97706',

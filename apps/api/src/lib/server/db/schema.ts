@@ -36,6 +36,8 @@ export const masjids = sqliteTable('masjids', {
 
 export const masjidThemes = sqliteTable('masjid_themes', {
   masjidId: text('masjid_id').primaryKey().references(() => masjids.id, { onDelete: 'cascade' }),
+  styleSystem: text('style_system').notNull().default('sakeenah'),
+  styleOptions: text('style_options').notNull().default('{}'),
   layoutPreset: text('layout_preset').notNull().default('modern_minimal'),
   primaryColor: text('primary_color').notNull().default('#1e3a8a'),
   accentColor: text('accent_color').notNull().default('#10b981'),

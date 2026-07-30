@@ -388,6 +388,446 @@ html, body {
   }
 }
 
+/* ============================================================
+   Mishkaat style system (docs/design-language.md §7)
+   Keyed off <html data-style-system="mishkaat"> set by applyTheme.
+   ============================================================ */
+
+/* --- Header: mirrored (§7.1) — name right, dates left --- */
+html[data-style-system='mishkaat'] .tv-header--mishkaat {
+  position: relative;
+  flex-direction: row-reverse;
+  background-color: transparent;
+  border-bottom: 1px solid var(--color-border, rgba(212, 175, 55, 0.14));
+}
+
+html[data-style-system='mishkaat'] .tv-header-name-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+html[data-style-system='mishkaat'] .tv-header-name-block .tv-header-name {
+  font-family: var(--font-display, var(--font-heading, 'Amiri', serif));
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--color-text, #f3e9d2);
+}
+
+html[data-style-system='mishkaat'] .tv-header-rosette {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-accent, #d4af37);
+  opacity: 0.8;
+}
+
+html[data-style-system='mishkaat'] .tv-header-date-block--mishkaat {
+  text-align: left;
+}
+
+/* Hijri date gets typographic prominence (§7.2): gold, display face */
+html[data-style-system='mishkaat'] .tv-header-hijri--prominent {
+  font-family: var(--font-display, var(--font-heading, 'Amiri', serif));
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-accent, #d4af37);
+  margin-top: 0;
+}
+
+html[data-style-system='mishkaat'] .tv-header-date-block--mishkaat .tv-header-date {
+  font-size: 1.05rem;
+  color: var(--color-text-muted, #d8c8a5);
+  margin-top: 0.2rem;
+}
+
+/* --- Columns: soul column left (~30%), prayer board right (~70%) --- */
+html[data-style-system='mishkaat'] .tv-columns--mishkaat {
+  gap: 2rem;
+}
+
+html[data-style-system='mishkaat'] .tv-soul-column {
+  width: 30%;
+  min-width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html[data-style-system='mishkaat'] .tv-soul-column::-webkit-scrollbar { display: none; }
+
+/* §7.3: one mihrab arch per screen — an integrated niche holding the
+   clock, digital time, and next-prayer indicators (the way a mihrab
+   frames the imam). Height-bounded so the soul column keeps room for
+   frames. Geometry vs. the 100×150 viewBox: belly (clock) occupies the
+   curved top, the text stack sits in the straight hall between the legs. */
+html[data-style-system='mishkaat'] .tv-clock-niche {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+html[data-style-system='mishkaat'] .tv-clock-niche .arch-crest {
+  height: clamp(280px, 36vh, 400px);
+  width: auto;
+  display: block;
+}
+/* Niche interior: below the apex curve, inside the legs. */
+html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body {
+  position: absolute;
+  inset: 16% 19% 5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+}
+html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .analog-clock {
+  width: 74%;
+  max-width: none;
+  margin: 0;
+  flex-shrink: 0;
+}
+html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .tv-digital-time {
+  font-size: clamp(1.1rem, 2.4vh, 1.7rem);
+  margin-top: 0.5rem;
+}
+html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .tv-sunrise {
+  font-size: clamp(0.7rem, 1.5vh, 0.95rem);
+}
+html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .tv-countdown-label {
+  font-size: clamp(0.72rem, 1.6vh, 0.95rem);
+  margin-top: 0.4rem;
+}
+/* Bare mode (arch off or compact): no outline, plain column flow. */
+html[data-style-system='mishkaat'] .tv-clock-niche--bare { width: 100%; }
+html[data-style-system='mishkaat'] .tv-clock-niche--bare .tv-niche-body { display: contents; }
+
+/* --- Prayer board panel: warm surface, gold hairline, motif band --- */
+html[data-style-system='mishkaat'] .prayer-board-panel {
+  position: relative;
+  background-color: var(--color-surface, rgba(43, 32, 19, 0.55));
+  border: 1px solid var(--color-border, rgba(212, 175, 55, 0.14));
+  border-radius: 1rem;
+  /* Padding must exceed the 26px motif band + 1px inner bracket (27px). */
+  padding: clamp(1.8rem, 2.8vh, 2.2rem) clamp(1.9rem, 2.4vw, 2.5rem);
+  box-shadow:
+    var(--shadow-card),
+    /* Inner bracket rule where the 26px motif band ends — the panel border
+       is the outer bracket, so the band reads as one cohesive ribbon. */
+    inset 0 0 0 26px transparent,
+    inset 0 0 0 27px var(--color-border, rgba(212, 175, 55, 0.14));
+}
+
+html[data-style-system='mishkaat'] .prayer-board-panel .prayer-board-header-cell {
+  color: var(--color-text-dim, #9c8b6e);
+  border-bottom: 1px solid var(--color-border, rgba(212, 175, 55, 0.14));
+}
+
+html[data-style-system='mishkaat'] .prayer-board-panel .prayer-name {
+  font-family: var(--font-display, var(--font-heading, 'Amiri', serif));
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* --- Coming-up strip sits on the warm surface --- */
+html[data-style-system='mishkaat'] .tv-coming-up-strip {
+  background-color: var(--color-surface, rgba(43, 32, 19, 0.55));
+  border: 1px solid var(--color-border, rgba(212, 175, 55, 0.14));
+}
+
+/* --- Countdown + digital time take the gold accent --- */
+html[data-style-system='mishkaat'] .tv-digital-time {
+  color: var(--color-text-muted, #d8c8a5);
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-style-system='mishkaat'] .countdown-time {
+  color: var(--color-accent, #d4af37);
+  font-family: var(--font-body, 'Inter'), sans-serif;
+}
+
+html[data-style-system='mishkaat'] .countdown-time--urgent {
+  color: var(--color-accent-light, #e9cf7a);
+}
+
+/* --- Jumu'ah panel on warm surface --- */
+html[data-style-system='mishkaat'] .tv-jumuah-session {
+  background-color: var(--color-surface, rgba(43, 32, 19, 0.55));
+  border: 1px solid var(--color-border, rgba(212, 175, 55, 0.14));
+}
+
+/* ============================================================
+   Soul-column frames (§7.5) — one visible frame at a time
+   ============================================================ */
+html[data-style-system='mishkaat'] .soul-frames {
+  position: relative;
+  flex: 1 1 0%;
+  width: 100%;
+  min-height: 11rem;
+  margin-top: 1rem;
+}
+
+html[data-style-system='mishkaat'] .soul-frame {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background-color: var(--color-surface, rgba(43, 32, 19, 0.55));
+  border: 1px solid var(--color-border, rgba(212, 175, 55, 0.14));
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+html[data-style-system='mishkaat'] .frame-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-text-dim, #9c8b6e);
+}
+
+/* --- Hadith of the Day --- */
+html[data-style-system='mishkaat'] .frame-hadith-arabic {
+  font-family: var(--font-display, 'Amiri', serif);
+  font-size: clamp(1.15rem, 1.6vw, 1.6rem);
+  line-height: 1.7;
+  /* Amiri diacritics extend past the line box — keep them off the label. */
+  padding-top: 0.5rem;
+  color: var(--color-accent-light, #e9cf7a);
+}
+
+html[data-style-system='mishkaat'] .frame-hadith-english {
+  font-size: clamp(0.85rem, 1.1vw, 1.05rem);
+  line-height: 1.45;
+  color: var(--color-text-muted, #d8c8a5);
+}
+
+html[data-style-system='mishkaat'] .frame-hadith-source {
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim, #9c8b6e);
+}
+
+/* --- Announcement --- */
+html[data-style-system='mishkaat'] .frame-announcement-title {
+  font-family: var(--font-display, var(--font-heading, 'Amiri', serif));
+  font-size: clamp(1.05rem, 1.5vw, 1.45rem);
+  font-weight: 700;
+  color: var(--color-text, #f3e9d2);
+  line-height: 1.25;
+}
+
+html[data-style-system='mishkaat'] .frame-announcement-body {
+  font-size: clamp(0.8rem, 1vw, 0.95rem);
+  line-height: 1.4;
+  color: var(--color-text-muted, #d8c8a5);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+html[data-style-system='mishkaat'] .frame-announcement-body p { margin: 0; }
+
+/* --- Schedule changes --- */
+html[data-style-system='mishkaat'] .frame-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+}
+
+html[data-style-system='mishkaat'] .frame-change-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+html[data-style-system='mishkaat'] .frame-change-date {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim, #9c8b6e);
+}
+
+html[data-style-system='mishkaat'] .frame-change-prayer {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text, #f3e9d2);
+}
+
+html[data-style-system='mishkaat'] .frame-change-times {
+  display: flex;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+html[data-style-system='mishkaat'] .frame-change-from { color: var(--color-text-dim, #9c8b6e); }
+html[data-style-system='mishkaat'] .frame-change-arrow { color: var(--color-accent, #d4af37); font-weight: 700; }
+html[data-style-system='mishkaat'] .frame-change-to { color: var(--color-accent, #d4af37); font-weight: 700; }
+
+/* --- Donate QR --- */
+html[data-style-system='mishkaat'] .frame-donate-qr {
+  background-color: var(--color-text, #f3e9d2);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  line-height: 0;
+}
+html[data-style-system='mishkaat'] .frame-donate-qr svg {
+  /* Solo slide now (appeal text is a separate frame) — scan distance matters */
+  width: clamp(120px, 12vw, 210px);
+  height: auto;
+}
+
+html[data-style-system='mishkaat'] .frame-donate-tagline {
+  font-size: 0.9rem;
+  color: var(--color-text-muted, #d8c8a5);
+}
+
+html[data-style-system='mishkaat'] .frame-donate-url {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-accent, #d4af37);
+  word-break: break-all;
+}
+
+/* Reduced motion: rotation stops (JS); transitions are also killed globally. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-style-system='mishkaat'] .soul-frame {
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+   Ambient palette (§7.4) — the background breathes with the sun.
+   Tints shift surface hues a few percent, never content colors.
+   ============================================================ */
+html[data-style-system='mishkaat'] .tv-page {
+  transition: background-color 6s ease;
+}
+html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='predawn'] { background-color: #0c111d; }
+html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='sunrise'] { background-color: #1d1408; }
+html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='midday']  { background-color: #17100a; }
+html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='amber']   { background-color: #1c1106; }
+html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='night']   { background-color: #0e0a06; }
+
+/* ============================================================
+   Friday / Ramadan / Eid touches (§7.6.6–7.6.8)
+   ============================================================ */
+html[data-style-system='mishkaat'] .tv-kahf-reminder,
+html[data-style-system='mishkaat'] .tv-suhoor-line {
+  font-size: 0.85rem;
+  color: var(--color-text-dim, #9c8b6e);
+  margin-top: 0.4rem;
+  letter-spacing: 0.04em;
+}
+
+html[data-style-system='mishkaat'] .tv-eid-greeting {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+html[data-style-system='mishkaat'] .tv-eid-arabic {
+  font-family: var(--font-display, 'Amiri', serif);
+  font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+  color: var(--color-accent, #d4af37);
+  line-height: 1.4;
+}
+html[data-style-system='mishkaat'] .tv-eid-english {
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #d8c8a5);
+}
+
+/* ============================================================
+   Ceremony overlay (§7.6) — full-screen prayer-event states
+   ============================================================ */
+html[data-style-system='mishkaat'] .ceremony-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+html[data-style-system='mishkaat'] .ceremony-overlay--lit { background-color: rgba(10, 7, 4, 0.93); }
+html[data-style-system='mishkaat'] .ceremony-overlay--dim { background-color: rgba(8, 5, 3, 0.96); }
+html[data-style-system='mishkaat'] .ceremony-overlay--dark { background-color: #050403; }
+
+html[data-style-system='mishkaat'] .ceremony-prayer-name {
+  font-family: var(--font-display, 'Amiri', serif);
+  font-size: clamp(4rem, 9vw, 9rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-accent, #d4af37);
+}
+
+html[data-style-system='mishkaat'] .ceremony-prayer-name--small {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+}
+
+html[data-style-system='mishkaat'] .ceremony-state-line {
+  font-size: clamp(1.4rem, 2.8vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #d8c8a5);
+}
+
+html[data-style-system='mishkaat'] .ceremony-countdown {
+  font-size: clamp(5rem, 12vw, 11rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-text, #f3e9d2);
+}
+
+html[data-style-system='mishkaat'] .ceremony-quiet-name {
+  font-family: var(--font-display, 'Amiri', serif);
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  color: var(--color-text-dim, #9c8b6e);
+}
+
+html[data-style-system='mishkaat'] .ceremony-dhikr {
+  font-family: var(--font-display, 'Amiri', serif);
+  font-size: clamp(1.3rem, 2.6vw, 2.1rem);
+  color: var(--color-accent-light, #e9cf7a);
+  opacity: 0.55;
+}
+
+/* §7.6.5 night calm: a 20% veil over the board — noticeably calmer at
+   night, but every prayer time stays readable. Sits below ceremony
+   overlays (z-index 50) so adhaan/countdown states stay fully lit. */
+html[data-style-system='mishkaat'] .tv-night-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+
+
 /* === Compact mode (browser chrome visible) === */
 .tv-page--compact .tv-header { padding: 0.4rem 1.5rem; }
 .tv-page--compact .tv-main { padding: 0.75rem 1.5rem; }
@@ -409,3 +849,13 @@ html, body {
 .tv-page--compact .tv-coming-up-date { font-size: 0.65rem; }
 .tv-page--compact .tv-coming-up-prayer { font-size: 0.85rem; }
 .tv-page--compact .tv-coming-up-times { gap: 0.15rem; }
+
+/* Compact Mishkaat: save vertical space in the soul column */
+html[data-style-system='mishkaat'] .tv-page--compact .tv-soul-column { min-width: 220px; }
+/* Compact padding is narrower than the motif band — pattern would land
+   behind numerals (§4 ornament budget), so compact drops the motif and
+   its inner bracket rule. */
+html[data-style-system='mishkaat'] .tv-page--compact .prayer-board-panel .honeycomb-frame,
+html[data-style-system='mishkaat'] .tv-page--compact .prayer-board-panel .starband-frame { display: none; }
+html[data-style-system='mishkaat'] .tv-page--compact .prayer-board-panel { box-shadow: var(--shadow-card); }
+html[data-style-system='mishkaat'] .tv-page--compact .prayer-board-panel { padding: 0.5rem 0.9rem; }

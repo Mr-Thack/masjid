@@ -54,9 +54,9 @@ plain English — in admin UI labels **and in code identifiers** (`hadithFrame`,
 | **Preset** | A named token bundle *within* a style system (colors, surfaces, shadows) | `masjid_themes.layout_preset` (existing column) |
 | **Theme option** | A single parametric customization (metal, motif, arch, numerals, density, …) | `masjid_themes.style_options` JSON column (new) |
 | **Frame** | One rotating content panel in the Mishkaat soul column (hadith, announcements, jumu'ah, …) | `hadithFrame`, `frameRotation` in code |
-| **Ceremony state** | A full-screen behavioral mode triggered by prayer-time events (adhaan, iqaamah, quiet, sleep) | `ceremonyState` in code |
+| **Ceremony state** | A full-screen behavioral mode triggered by prayer-time events (adhaan, iqaamah, quiet, night calm) | `ceremonyState` in code |
 | **Quiet mode** | Post-iqaamah dimmed state | `quietMode` |
-| **Night sleep** | After-Isha near-black state, wakes before Fajr | `nightSleep` |
+| **Night calm** | After-Isha light veil over the readable board, lifts before Fajr | `'night-calm'` ceremony state |
 | **Ambient palette** | Time-of-day background tint that follows the sun | `ambientPalette` |
 | **Soul column** | The left column of the Mishkaat TV layout hosting rotating frames | `soulColumn` |
 
@@ -188,9 +188,14 @@ gives RTL readers a screen that feels made for them.
 
 ### 7.3 Ornament
 
-- **Honeycomb hairline** border on the prayer board — tone-on-tone, low contrast, edges only
-  (the default motif; options: `honeycomb | eight-point-star | girih | arabesque | none`).
-- **One mihrab arch** per screen (panel top or header crest; theme option `arch: true | false`).
+- **Star-and-octagon band** on the prayer board — eight-point stars interlocking with octagons
+  (the same star as the rosette), tone-on-tone, low contrast, edges only. The band is bracketed
+  by hairline rules (panel border outside, inset rule inside) so it reads as one cohesive
+  ribbon. Default motif: `eight-point-star`; options: `eight-point-star | honeycomb | girih |
+  arabesque | none`. A motif band must always be at least one tiling row tall — narrower bands
+  clip the pattern into meaningless notches.
+- **One mihrab arch** per screen, as a **niche for the clock** in the soul column (the way a
+  mihrab frames the imam); theme option `arch: true | false`.
 - **Eight-point star rosette** as the recurring identity glyph: current-prayer marker, header
   divider, arch apex detail.
 - Corner flourishes permitted on panels (manuscript discipline). No pattern behind numerals, ever.
@@ -222,7 +227,7 @@ time-slicing. The soul column hosts exactly one visible frame at a time.
 | Hadith of the Day | curated collection (new data) | Arabic (Amiri) + English + source; date-seeded; context-seeded by occasion |
 | Announcements | board payload (already returns 20) | One at a time |
 | Schedule Changes | board payload upcoming changes | Suppressed when empty |
-| Donate QR | masjid donation URL | "Same times, in your pocket" |
+| Donate (two slides) | masjid donation URL | Slide 1: appeal text ("Same times, in your pocket"); slide 2: scan-to-give QR. Text and QR never share a frame — together they are visually too much |
 | Community frames | announcements system | Taraweeh/Juz', fundraisers, events — masjid-controlled |
 
 **Choreography rules:**
@@ -248,8 +253,9 @@ The screen participates in the salah. Triggered by server-synchronized time (§7
    so latecomers know before entering.
 4. **Quiet mode** — then the screen fades to near-black: prayer name, one line of dhikr at most.
    Wakes gently before the next prayer window.
-5. **Night sleep** — after Isha + ~90 min: near-black, time only. Wakes before Fajr. (This is
-   also the primary burn-in defense.)
+5. **Night calm** — after Isha + ~90 min, a 20% black veil settles over the whole board:
+   noticeably calmer at night, but every prayer time stays readable (people still check times
+   from the hall at night — a full shutdown is not acceptable). Lifts before Fajr.
 6. **Friday mode** — khutbah times become the hero; quiet Surah al-Kahf reminder.
 7. **Ramadan mode** — Maghrib (iftar) countdown becomes the emotional center; suhoor-ends shown
    at Fajr. (Juz'/taraweeh details come via announcements, not built-ins.)
@@ -279,7 +285,7 @@ The screen participates in the salah. Triggered by server-synchronized time (§7
 | Theme options page | **Screen Appearance** (Metal, Pattern, Arch, Numerals, Density) |
 | Frames | **Screen Panels** (toggle list) |
 | Ceremony states | **Prayer Alerts** |
-| Quiet mode + night sleep | **Quiet Hours** |
+| Quiet mode + night calm | **Quiet Hours** |
 | Ambient palette | **Day & Night Colors** |
 | Hadith frame | **Hadith of the Day** |
 | Engraved emblem | **Masjid Logo** |
@@ -289,8 +295,10 @@ The screen participates in the salah. Triggered by server-synchronized time (§7
 
 - **Dignified offline:** if the API drops, render the cached schedule in full Mishkaat styling
   with a graceful "showing cached schedule" note. Never an error page.
-- **Burn-in:** night sleep + quiet mode are the defense. Pixel drift is optional and, if
-  implemented, must wander ±12–16px (numeral strokes are ~30px; 1–2px does nothing).
+- **Burn-in:** quiet mode is the primary defense; the night calm veil dims but never blacks
+  the screen (times stay readable), so pixel drift matters more at night. Pixel drift is
+  optional and, if implemented, must wander ±12–16px (numeral strokes are ~30px; 1–2px does
+  nothing).
 - **Density option** (`density: 'standard' | 'large-print'`) for aging congregations.
 
 ---
@@ -307,8 +315,9 @@ style_options TEXT NOT NULL DEFAULT '{}'         -- JSON, interpreted per style 
 
 - All 15 existing `masjid_themes` fields are unchanged and keep working.
 - Mishkaat options live in `style_options`: `metal`, `motif`, `arch`, `numerals`, `density`,
-  `ambient`, `quietHours`, `frames` (enabled list), `emblem`. Unknown keys are ignored;
-  missing keys fall back to defaults. This avoids column sprawl per system.
+  `ambient`, `quietHours`, `frames` (enabled list), `emblem`, `donateAppeal` (donate slide
+  wording). Unknown keys are ignored; missing keys fall back to defaults. This avoids column
+  sprawl per system.
 - New masjids default to `style_system = 'mishkaat'` once Phase 1 ships.
 
 ### Where things live
@@ -357,7 +366,7 @@ cryptic "next change" columns, clip-art, fast motion.
 | **0. Plumbing** | `style_system` + `style_options` columns (schema.sql + Drizzle), Zod updates, `applyTheme` sets `data-style-system` | Existing tests green; Sakeenah behavior identical |
 | **1. Mishkaat core** | Preset tokens (espresso/gold), RTL layout, Amiri headings, honeycomb hairline + arch, classic clock face, server-time sync | Static flagship board renders on TV; board demo ready |
 | **2. Frames** | Soul column, rotation choreography, hadith collection, schedule-changes frame, donate QR | Rotation respects all budgets + reduced-motion |
-| **3. Ceremony** | Adhaan/iqaamah states, quiet mode, night sleep, ambient palette, Friday/Ramadan/Eid modes | State machine driven by server time; glare solved at Fajr |
+| **3. Ceremony** | Adhaan/iqaamah states, quiet mode, night calm, ambient palette, Friday/Ramadan/Eid modes | State machine driven by server time; glare solved at Fajr |
 | **4. Vanity** | Logo engraving pipeline, numerals option, density option, admin "Screen Appearance" page | Admin can restyle without an agent |
 | **5. Later** | Displays (roles), federation, anything parked | New decision required |
 

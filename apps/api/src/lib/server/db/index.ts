@@ -93,6 +93,8 @@ function ensureTables(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS masjid_themes (
       masjid_id TEXT PRIMARY KEY REFERENCES masjids(id) ON DELETE CASCADE,
+      style_system TEXT NOT NULL DEFAULT 'sakeenah',
+      style_options TEXT NOT NULL DEFAULT '{}',
       layout_preset TEXT NOT NULL DEFAULT 'modern_minimal',
       primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
       accent_color TEXT NOT NULL DEFAULT '#10b981',
@@ -318,6 +320,8 @@ function ensureTables(sqlite: Database.Database) {
   `);
 
   // Migrate existing local databases created before these columns existed.
+  addColumnIfMissing(sqlite, 'masjid_themes', 'style_system', "TEXT NOT NULL DEFAULT 'sakeenah'");
+  addColumnIfMissing(sqlite, 'masjid_themes', 'style_options', "TEXT NOT NULL DEFAULT '{}'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'");
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'");

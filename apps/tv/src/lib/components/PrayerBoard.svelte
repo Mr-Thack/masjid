@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Rosette from './Rosette.svelte';
+
   interface PrayerEntry {
     key: string;
     label: string;
@@ -15,6 +17,7 @@
     flashIqaamah,
     adhaanLabel = 'Adhaan',
     iqaamahLabel = 'Iqaamah',
+    rosetteMarker = false,
   }: {
     times: PrayerEntry[];
     currentPrayerIndex: number | null;
@@ -22,6 +25,8 @@
     flashIqaamah: string | null;
     adhaanLabel: string;
     iqaamahLabel: string;
+    /** Mishkaat: eight-point star rosette marks the current prayer (§7.3). */
+    rosetteMarker?: boolean;
   } = $props();
 </script>
 
@@ -36,6 +41,9 @@
     {@const isIqaamahFlashing = flashIqaamah === entry.key}
 
     <div class="prayer-name {isCurrent ? 'prayer-name--current' : ''}">
+      {#if rosetteMarker && isCurrent}
+        <span class="prayer-name-rosette"><Rosette size={20} /></span>
+      {/if}
       {entry.label}
     </div>
     <div
@@ -55,3 +63,12 @@
     </div>
   {/each}
 </div>
+
+<style>
+  .prayer-name-rosette {
+    display: inline-flex;
+    margin-right: 0.5rem;
+    color: var(--color-accent, #d4af37);
+  }
+</style>
+

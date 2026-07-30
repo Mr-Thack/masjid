@@ -8,6 +8,8 @@ export interface BoardPayload {
     external_donation_url: string | null;
   };
   theme: {
+    style_system: 'sakeenah' | 'mishkaat';
+    style_options: Record<string, unknown>;
     primary_color: string;
     accent_color: string;
     font_heading: string;
@@ -25,6 +27,8 @@ export interface BoardPayload {
     label_maghrib: string;
     label_isha: string;
   };
+  /** Server-synchronized time (ISO) — see docs/design-language.md §7.7. */
+  server_time?: string;
   today: {
     date: string;
     times: {
@@ -59,6 +63,15 @@ export interface BoardPayload {
     title: string;
     compiled_html: string;
   } | null;
+  recent_announcements?: Array<{
+    id: string;
+    title: string;
+    slug: string;
+    compiled_html: string | null;
+    status: string;
+    published_at: string | null;
+    expires_at: string | null;
+  }>;
 }
 
 const BASE = `${import.meta.env.VITE_API_URL || ''}/api/v1/masjids`;

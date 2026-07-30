@@ -1,14 +1,14 @@
 # AGENTS.md
 
-## Current state (2026-07-25)
+## Current state (2026-07-29)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 416 tests)
-- **Working TV frontend** (SvelteKit static, 28 tests — no Tailwind, hand-written CSS ~6 KB)
-- **Working consumer frontend** (SvelteKit static/SPA, 48 tests, 1 pre-existing Jumuah homepage failure)
+- **Working API** (SvelteKit + D1, 470 tests)
+- **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
+- **Working consumer frontend** (SvelteKit static/SPA, 53 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
-- **670+ tests passing** (416 API + 215 WhatsApp + 48 consumer)
+- **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/changes/donate appeal + QR as two slides), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
@@ -31,9 +31,9 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test             # API unit tests, 438 (no server needed)
+npm run test             # API unit tests, 470 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
-npm run test:tv          # TV frontend, 30 tests (jsdom + testing-library)
+npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
 npm run test:consumer    # Consumer frontend, 53 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
@@ -49,6 +49,7 @@ npm run test:all         # everything (excluding test:sw and test:admin since th
 - Team: `admin@masjid-alnoor.org` / `password123`
 - Who slug: `masjid-al-noor` (note dashes, not underscores)
 - WhatsApp: `+15551230001` (Zero-UI admin)
+- Style system: **Mishkaat** (gold, `layout_preset='mishkaat'`, Amiri headings) — the flagship seed
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Consumer page: `http://localhost:5175/masjid-al-noor`
 - TV page: `http://localhost:5174/display/masjid-al-noor`
@@ -62,7 +63,7 @@ npm run test:all         # everything (excluding test:sw and test:admin since th
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-jabal`
 - Consumer page: `http://localhost:5175/masjid-al-jabal`
 - TV page: `http://localhost:5174/display/masjid-al-jabal`
-- Notes: Hanafi / Indo-Pak congregation; uses `minimal-light` theme, `12h` time format, ISNA calculation method, and Indo-Pak transliterations (`Azaan`, `Iqamah`, `Zuhr`, `Jummah`).
+- Notes: Hanafi / Indo-Pak congregation; **Sakeenah** style system (`minimal-light` preset), `12h` time format, ISNA calculation method, and Indo-Pak transliterations (`Azaan`, `Iqamah`, `Zuhr`, `Jummah`).
 - DB file: `.masjid/local.db` (SQLite via better-sqlite3 in dev mode)
 
 ## Monorepo structure
@@ -123,7 +124,7 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 ### Theme & display settings (extensible, per-masjid)
 - **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV.
 - **`src/lib/theme/context.svelte.ts`**: Thin re-export of `applyTheme` from `@masjid/ui-utils` for consumer-specific import paths.
-- **`layout_preset` field** in `masjid_themes` table switches presets. Current seed uses `"modern_minimal"` which falls through to `glass-dark` default.
+- **`layout_preset` field** in `masjid_themes` table switches presets. Al-Noor seeds to `'mishkaat'` (Mishkaat style system); Al-Jabal seeds to `'minimal-light'` (Sakeenah). Unknown values fall through to the style system's default preset.
 - **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerCard`, `PrayerList`, and the weekly prayer view.
 - **CSS custom properties** (16 total):
   - `--color-primary`, `--color-accent`, `--color-primary-light`, `--color-accent-light` — set by theme
@@ -134,7 +135,7 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 - **Tailwind v4 `@theme`** in `app.css` maps `--color-primary: var(--color-primary)` etc. so `bg-primary`, `text-accent`, `font-heading` are valid Tailwind utilities.
 - **No prop-drilled colors**: PrayerCard, PrayerList, AnnouncementCard, DonateButton all read colors from CSS custom properties directly. No `accentColor` prop.
 - **Fonts loaded** in `app.html`: Inter, Roboto, Amiri, Noto Naskh Arabic, Scheherazade New — all with `display=swap`.
-- **Seed data uses `font_body: "Roboto"`** — Roboto was added to the Google Fonts URL specifically for this.
+- **Roboto stays in the font stack** because it is the `font_body` column default (schema + Zod), even though both seed masjids now set explicit body fonts (Al-Noor: Inter, Al-Jabal: Noto Naskh Arabic).
 
 ### Component library (`src/lib/components/`)
 | Component | Purpose |
@@ -177,11 +178,34 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 ### Component library (`src/lib/components/`)
 | Component | Purpose |
 |---|---|
-| `AnalogClock` | SVG analog clock (hour/minute/second hands, accent-colored second hand) |
-| `PrayerBoard` | 6-column CSS grid table (label + 5 prayers) with adhaan/iqamah/sunrise rows, current prayer highlight, sharp flash pulse |
+| `AnalogClock` | SVG clock; `classic` prop renders the Mishkaat face (deep face, gold hands, 60 clean ticks) |
+| `PrayerBoard` | 6-column CSS grid table (label + 5 prayers) with adhaan/iqamah/sunrise rows, current prayer highlight, sharp flash pulse, optional rosette current-prayer marker |
 | `Countdown` | Compact `<span>` showing "6h 07m" or "04:32" until next iqaamah |
 | `JumuahNotice` | One-liner: `* Jumu'ah: 1:30 PM (Eng) · 2:30 PM (Arb)` |
-| `AnnouncementBanner` | Marquee banner at page bottom |
+| `AnnouncementBanner` | Marquee banner at page bottom (Sakeenah only — Mishkaat demotes announcements to frames, §7.5 motion budget) |
+| `Rosette` | Eight-point star identity glyph (§7.3) |
+| `HoneycombFrame` | Honeycomb hairline border SVG (opt-in motif). Band must be ≥ one tiling row — narrower renders as clipped "notches" |
+| `StarBandFrame` | Default motif: eight-point stars + interlocking octagons band (§7.3), bracketed by the panel border + an inset hairline rule |
+| `ArchCrest` | Mihrab arch + apex rosette; one arch per screen (§7.3) — rendered as a **niche around the clock** (`.tv-clock-niche`), height-bounded via `clamp(280px, 36vh, 400px)`; the elongated 100×150 viewBox lets the arch also encapsulate the digital time + sunrise + countdown (`.tv-niche-body`), one integrated unit |
+| `SoulColumn` | Frame rotation host — one visible frame, 20s cadence, rightward slide, reduced-motion static (§7.5) |
+| `HadithFrame` / `JumuahFrame` / `AnnouncementFrame` / `ChangesFrame` / `DonateFrame` / `QrFrame` | Soul-column frames (§7.5); donate is two separate slides — appeal text (`DonateFrame`) then scan-to-give QR (`QrFrame`, via `qrcode` package SVG) |
+| `CeremonyOverlay` | Full-screen ceremony states: adhaan → iqaamah countdown → prayer in progress → quiet (§7.6); night calm is a page-level 20% veil (`.tv-night-veil`), not an overlay — the board stays readable |
+
+### Key libraries (`src/lib/`)
+| Module | Purpose |
+|---|---|
+| `server-clock.ts` | Server-time sync (§7.7): offset-corrects the TV clock against board `server_time` |
+| `frames.ts` | Frame list builder (priority order, pinned Jumu'ah Thu–Fri, empty suppression) + rotation math + hadith occasion tags |
+| `ceremony.ts` | Ceremony state machine (§7.6) + ambient palette phases (§7.4) + Hijri helpers — pure, fully unit-tested |
+
+### Mishkaat implementation notes
+- **Style systems**: `masjid_themes.style_system` ('sakeenah' default, 'mishkaat' flagship) + `style_options` JSON column (metal/motif/arch/numerals/density/ambient/quietHours/frames/emblem/donateAppeal; unknown keys ignored, missing keys → defaults). Synced across `schema.sql`, Drizzle schema, and `ensureTables`/`addColumnIfMissing`.
+- **`applyTheme` / `buildThemeVars`** (ui-utils) branch per style system and set `data-style-system` on `<html>`; all Mishkaat CSS keys off that attribute. Metal palettes recolor accents (gold default); stock Sakeenah colors (`#1e3a8a`/`#10b981`) are treated as unset under Mishkaat; explicit custom colors are raw overrides on top of metal (§7.4). Amiri is the display default unless `font_heading` was explicitly changed from Inter (§7.2).
+- **New registrations default to Mishkaat** (gold + `layout_preset='mishkaat'` + Amiri headings). **Al-Noor seeds to Mishkaat; Al-Jabal stays Sakeenah** — one seed masjid per style system.
+- **Hadith collection**: `packages/ui-utils/src/hadith.ts` — 24 curated entries (Arabic + English + canonical source), date-seeded daily rotation, occasion tags (jumu'ah/ramadan/fajr/prayer) for context seeding.
+- **Rotation bug to remember**: the soul column drives rotation by wall-clock elapsed time (`getActiveFrameIndex`), not a frame-index interval — `framesList` recomputes every second upstream, so an effect watching it resets its own timer.
+- **jsdom/WAAPI**: TV test setup polyfills `Element.prototype.animate` (Svelte 5 transitions need it; the stub fires `onfinish` via microtask).
+- **Register route**: `db.batch()` is D1-only; local dev falls back to a better-sqlite3 synchronous transaction (pre-existing local-dev bug fixed 2026-07-29).
 
 ### Key design decisions
 - **No Tailwind** — replaced with ~300 lines of hand-written CSS in `app.css`. Tailwind v4 failed to emit CSS in the static build.
@@ -196,7 +220,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - **`formatTime()` utility** — copied from consumer (`src/lib/time.ts`), handles 12h/24h from admin config.
 
 ## Naming & design language (canonical — see docs/design-language.md)
-- **Mihraab** = the platform (mihraab.pro). **Sakeenah** = the minimal style system (what exists today: `glass-dark`, `minimal-light`). **Mishkaat** = the flagship style system (soul-forward: RTL layout, frames, ceremony states, ambient palette — spec in the doc).
+- **Mihraab** = the platform (mihraab.pro). **Sakeenah** = the minimal style system (`glass-dark`, `minimal-light`). **Mishkaat** = the flagship style system (soul-forward: RTL layout, frames, ceremony states, ambient palette — **Phases 0–3 shipped 2026-07-29**; Phase 4 admin UI/logo engraving pending).
 - Terminology: **style system** (`style_system` column) → **preset** (`layout_preset`) → **theme options** (`style_options` JSON). Don't say "theme engine".
 - Admin UI uses plain-English labels only ("Screen Appearance", "Hadith of the Day", "Quiet Hours"); code identifiers stay plain English too.
 - Reserved preset names: `manara` (portrait), `mashrabiya` (pattern), `qandeel` (seasonal). Never name anything `sakina` or `mihrab`.
@@ -391,6 +415,7 @@ npm run test
 - Need to inspect the running page? `curl http://localhost:5175/masjid-al-noor` gives the SSR output
 - The CSS is served at `http://localhost:5175/src/app.css` — contains the full compiled Tailwind v4 output
 - To start admin: `npm run dev --workspace=@masjid/admin` (port 5176)
+- To see the Mishkaat TV board locally: start API + TV and open `http://localhost:5174/display/masjid-al-noor` (Al-Noor seeds to Mishkaat; Al-Jabal shows Sakeenah). Ceremony states to watch: adhaan/iqaamah-countdown at each prayer, night calm ~90 min after Isha iqaamah (20% veil, times stay readable)
 - Maktab form embed URL: `http://localhost:5175/masjid-al-noor/maktab/enroll?embed=1`
 - Maktab dev secrets (Square/Brevo) go in `apps/api/.dev.vars`; put real values there for live sandbox testing
 - Debug endpoint: `GET /api/v1/debug` — public, no auth; returns DB connectivity, bcrypt test, admin info
