@@ -22,6 +22,8 @@ const DryRunSchema = z.object({
   asr_madhab: z.enum(['shafi', 'hanafi']).optional(),
   high_latitude_rule: z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).optional(),
   show_dual_asr: z.boolean().optional(),
+  fajr_angle: z.number().min(8).max(22).nullable().optional(),
+  isha_angle: z.number().min(8).max(22).nullable().optional(),
   timezone: z.string().optional(),
   rule_overrides: z.array(RuleOverrideSchema).optional(),
 });
@@ -42,6 +44,8 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       .select({
         id: masjids.id,
         calculation_method: masjids.calculationMethod,
+        fajr_angle: masjids.fajrAngle,
+        isha_angle: masjids.ishaAngle,
         latitude: masjids.latitude,
         longitude: masjids.longitude,
         timezone: masjids.timezone,
@@ -60,6 +64,8 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
     const config = {
       id: masjid.id,
       calculation_method: body.calculation_method ?? masjid.calculation_method as number,
+      fajr_angle: body.fajr_angle !== undefined ? body.fajr_angle : (masjid.fajr_angle as number | null),
+      isha_angle: body.isha_angle !== undefined ? body.isha_angle : (masjid.isha_angle as number | null),
       latitude: masjid.latitude as number,
       longitude: masjid.longitude as number,
       timezone: body.timezone ?? masjid.timezone as string,
@@ -90,7 +96,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
 };
 
 async function computeTimesWithOverrides(
-  config: { id: string; calculation_method: number; latitude: number; longitude: number; timezone: string; asr_madhab: string; high_latitude_rule: string; show_dual_asr: boolean },
+  config: { id: string; calculation_method: number; fajr_angle: number | null; isha_angle: number | null; latitude: number; longitude: number; timezone: string; asr_madhab: string; high_latitude_rule: string; show_dual_asr: boolean },
   date: Date,
   overrides: z.infer<typeof RuleOverrideSchema>[],
   db: ReturnType<typeof getDb>,

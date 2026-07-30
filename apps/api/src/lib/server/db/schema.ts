@@ -13,6 +13,8 @@ export const masjids = sqliteTable('masjids', {
   longitude: real('longitude').notNull(),
   timezone: text('timezone').notNull().default('America/Chicago'),
   calculationMethod: integer('calculation_method').notNull().default(2),
+  fajrAngle: real('fajr_angle'),
+  ishaAngle: real('isha_angle'),
   asrMadhab: text('asr_madhab').notNull().default('shafi'),
   highLatitudeRule: text('high_latitude_rule').notNull().default('seventh_of_night'),
   showDualAsr: integer('show_dual_asr', { mode: 'boolean' }).notNull().default(false),

@@ -5,6 +5,8 @@ export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 
 export interface MasjidLocation {
   calculation_method: number;
+  fajr_angle: number | null;
+  isha_angle: number | null;
   latitude: number;
   longitude: number;
   timezone: string;
@@ -38,6 +40,8 @@ export function calculateAdhaan(
   const params = calculationMethodFromInt(masjid.calculation_method);
   params.madhab = madhabFromString(masjid.asr_madhab);
   params.highLatitudeRule = highLatitudeRuleFromString(masjid.high_latitude_rule);
+  if (masjid.fajr_angle != null) params.fajrAngle = masjid.fajr_angle;
+  if (masjid.isha_angle != null) params.ishaAngle = masjid.isha_angle;
 
   const prayerDate = new Date(Date.UTC(
     date.getUTCFullYear(),
@@ -62,6 +66,8 @@ export function calculateAdhaan(
     const secondaryParams = calculationMethodFromInt(masjid.calculation_method);
     secondaryParams.madhab = otherMadhab;
     secondaryParams.highLatitudeRule = highLatitudeRuleFromString(masjid.high_latitude_rule);
+    if (masjid.fajr_angle != null) secondaryParams.fajrAngle = masjid.fajr_angle;
+    if (masjid.isha_angle != null) secondaryParams.ishaAngle = masjid.isha_angle;
     const secondaryPt = new PrayerTimes(coordinates, prayerDate, secondaryParams);
     result.asr_secondary = utcDateToLocalHM(secondaryPt.asr, masjid.timezone);
   }

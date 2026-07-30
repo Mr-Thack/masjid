@@ -48,6 +48,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       asr_madhab: masjid.asrMadhab,
       high_latitude_rule: masjid.highLatitudeRule,
       show_dual_asr: !!masjid.showDualAsr,
+      fajr_angle: masjid.fajrAngle,
+      isha_angle: masjid.ishaAngle,
       tenant_status: masjid.tenantStatus,
       address_line1: masjid.addressLine1,
       address_line2: masjid.addressLine2,
@@ -135,6 +137,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.asr_madhab !== undefined) masjidData.asrMadhab = masjidUpdate.asr_madhab;
     if (masjidUpdate.high_latitude_rule !== undefined) masjidData.highLatitudeRule = masjidUpdate.high_latitude_rule;
     if (masjidUpdate.show_dual_asr !== undefined) masjidData.showDualAsr = masjidUpdate.show_dual_asr;
+    if (masjidUpdate.fajr_angle !== undefined) masjidData.fajrAngle = masjidUpdate.fajr_angle;
+    if (masjidUpdate.isha_angle !== undefined) masjidData.ishaAngle = masjidUpdate.isha_angle;
     if (masjidUpdate.timezone !== undefined) masjidData.timezone = masjidUpdate.timezone;
     if (masjidUpdate.latitude !== undefined) masjidData.latitude = masjidUpdate.latitude;
     if (masjidUpdate.longitude !== undefined) masjidData.longitude = masjidUpdate.longitude;

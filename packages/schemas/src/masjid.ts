@@ -8,6 +8,7 @@ export const CalculationMethod = z.number().int().min(1).default(2);
 export const AsrMadhab = z.enum(['shafi', 'hanafi']).default('shafi');
 export const HighLatitudeRule = z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).default('seventh_of_night');
 export const ShowDualAsr = z.boolean().default(false);
+export const TwilightAngle = z.number().min(8).max(22).nullable();
 
 // ---------------------------------------------------------------------------
 // Style systems (see docs/design-language.md)
@@ -72,6 +73,8 @@ export const CreateMasjidSchema = z.object({
   asr_madhab: AsrMadhab,
   high_latitude_rule: HighLatitudeRule,
   show_dual_asr: ShowDualAsr,
+  fajr_angle: TwilightAngle.optional(),
+  isha_angle: TwilightAngle.optional(),
   admin_email: z.string().email(),
   admin_password: z.string().min(8).max(128),
   admin_display_name: z.string().min(1).max(100).optional(),
@@ -96,6 +99,8 @@ export const UpdateMasjidSchema = z.object({
   asr_madhab: AsrMadhab.optional(),
   high_latitude_rule: HighLatitudeRule.optional(),
   show_dual_asr: ShowDualAsr.optional(),
+  fajr_angle: TwilightAngle.optional(),
+  isha_angle: TwilightAngle.optional(),
   timezone: z.string().min(1).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
@@ -137,6 +142,8 @@ export const MasjidProfileSchema = z.object({
   asr_madhab: z.string(),
   high_latitude_rule: z.string(),
   show_dual_asr: z.boolean(),
+  fajr_angle: z.number().nullable(),
+  isha_angle: z.number().nullable(),
   tenant_status: TenantStatus,
   address_line1: z.string().nullable(),
   address_line2: z.string().nullable(),

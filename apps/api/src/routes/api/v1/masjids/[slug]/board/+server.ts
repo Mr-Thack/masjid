@@ -51,6 +51,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     const masjidConfig = {
       id: masjid.id,
       calculation_method: masjid.calculationMethod,
+      fajr_angle: masjid.fajrAngle,
+      isha_angle: masjid.ishaAngle,
       latitude: masjid.latitude,
       longitude: masjid.longitude,
       timezone: masjid.timezone,

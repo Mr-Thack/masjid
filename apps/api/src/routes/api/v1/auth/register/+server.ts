@@ -53,6 +53,8 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       asrMadhab: body.asr_madhab,
       highLatitudeRule: body.high_latitude_rule,
       showDualAsr: body.show_dual_asr,
+      fajrAngle: body.fajr_angle ?? null,
+      ishaAngle: body.isha_angle ?? null,
       adminEmail: body.admin_email,
       tenantStatus: 'ACTIVE' as const,
       createdAt: now,

@@ -20,6 +20,8 @@ function parseTime(timeStr: string): number {
 // ---------------------------------------------------------------------------
 const chicagoMasjid: MasjidLocation = {
   calculation_method: 2,
+  fajr_angle: null,
+  isha_angle: null,
   latitude: 41.85,
   longitude: -87.65,
   timezone: 'America/Chicago',
@@ -99,11 +101,14 @@ describe('calculateAdhaan', () => {
     it('Anchorage summer returns results (some may be --:--)', () => {
       const anchorage: MasjidLocation = {
         calculation_method: 2,
+        fajr_angle: null,
+        isha_angle: null,
         latitude: 61.22,
         longitude: -149.9,
         timezone: 'America/Anchorage',
         asr_madhab: 'shafi',
         high_latitude_rule: 'seventh_of_night',
+        show_dual_asr: false,
       };
       const times = calculateAdhaan(anchorage, new Date('2026-07-15'));
       // All values should be strings
@@ -113,11 +118,14 @@ describe('calculateAdhaan', () => {
     it('Anchorage winter returns results', () => {
       const anchorage: MasjidLocation = {
         calculation_method: 2,
+        fajr_angle: null,
+        isha_angle: null,
         latitude: 61.22,
         longitude: -149.9,
         timezone: 'America/Anchorage',
         asr_madhab: 'shafi',
         high_latitude_rule: 'seventh_of_night',
+        show_dual_asr: false,
       };
       const times = calculateAdhaan(anchorage, new Date('2026-01-15'));
       Object.values(times).forEach((t) => expect(typeof t).toBe('string'));
@@ -126,11 +134,14 @@ describe('calculateAdhaan', () => {
     it('Mecca, Saudi Arabia returns results year round', () => {
       const mecca: MasjidLocation = {
         calculation_method: 4,
+        fajr_angle: null,
+        isha_angle: null,
         latitude: 21.42,
         longitude: 39.83,
         timezone: 'Asia/Riyadh',
         asr_madhab: 'shafi',
         high_latitude_rule: 'seventh_of_night',
+        show_dual_asr: false,
       };
       const summer = calculateAdhaan(mecca, new Date('2026-07-15'));
       const winter = calculateAdhaan(mecca, new Date('2026-01-15'));
@@ -168,11 +179,14 @@ describe('calculateAdhaan', () => {
     it('Sydney seasons are reversed (January summer has later maghrib than July winter)', () => {
       const sydney: MasjidLocation = {
         calculation_method: 3,
+        fajr_angle: null,
+        isha_angle: null,
         latitude: -33.87,
         longitude: 151.21,
         timezone: 'Australia/Sydney',
         asr_madhab: 'shafi',
         high_latitude_rule: 'seventh_of_night',
+        show_dual_asr: false,
       };
       const jan = calculateAdhaan(sydney, new Date('2026-01-15'));
       const jul = calculateAdhaan(sydney, new Date('2026-07-15'));

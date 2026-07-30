@@ -74,6 +74,8 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       if (typeof m.longitude === 'number') masjidData.longitude = m.longitude;
       if (typeof m.timezone === 'string') masjidData.timezone = m.timezone;
       if (typeof m.calculation_method === 'number') masjidData.calculationMethod = m.calculation_method;
+      if (typeof m.fajr_angle === 'number' || m.fajr_angle === null) masjidData.fajrAngle = m.fajr_angle;
+      if (typeof m.isha_angle === 'number' || m.isha_angle === null) masjidData.ishaAngle = m.isha_angle;
       if (typeof m.address_line1 === 'string' || m.address_line1 === null) masjidData.addressLine1 = m.address_line1;
       if (typeof m.address_line2 === 'string' || m.address_line2 === null) masjidData.addressLine2 = m.address_line2;
       if (typeof m.city === 'string' || m.city === null) masjidData.city = m.city;

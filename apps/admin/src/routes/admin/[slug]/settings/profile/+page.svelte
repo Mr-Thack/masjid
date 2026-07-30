@@ -18,7 +18,7 @@
     facebook_url: '', youtube_url: '', instagram_url: '', website_url: '',
     external_donation_url: '', calculation_method: 2, timezone: 'America/Chicago',
     asr_madhab: 'shafi', high_latitude_rule: 'seventh_of_night',
-    show_dual_asr: false,
+    show_dual_asr: false, fajr_angle: null as number | null, isha_angle: null as number | null,
     latitude: 0, longitude: 0,
   });
 
@@ -86,6 +86,8 @@
       form.asr_madhab = profile.asr_madhab || 'shafi';
       form.high_latitude_rule = profile.high_latitude_rule || 'seventh_of_night';
       form.show_dual_asr = !!profile.show_dual_asr;
+      form.fajr_angle = profile.fajr_angle ?? null;
+      form.isha_angle = profile.isha_angle ?? null;
       form.timezone = profile.timezone || 'America/Chicago';
       form.latitude = profile.latitude || 0;
       form.longitude = profile.longitude || 0;
@@ -124,6 +126,8 @@
         asr_madhab: form.asr_madhab,
         high_latitude_rule: form.high_latitude_rule,
         show_dual_asr: form.show_dual_asr,
+        fajr_angle: form.fajr_angle,
+        isha_angle: form.isha_angle,
         timezone: form.timezone,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
@@ -258,6 +262,19 @@
                 <option value={r.value}>{r.label}</option>
               {/each}
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fajr_angle">Fajr Angle (°)</label>
+            <input id="fajr_angle" type="number" step="0.1" min="8" max="22" class="w-full" bind:value={form.fajr_angle} oninput={handleChange} placeholder="e.g. 15.0" />
+            <p class="text-xs text-text-muted mt-1">Leave blank to use the selected method's default</p>
+          </div>
+          <div class="form-group">
+            <label for="isha_angle">Isha Angle (°)</label>
+            <input id="isha_angle" type="number" step="0.1" min="8" max="22" class="w-full" bind:value={form.isha_angle} oninput={handleChange} placeholder="e.g. 15.0" />
+            <p class="text-xs text-text-muted mt-1">Leave blank to use the selected method's default</p>
           </div>
         </div>
 

@@ -69,6 +69,8 @@ function ensureTables(sqlite: Database.Database) {
       longitude REAL NOT NULL,
       timezone TEXT NOT NULL DEFAULT 'America/Chicago',
       calculation_method INTEGER NOT NULL DEFAULT 2,
+      fajr_angle REAL,
+      isha_angle REAL,
       asr_madhab TEXT NOT NULL DEFAULT 'shafi',
       high_latitude_rule TEXT NOT NULL DEFAULT 'seventh_of_night',
       show_dual_asr INTEGER NOT NULL DEFAULT 0,
@@ -339,6 +341,8 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'");
   addColumnIfMissing(sqlite, 'masjids', 'high_latitude_rule', "TEXT NOT NULL DEFAULT 'seventh_of_night'");
   addColumnIfMissing(sqlite, 'masjids', 'show_dual_asr', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(sqlite, 'masjids', 'fajr_angle', 'REAL');
+  addColumnIfMissing(sqlite, 'masjids', 'isha_angle', 'REAL');
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {

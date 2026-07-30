@@ -13,6 +13,8 @@
   let asrMadhab = $state('shafi');
   let highLatitudeRule = $state('seventh_of_night');
   let showDualAsr = $state(false);
+  let fajrAngle: string | null = $state(null);
+  let ishaAngle: string | null = $state(null);
   let adminEmail = $state('');
   let adminPassword = $state('');
   let adminDisplayName = $state('');
@@ -113,6 +115,8 @@
         asr_madhab: asrMadhab,
         high_latitude_rule: highLatitudeRule,
         show_dual_asr: showDualAsr,
+        fajr_angle: fajrAngle ? parseFloat(fajrAngle) : null,
+        isha_angle: ishaAngle ? parseFloat(ishaAngle) : null,
         admin_email: adminEmail.trim(),
         admin_password: adminPassword,
         admin_display_name: adminDisplayName.trim() || undefined,
@@ -223,6 +227,17 @@
                 <option value={r.value}>{r.label}</option>
               {/each}
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fajrAngle">Fajr Angle (°) <span class="text-text-muted text-xs">(optional override)</span></label>
+            <input id="fajrAngle" type="number" step="0.1" min="8" max="22" class="w-full" bind:value={fajrAngle} placeholder="Use preset default" />
+          </div>
+          <div class="form-group">
+            <label for="ishaAngle">Isha Angle (°) <span class="text-text-muted text-xs">(optional override)</span></label>
+            <input id="ishaAngle" type="number" step="0.1" min="8" max="22" class="w-full" bind:value={ishaAngle} placeholder="Use preset default" />
           </div>
         </div>
 

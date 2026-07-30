@@ -10,6 +10,8 @@ export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 interface MasjidConfig {
   id: string;
   calculation_method: number;
+  fajr_angle: number | null;
+  isha_angle: number | null;
   latitude: number;
   longitude: number;
   timezone: string;

@@ -18,6 +18,8 @@ interface HijriDate {
 interface MasjidConfig {
   id: string;
   calculation_method: number;
+  fajr_angle: number | null;
+  isha_angle: number | null;
   latitude: number;
   longitude: number;
   timezone: string;
@@ -400,6 +402,8 @@ describe('computeIqaamah', () => {
   const chicagoMasjid: MasjidConfig = {
     id: 'masjid-test-1',
     calculation_method: 2,
+    fajr_angle: null,
+    isha_angle: null,
     latitude: 41.85,
     longitude: -87.65,
     timezone: 'America/Chicago',
@@ -459,6 +463,8 @@ describe('computeIqaamah', () => {
     const kennesawMasjid: MasjidConfig = {
       id: 'masjid-kennesaw-1',
       calculation_method: 2,
+      fajr_angle: null,
+      isha_angle: null,
       latitude: 34.0234,
       longitude: -84.6157,
       timezone: 'America/New_York',

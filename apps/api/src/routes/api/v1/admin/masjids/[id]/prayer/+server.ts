@@ -11,6 +11,8 @@ const PrayerConfigUpdateSchema = z.object({
   asr_madhab: z.enum(['shafi', 'hanafi']).optional(),
   high_latitude_rule: z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).optional(),
   show_dual_asr: z.boolean().optional(),
+  fajr_angle: z.number().min(8).max(22).nullable().optional(),
+  isha_angle: z.number().min(8).max(22).nullable().optional(),
   timezone: z.string().min(1).optional(),
 });
 
@@ -30,6 +32,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
         asr_madhab: masjids.asrMadhab,
         high_latitude_rule: masjids.highLatitudeRule,
         show_dual_asr: masjids.showDualAsr,
+        fajr_angle: masjids.fajrAngle,
+        isha_angle: masjids.ishaAngle,
         timezone: masjids.timezone,
       })
       .from(masjids)
@@ -45,6 +49,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       asr_madhab: masjid.asr_madhab,
       high_latitude_rule: masjid.high_latitude_rule,
       show_dual_asr: masjid.show_dual_asr,
+      fajr_angle: masjid.fajr_angle,
+      isha_angle: masjid.isha_angle,
       timezone: masjid.timezone,
     });
   } catch {
@@ -79,6 +85,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
     if (body.asr_madhab !== undefined) updateData.asrMadhab = body.asr_madhab;
     if (body.high_latitude_rule !== undefined) updateData.highLatitudeRule = body.high_latitude_rule;
     if (body.show_dual_asr !== undefined) updateData.showDualAsr = body.show_dual_asr;
+    if (body.fajr_angle !== undefined) updateData.fajrAngle = body.fajr_angle;
+    if (body.isha_angle !== undefined) updateData.ishaAngle = body.isha_angle;
     if (body.timezone !== undefined) updateData.timezone = body.timezone;
 
     if (Object.keys(updateData).length > 0) {
@@ -94,6 +102,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
         asr_madhab: masjids.asrMadhab,
         high_latitude_rule: masjids.highLatitudeRule,
         show_dual_asr: masjids.showDualAsr,
+        fajr_angle: masjids.fajrAngle,
+        isha_angle: masjids.ishaAngle,
         timezone: masjids.timezone,
       })
       .from(masjids)
@@ -105,6 +115,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
       asr_madhab: updated?.asr_madhab,
       high_latitude_rule: updated?.high_latitude_rule,
       show_dual_asr: updated?.show_dual_asr,
+      fajr_angle: updated?.fajr_angle,
+      isha_angle: updated?.isha_angle,
       timezone: updated?.timezone,
     });
   } catch (e: unknown) {
