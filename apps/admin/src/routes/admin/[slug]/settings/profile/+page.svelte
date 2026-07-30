@@ -68,29 +68,27 @@
   async function loadProfile() {
     try {
       const profile = await api.getProfile(auth.admin!.masjid_id);
-      form = {
-        name: profile.name || '',
-        address_line1: profile.address_line1 || '',
-        address_line2: profile.address_line2 || '',
-        city: profile.city || '',
-        state: profile.state || '',
-        postal_code: profile.postal_code || '',
-        country: profile.country || 'US',
-        contact_phone: profile.contact_phone || '',
-        contact_email: profile.contact_email || '',
-        facebook_url: profile.facebook_url || '',
-        youtube_url: profile.youtube_url || '',
-        instagram_url: profile.instagram_url || '',
-        website_url: profile.website_url || '',
-        external_donation_url: profile.external_donation_url || '',
-        calculation_method: profile.calculation_method || 2,
-        asr_madhab: profile.asr_madhab || 'shafi',
-        high_latitude_rule: profile.high_latitude_rule || 'seventh_of_night',
-        show_dual_asr: !!profile.show_dual_asr,
-        timezone: profile.timezone || 'America/Chicago',
-        latitude: profile.latitude || 0,
-        longitude: profile.longitude || 0,
-      };
+      form.name = profile.name || '';
+      form.address_line1 = profile.address_line1 || '';
+      form.address_line2 = profile.address_line2 || '';
+      form.city = profile.city || '';
+      form.state = profile.state || '';
+      form.postal_code = profile.postal_code || '';
+      form.country = profile.country || 'US';
+      form.contact_phone = profile.contact_phone || '';
+      form.contact_email = profile.contact_email || '';
+      form.facebook_url = profile.facebook_url || '';
+      form.youtube_url = profile.youtube_url || '';
+      form.instagram_url = profile.instagram_url || '';
+      form.website_url = profile.website_url || '';
+      form.external_donation_url = profile.external_donation_url || '';
+      form.calculation_method = profile.calculation_method || 2;
+      form.asr_madhab = profile.asr_madhab || 'shafi';
+      form.high_latitude_rule = profile.high_latitude_rule || 'seventh_of_night';
+      form.show_dual_asr = !!profile.show_dual_asr;
+      form.timezone = profile.timezone || 'America/Chicago';
+      form.latitude = profile.latitude || 0;
+      form.longitude = profile.longitude || 0;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load profile';
     } finally {

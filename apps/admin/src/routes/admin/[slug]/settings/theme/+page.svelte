@@ -141,24 +141,22 @@
       const profile = await api.getProfile(auth.admin!.masjid_id);
       const t = profile.theme;
       if (t) {
-        form = {
-          layout_preset: t.layout_preset || 'glass-dark',
-          primary_color: t.primary_color || '#1e3a8a',
-          accent_color: t.accent_color || '#10b981',
-          font_heading: t.font_heading || 'Inter',
-          font_body: t.font_body || 'Inter',
-          time_format: t.time_format || '24h',
-          label_adhaan: t.label_adhaan || '',
-          label_iqaamah: t.label_iqaamah || '',
-          label_jumuah: t.label_jumuah || '',
-          label_sunrise: t.label_sunrise || '',
-          label_fajr: t.label_fajr || '',
-          label_dhuhr: t.label_dhuhr || '',
-          label_asr: t.label_asr || '',
-          label_maghrib: t.label_maghrib || '',
-          label_isha: t.label_isha || '',
-            label_speech: t.label_speech || '',
-        };
+        form.layout_preset = t.layout_preset || 'glass-dark';
+        form.primary_color = t.primary_color || '#1e3a8a';
+        form.accent_color = t.accent_color || '#10b981';
+        form.font_heading = t.font_heading || 'Inter';
+        form.font_body = t.font_body || 'Inter';
+        form.time_format = t.time_format || '24h';
+        form.label_adhaan = t.label_adhaan || '';
+        form.label_iqaamah = t.label_iqaamah || '';
+        form.label_jumuah = t.label_jumuah || '';
+        form.label_sunrise = t.label_sunrise || '';
+        form.label_fajr = t.label_fajr || '';
+        form.label_dhuhr = t.label_dhuhr || '';
+        form.label_asr = t.label_asr || '';
+        form.label_maghrib = t.label_maghrib || '';
+        form.label_isha = t.label_isha || '';
+        form.label_speech = t.label_speech || '';
       }
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load theme';

@@ -67,6 +67,7 @@ import AnnouncementsPage from '../../routes/admin/[slug]/settings/announcements/
 import DomainPage from '../../routes/admin/[slug]/settings/domain/+page.svelte';
 import SnapshotsPage from '../../routes/admin/[slug]/settings/snapshots/+page.svelte';
 import AccountPage from '../../routes/admin/[slug]/settings/account/+page.svelte';
+import ProfilePage from '../../routes/admin/[slug]/settings/profile/+page.svelte';
 
 const slugData = { data: { masjidSlug: 'masjid-al-noor' } };
 
@@ -374,5 +375,99 @@ describe('Announcements page — save payload', () => {
     expect(mockCreateAnnouncement).toHaveBeenCalledTimes(1);
     const body = mockCreateAnnouncement.mock.calls[0][1] as Record<string, unknown>;
     expect(body.expires_at).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression: Profile page save sends valid enum values (not field names)
+// ---------------------------------------------------------------------------
+describe('Profile page — save payload', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      address_line1: '123 Main St',
+      address_line2: null,
+      city: 'Chicago',
+      state: 'IL',
+      postal_code: '60601',
+      country: 'US',
+      contact_phone: '+15551234567',
+      contact_email: 'admin@test.org',
+      facebook_url: null,
+      youtube_url: null,
+      instagram_url: null,
+      website_url: null,
+      external_donation_url: null,
+      calculation_method: 2,
+      asr_madhab: 'shafi',
+      high_latitude_rule: 'seventh_of_night',
+      show_dual_asr: false,
+      timezone: 'America/Chicago',
+      latitude: 41.8781,
+      longitude: -87.6298,
+      theme: null,
+    });
+  });
+
+  it('sends valid asr_madhab and high_latitude_rule on save', async () => {
+    render(ProfilePage, { props: slugData });
+
+    const saveBtn = await screen.findByText('Save Changes');
+    expect(saveBtn).toBeDisabled();
+
+    const cityInput = screen.getByLabelText('City');
+    await fireEvent.input(cityInput, { target: { value: 'Evanston' } });
+
+    expect(saveBtn).not.toBeDisabled();
+    await fireEvent.click(saveBtn);
+
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    const body = mockUpdateProfile.mock.calls[0][1] as Record<string, unknown>;
+
+    expect(body.asr_madhab).toBe('shafi');
+    expect(body.high_latitude_rule).toBe('seventh_of_night');
+    expect(body.name).toBe('Test Masjid');
+    expect(body.city).toBe('Evanston');
+    expect(body.latitude).toBe(41.8781);
+    expect(body.longitude).toBe(-87.6298);
+  });
+
+  it('sends correct asr_madhab when Show Both Asr is toggled', async () => {
+    render(ProfilePage, { props: slugData });
+
+    await screen.findByText('Save Changes');
+
+    const dualAsrCheckbox = screen.getByLabelText('Show both Asr times (Shafi + Hanafi)');
+    await fireEvent.click(dualAsrCheckbox);
+
+    const saveBtn = screen.getByText('Save Changes');
+    await fireEvent.click(saveBtn);
+
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    const body = mockUpdateProfile.mock.calls[0][1] as Record<string, unknown>;
+
+    expect(body.show_dual_asr).toBe(true);
+    expect(body.asr_madhab).toBe('shafi');
+    expect(body.asr_madhab).not.toBe('asr_madhab');
+    expect(body.high_latitude_rule).toBe('seventh_of_night');
+    expect(body.high_latitude_rule).not.toBe('high_latitude_rule');
+  });
+
+  it('sends changed asr_madhab value from select', async () => {
+    render(ProfilePage, { props: slugData });
+
+    const saveBtn = await screen.findByText('Save Changes');
+
+    const asrSelect = screen.getByLabelText('Asr Madhab');
+    await fireEvent.change(asrSelect, { target: { value: 'hanafi' } });
+
+    expect(saveBtn).not.toBeDisabled();
+    await fireEvent.click(saveBtn);
+
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    const body = mockUpdateProfile.mock.calls[0][1] as Record<string, unknown>;
+
+    expect(body.asr_madhab).toBe('hanafi');
   });
 });
