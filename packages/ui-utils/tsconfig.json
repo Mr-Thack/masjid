@@ -2,7 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // applyTheme writes to the document; the package's consumers are DOM apps
+    "lib": ["ES2022", "DOM"]
   },
   "include": ["src"]
 }

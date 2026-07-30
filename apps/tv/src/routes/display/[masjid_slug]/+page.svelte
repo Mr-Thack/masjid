@@ -20,9 +20,9 @@
   import Countdown from '$lib/components/Countdown.svelte';
   import JumuahNotice from '$lib/components/JumuahNotice.svelte';
   import AnalogClock from '$lib/components/AnalogClock.svelte';
-  import Rosette from '$lib/components/Rosette.svelte';
+  import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
   import HoneycombFrame from '$lib/components/HoneycombFrame.svelte';
-  import StarBandFrame from '$lib/components/StarBandFrame.svelte';
+  import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
   import ArchCrest from '$lib/components/ArchCrest.svelte';
   import SoulColumn from '$lib/components/SoulColumn.svelte';
   import CeremonyOverlay from '$lib/components/CeremonyOverlay.svelte';
@@ -447,7 +447,7 @@
         <section class="tv-grid-section">
           <div class="prayer-board-panel">
             {#if styleOptions.motif === 'eight-point-star'}
-              <StarBandFrame />
+              <StarBand />
             {:else if styleOptions.motif === 'honeycomb'}
               <HoneycombFrame />
             {/if}

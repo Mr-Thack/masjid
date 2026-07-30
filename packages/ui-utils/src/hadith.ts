@@ -185,6 +185,24 @@ export function dayOfYear(date: Date): number {
 }
 
 /**
+ * Occasion tags for context-seeded hadith (§4: Fajr virtues at Fajr,
+ * Jumu'ah hadith on Friday, Ramadan hadith in Ramadan). Shared by the TV
+ * soul column and the consumer Hadith of the Day card (§7.11).
+ */
+export function hadithTagsForContext(ctx: {
+  dayOfWeek: number;
+  ramadan?: boolean;
+  currentPrayer?: string | null;
+}): HadithTag[] {
+  const tags: HadithTag[] = [];
+  if (ctx.dayOfWeek === 5) tags.push('jumuah');
+  if (ctx.ramadan) tags.push('ramadan');
+  if (ctx.currentPrayer === 'fajr') tags.push('fajr');
+  if (ctx.currentPrayer) tags.push('prayer');
+  return tags;
+}
+
+/**
  * Deterministic hadith of the day. When `tags` are given and at least one
  * entry matches, the pick is seeded within that occasion pool (Jumu'ah
  * hadith on Friday, Fajr virtues at Fajr); otherwise the whole collection

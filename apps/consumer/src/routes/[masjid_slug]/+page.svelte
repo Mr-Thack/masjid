@@ -3,9 +3,22 @@
   import PrayerList from '$lib/components/PrayerList.svelte';
   import DonateButton from '$lib/components/DonateButton.svelte';
   import SkeletonPrayerCard from '$lib/components/SkeletonPrayerCard.svelte';
+  import HeroNiche from '$lib/components/HeroNiche.svelte';
+  import HadithCard from '$lib/components/HadithCard.svelte';
   import { fetchPrayerTimes, type PrayerTimes } from '$lib/api';
   import { formatTime } from '$lib/time';
-  import { findNearestIqaamahChanges } from '@masjid/ui-utils';
+  import {
+    computeCeremony,
+    findNearestIqaamahChanges,
+    getHadithOfTheDay,
+    getHijriPartsCached,
+    hadithTagsForContext,
+    parseStyleOptions,
+    resolveStyleOptions,
+    resolveStyleSystem,
+    type PrayerKey,
+    type PrayerWindow,
+  } from '@masjid/ui-utils';
   import type { DailyTimes } from '@masjid/schemas';
 
   let data = $derived($page.data);
@@ -124,6 +137,91 @@
     }),
   );
 
+  // ── Mishkaat (docs/design-language.md §7.11) ─────────────────────────────
+  let mishkaat = $derived(resolveStyleSystem(theme) === 'mishkaat');
+
+  let nowSeconds = $derived(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds());
+
+  function toMinutes(t: string | null | undefined): number | null {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    return h != null && m != null && Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+  }
+
+  // Ceremony state machine (§7.6) — on the phone it drives only the hero
+  // moment + hadith occasion tags; full-screen overlays stay on the TV.
+  let ceremony = $derived.by(() => {
+    if (!mishkaat || !prayerTimes) return null;
+    const windows = {} as Record<PrayerKey, PrayerWindow>;
+    for (const name of prayerNames) {
+      const adhaan = toMinutes(prayerTimes[name]?.adhaan);
+      const iqaamah = toMinutes(prayerTimes[name]?.iqaamah);
+      if (adhaan == null || iqaamah == null) return null;
+      windows[name] = { adhaan, iqaamah };
+    }
+    const sunriseMinutes = toMinutes(prayerTimes.sunrise);
+    if (sunriseMinutes == null) return null;
+    const options = resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null));
+    return computeCeremony({
+      nowSeconds,
+      dayOfWeek: now.getDay(),
+      prayers: windows,
+      sunriseMinutes,
+      hijri: getHijriPartsCached(now),
+      quietHours: options.quietHours,
+      ambientEnabled: false, // the ambient background is the layout's job
+    });
+  });
+
+  // Hero moment: at adhaan the hero names the prayer; between adhaan and
+  // iqaamah it counts down to iqaamah; otherwise the usual countdown.
+  let heroMoment = $derived.by(() => {
+    const c = ceremony;
+    if (!c) return null;
+    if (c.state === 'adhaan' && c.prayer) return { kind: 'adhaan' as const, prayer: c.prayer };
+    if (c.state === 'iqaamah-countdown' && c.prayer && c.countdownEndsAtSeconds != null) {
+      return { kind: 'iqaamah' as const, prayer: c.prayer, endsAt: c.countdownEndsAtSeconds };
+    }
+    return null;
+  });
+
+  let heroLabel = $derived.by(() => {
+    if (heroMoment?.kind === 'adhaan') return theme?.label_adhaan ?? 'Adhaan';
+    if (heroMoment?.kind === 'iqaamah') {
+      return `${prayerLabels[heroMoment.prayer]} ${theme?.label_iqaamah ?? 'Iqaamah'} in`;
+    }
+    return `${nextPrayerName} in`;
+  });
+
+  let heroCountdown = $derived.by(() => {
+    if (heroMoment?.kind === 'iqaamah') {
+      const left = Math.max(0, heroMoment.endsAt - nowSeconds);
+      const hrs = Math.floor(left / 3600);
+      const mins = Math.floor((left % 3600) / 60);
+      const secs = left % 60;
+      return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return countdownDisplay;
+  });
+
+  // Hadith of the Day — same curated collection + date-seeded pick as the
+  // TV hadith frame, context-seeded by Friday / Ramadan / current prayer.
+  let hadith = $derived.by(() => {
+    if (!mishkaat) return null;
+    const currentPrayer = currentPrayerIndex >= 0 ? prayerNames[currentPrayerIndex] : null;
+    return getHadithOfTheDay(
+      now,
+      hadithTagsForContext({
+        dayOfWeek: now.getDay(),
+        ramadan: ceremony?.modifiers.ramadan ?? false,
+        currentPrayer,
+      }),
+    );
+  });
+
+  // Jumu'ah pinning — mirrors the soul-column rule: pinned Thursday–Friday.
+  let jumuahPinned = $derived(mishkaat && hasJumuah && (now.getDay() === 4 || now.getDay() === 5));
+
   $effect(() => {
     const t = setInterval(() => {
       now = new Date();
@@ -218,6 +316,23 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 space-y-6">
     <section class="text-center py-6">
+      {#if mishkaat}
+        <h1 class="text-2xl sm:text-3xl font-bold mb-5 font-heading">
+          {masjid?.name ?? 'Masjid'}
+        </h1>
+        <HeroNiche>
+          <span class="c-hero-label">{heroLabel}</span>
+          {#if heroMoment?.kind === 'adhaan'}
+            <span class="c-hero-moment">{prayerLabels[heroMoment.prayer]}</span>
+          {:else}
+            <span class="c-hero-countdown">{heroCountdown}</span>
+          {/if}
+          <div class="c-hero-dates">
+            <p class="c-hero-gregorian">{gregorianDate}</p>
+            <p class="c-hero-hijri">{hijriDate}</p>
+          </div>
+        </HeroNiche>
+      {:else}
       <div class="relative">
         <div class="geometric-pattern absolute inset-0 rounded-2xl"></div>
         <div class="relative z-10">
@@ -238,6 +353,7 @@
           <p class="text-xs" style="color: var(--color-text-dim);">{hijriDate}</p>
         </div>
       </div>
+      {/if}
     </section>
 
     <section>
@@ -251,6 +367,7 @@
           timeFormat={theme?.time_format ?? '24h'}
           {currentPrayerIndex}
           {nextPrayerIndex}
+          rosetteMarker={mishkaat}
         />
       {:else}
         <div class="flex flex-wrap justify-center gap-3">
@@ -262,6 +379,10 @@
         </div>
       {/if}
     </section>
+
+    {#if hadith}
+      <HadithCard entry={hadith} />
+    {/if}
 
     {#if upcomingChanges.length > 0}
       <section>
@@ -295,21 +416,7 @@
     {/if}
   </div>
 
-  <aside class="space-y-6 lg:pt-6">
-    {#if pinnedAnnouncement}
-      <section>
-        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
-          Announcement
-        </h2>
-        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
-          <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
-          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
-            {@html pinnedAnnouncement.compiled_html}
-          </div>
-        </div>
-      </section>
-    {/if}
-
+  {#snippet jumuahSection()}
     {#if hasJumuah}
       <section>
         <h2 class="text-lg font-semibold mb-1 uppercase tracking-wider text-accent font-heading">
@@ -331,6 +438,30 @@
           {/each}
         </div>
       </section>
+    {/if}
+  {/snippet}
+
+  <aside class="space-y-6 lg:pt-6">
+    {#if jumuahPinned}
+      {@render jumuahSection()}
+    {/if}
+
+    {#if pinnedAnnouncement}
+      <section>
+        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
+          Announcement
+        </h2>
+        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
+          <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
+          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+            {@html pinnedAnnouncement.compiled_html}
+          </div>
+        </div>
+      </section>
+    {/if}
+
+    {#if !jumuahPinned}
+      {@render jumuahSection()}
     {/if}
 
     {#if masjid?.external_donation_url}

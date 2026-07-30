@@ -151,6 +151,173 @@ svg {
   pointer-events: none;
 }
 
+/* App shell root — same values the layout used to set inline; a class so the
+   Mishkaat ambient palette (below) can override the background. */
+.c-app {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Mishkaat (docs/design-language.md §7.11 — consumer adaptation)
+   Everything below keys off data-style-system; Sakeenah output is unchanged.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Hero mihrab niche: one arch per screen, apex rosette, tone-on-tone. */
+.c-hero-niche {
+  position: relative;
+  width: 100%;
+  max-width: 20rem;
+  margin-inline: auto;
+  aspect-ratio: 140 / 150;
+  color: var(--color-accent);
+}
+.c-hero-arch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.c-hero-arch-line {
+  fill: none;
+  stroke: currentColor;
+}
+.c-hero-arch-line--outer {
+  stroke-width: 1.6;
+  opacity: 0.55;
+}
+.c-hero-arch-line--inner {
+  stroke-width: 1;
+  opacity: 0.3;
+}
+.c-hero-arch-rosette rect {
+  fill: currentColor;
+  opacity: 0.75;
+}
+/* Content sits inside the arch belly: below the apex rosette, between the
+   inner echo curves, above the leg floor. Never over the lines. */
+.c-hero-niche-body {
+  position: absolute;
+  inset: 0;
+  padding: 27% 17% 6%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  color: var(--color-text);
+}
+.c-hero-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+}
+.c-hero-countdown {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 8.5vw, 2.35rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+.c-hero-moment {
+  font-family: var(--font-display, var(--font-heading));
+  font-size: clamp(1.5rem, 7vw, 2rem);
+  line-height: 1.2;
+  color: var(--color-accent);
+}
+.c-hero-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.c-hero-dates .c-hero-gregorian {
+  font-size: 0.78rem;
+  color: var(--color-text-dim);
+}
+.c-hero-dates .c-hero-hijri {
+  font-size: 0.68rem;
+  color: var(--color-text-dim);
+}
+
+/* Star-and-octagon band: one slim tiling row bracketing the header. */
+.c-starband-strip {
+  position: relative;
+  height: 26px;
+  margin-top: 0.5rem;
+}
+
+/* Header identity glyph replaces the letter avatar under Mishkaat. */
+.c-header-rosette {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  border: 1px solid var(--color-border-hover);
+  border-radius: 50%;
+}
+
+/* Hadith of the Day — manuscript discipline: Arabic leads, source always. */
+.c-hadith-card {
+  padding: 1.25rem 1.5rem;
+  text-align: center;
+}
+.c-hadith-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--color-accent);
+}
+.c-hadith-arabic {
+  margin: 0 0 0.6rem;
+  font-family: var(--font-display, var(--font-heading));
+  font-size: 1.35rem;
+  line-height: 2.1;
+  color: var(--color-text);
+}
+.c-hadith-english {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+.c-hadith-source {
+  margin: 0;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-dim);
+}
+
+/* Current-prayer rosette marker on prayer cards. */
+.c-prayer-rosette {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  color: var(--color-accent);
+}
+
+/* Ambient palette (§7.4, mild mobile version): background breathes with
+   prayer-linked solar phases. Same tint values as the TV; text colors never
+   change. Applied only when the ambient option is on (data attr present). */
+html[data-style-system='mishkaat'] .c-app[data-ambient-phase='predawn'] { background-color: #0c111d; }
+html[data-style-system='mishkaat'] .c-app[data-ambient-phase='sunrise'] { background-color: #1d1408; }
+html[data-style-system='mishkaat'] .c-app[data-ambient-phase='midday']  { background-color: #17100a; }
+html[data-style-system='mishkaat'] .c-app[data-ambient-phase='amber']   { background-color: #1c1106; }
+html[data-style-system='mishkaat'] .c-app[data-ambient-phase='night']   { background-color: #0e0a06; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -4,11 +4,12 @@
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 470 tests)
 - **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
-- **Working consumer frontend** (SvelteKit static/SPA, 53 tests)
+- **Working consumer frontend** (SvelteKit static/SPA, 74 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
+- **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Sakeenah consumer pages byte-identical. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
@@ -34,7 +35,7 @@ npm run dev --workspace=@masjid/admin        # port 5176
 npm run test             # API unit tests, 470 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
 npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
-npm run test:consumer    # Consumer frontend, 53 tests (jsdom + testing-library)
+npm run test:consumer    # Consumer frontend, 74 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:agent       # Agent package tests (pending: ~175 expected)
@@ -70,7 +71,7 @@ npm run test:all         # everything (excluding test:sw and test:admin since th
 ```
 masjid/
   packages/schemas/          — Shared Zod types (Theme, Announcement, Jumuah, etc.)
-  packages/ui-utils/         — Shared UI helpers: theme presets, applyTheme, prayer-change utilities
+  packages/ui-utils/         — Shared UI helpers: theme presets, applyTheme, prayer-change utilities, Mishkaat shared modules (components/Rosette + StarBand, arch.ts geometry, ceremony.ts state machine, hadith.ts collection)
   packages/agent/            — Shared bot logic: LLM runner, 22 MCP tools, prompts, api-client, session, media
   apps/api/                  — SvelteKit API + Drizzle ORM + Prayer engine
   apps/tv/                   — SvelteKit static, display-only (kiosk/TV)
@@ -122,7 +123,8 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 - **Integration tests**: `apps/consumer/tests/sw-integration.test.js` (Playwright, 26 tests)
 
 ### Theme & display settings (extensible, per-masjid)
-- **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV.
+- **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV. Also hosts the shared Mishkaat modules: `components/Rosette.svelte` + `components/StarBand.svelte` (subpath exports `@masjid/ui-utils/components/*`), `arch.ts` (canonical mihrab geometry), `ceremony.ts` (`computeCeremony`, `getAmbientPhase`, Hijri helpers — TV re-exports via `$lib/ceremony`), `hadith.ts` (collection + `hadithTagsForContext`).
+- **Mishkaat consumer adaptation (§7.11)**: `style_system` flows through the page payload; pages branch via `resolveStyleSystem(theme)`. Hero mihrab niche (`HeroNiche`), header star band + rosette glyph, `HadithCard`, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments, ambient background via `src/lib/ambient.ts` (`data-ambient-phase` on the app root), `rosetteMarker` on PrayerCard. All Mishkaat CSS keys off `html[data-style-system='mishkaat']` or renders only under the branch — Sakeenah byte-identical.
 - **`src/lib/theme/context.svelte.ts`**: Thin re-export of `applyTheme` from `@masjid/ui-utils` for consumer-specific import paths.
 - **`layout_preset` field** in `masjid_themes` table switches presets. Al-Noor seeds to `'mishkaat'` (Mishkaat style system); Al-Jabal seeds to `'minimal-light'` (Sakeenah). Unknown values fall through to the style system's default preset.
 - **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerCard`, `PrayerList`, and the weekly prayer view.
@@ -140,8 +142,10 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 ### Component library (`src/lib/components/`)
 | Component | Purpose |
 |---|---|
-| `PrayerCard` | Single prayer time card (adhaan + iqaamah, sunrise line for Fajr, current/next badges, optional right-after-adhaan collapse) |
+| `PrayerCard` | Single prayer time card (adhaan + iqaamah, sunrise line for Fajr, current/next badges, optional right-after-adhaan collapse, `rosetteMarker` prop for the Mishkaat current-prayer rosette) |
 | `PrayerList` | Wrapping grid of PrayerCards with current + next prayer index logic |
+| `HeroNiche` | Mishkaat hero: canonical mihrab arch + apex rosette framing the countdown (§7.11) |
+| `HadithCard` | Mishkaat Hadith of the Day (Arabic RTL + English + source, rosette-flanked heading) |
 | `AnnouncementCard` | Expandable announcement (title, date, compiled_html, pin badge) |
 | `DonateButton` | External donation link CTA (heart + external link icons) |
 | `LoadingSpinner` | Centered spinning loader |

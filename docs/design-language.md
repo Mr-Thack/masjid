@@ -319,6 +319,52 @@ The screen participates in the salah. Triggered by server-synchronized time (§7
   nothing).
 - **Density option** (`density: 'standard' | 'large-print'`) for aging congregations.
 
+### 7.11 Consumer (mobile) adaptation
+
+The TV serves a room; the phone serves a person. The consumer app takes Mishkaat's
+soul in still form — the palette, typography, and `data-style-system` plumbing were
+already shared via `applyTheme`; this section adds the structural layer, all keyed
+off `style_system === 'mishkaat'` with Sakeenah byte-identical.
+
+**Carries over (adapted):**
+
+- **The hero is the mihrab.** The countdown hero renders inside the canonical
+  mihrab arch (same shared geometry as the TV clock niche — `ui-utils/arch.ts`),
+  apex rosette, tone-on-tone. One arch per screen. The blurred-blob
+  `geometric-pattern` backdrop is a Sakeenah-only device.
+- **Star-and-octagon band** brackets the sticky header (one slim tiling row), and
+  the **rosette** replaces the letter avatar as the header identity glyph
+  (engraved logo slot per §7.8, Phase 4).
+- **Hadith of the Day card** — the TV hadith frame as a static card (Arabic +
+  English + source, same curated collection, same date-seeded pick, same
+  occasion tags via `hadithTagsForContext`).
+- **Jumu'ah pinning** mirrors the soul-column rule: the Jumu'ah card leads the
+  sidebar Thursday–Friday.
+- **Hero moments** — the same shared `computeCeremony` state machine drives the
+  hero only: at adhaan it names the prayer; adhaan→iqaamah it counts down to
+  iqaamah; otherwise the usual next-iqaamah countdown.
+- **Ambient palette (mild)** — `data-ambient-phase` on the app root shifts the
+  background tint per solar phase (same tint values as the TV). Off when the
+  `ambient` style option is off. Text colors never shift.
+- **Current-prayer rosette marker** on the prayer card (the board marker, card
+  scale).
+
+**Does not carry over (and why):**
+
+- **Ceremony overlays and the night calm veil** — full-screen states serve a
+  room; they would interrupt a utility surface a person opened on purpose.
+- **Frame rotation / soul column** — the motion budget becomes *user scroll*;
+  the same content renders as still cards.
+- **The board roll** — upcoming changes already have a list treatment.
+- **RTL soul-column layout** — mobile is a single vertical column.
+- **Server-time sync** — phone clocks are NTP-synced.
+
+**Mobile budgets:** no auto-rotation (transitions only), silence (unchanged),
+ornament at edges only — one arch (hero), one motif (header band), never behind
+a numeral. Shared pieces live in `@masjid/ui-utils` (`components/Rosette.svelte`,
+`components/StarBand.svelte`, `arch.ts`, `ceremony.ts`); consumer-only pieces in
+`apps/consumer/src/lib` (`HeroNiche.svelte`, `HadithCard.svelte`, `ambient.ts`).
+
 ---
 
 ## 8. Data model & code map
@@ -347,6 +393,8 @@ style_options TEXT NOT NULL DEFAULT '{}'         -- JSON, interpreted per style 
 | Zod schema (styleSystem enum, styleOptions passthrough) | `packages/schemas/src/masjid.ts` |
 | TV implementation (no Tailwind — hand-written CSS only) | `apps/tv/src/app.css`, `apps/tv/src/lib/components/` |
 | Consumer theming | `apps/consumer/src/app.css` (`@theme` bridge unchanged) |
+| Consumer Mishkaat adaptation (§7.11) | `apps/consumer/src/lib/components/HeroNiche.svelte`, `HadithCard.svelte`, `src/lib/ambient.ts`, Mishkaat CSS block in `app.css` |
+| Shared ornaments & state machine (both apps) | `packages/ui-utils/src/components/` (`Rosette.svelte`, `StarBand.svelte`), `arch.ts` (canonical mihrab geometry), `ceremony.ts` (`computeCeremony`, `getAmbientPhase`, Hijri helpers) |
 | Hadith collection (new, curated JSON: arabic, english, source, occasion tags) | `packages/ui-utils/src/hadith.ts` (or new package data module) |
 | Code identifiers | plain English: `hadithFrame`, `quietMode`, `ambientPalette`, `soulColumn`, `ceremonyState` |
 

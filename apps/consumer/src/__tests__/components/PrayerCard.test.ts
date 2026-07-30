@@ -78,4 +78,27 @@ describe('PrayerCard', () => {
     });
     expect(screen.getByText('Asr: 16:45')).toBeDefined();
   });
+
+  describe('rosetteMarker (Mishkaat)', () => {
+    it('renders the rosette marker on the current prayer when enabled', () => {
+      const { container } = render(PrayerCard, {
+        props: { ...defaultProps, isCurrent: true, rosetteMarker: true },
+      });
+      expect(container.querySelector('.c-prayer-rosette svg.rosette')).not.toBeNull();
+    });
+
+    it('does not render the rosette when the card is not current', () => {
+      const { container } = render(PrayerCard, {
+        props: { ...defaultProps, isNext: true, rosetteMarker: true },
+      });
+      expect(container.querySelector('.c-prayer-rosette')).toBeNull();
+    });
+
+    it('does not render the rosette when rosetteMarker is off (Sakeenah)', () => {
+      const { container } = render(PrayerCard, {
+        props: { ...defaultProps, isCurrent: true },
+      });
+      expect(container.querySelector('.c-prayer-rosette')).toBeNull();
+    });
+  });
 });

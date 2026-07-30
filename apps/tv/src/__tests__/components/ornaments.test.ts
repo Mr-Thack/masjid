@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
-import Rosette from '$lib/components/Rosette.svelte';
+import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
 import HoneycombFrame from '$lib/components/HoneycombFrame.svelte';
-import StarBandFrame from '$lib/components/StarBandFrame.svelte';
+import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
 import ArchCrest from '$lib/components/ArchCrest.svelte';
 
 // ---------------------------------------------------------------------------
@@ -72,23 +72,23 @@ describe('HoneycombFrame', () => {
   });
 });
 
-describe('StarBandFrame', () => {
+describe('StarBand', () => {
   it('renders a full-size absolutely-positioned SVG frame', () => {
-    const { container } = render(StarBandFrame);
+    const { container } = render(StarBand);
     const svg = container.querySelector('svg.starband-frame');
     expect(svg).toBeTruthy();
     expect(svg?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('draws the band with a starband pattern stroke', () => {
-    const { container } = render(StarBandFrame);
+    const { container } = render(StarBand);
     const rect = container.querySelector('rect');
     expect(rect?.getAttribute('stroke')).toBe('url(#starband-tile)');
     expect(rect?.getAttribute('fill')).toBe('none');
   });
 
   it('defines the khatam tile: eight-point star + interlocking octagons', () => {
-    const { container } = render(StarBandFrame);
+    const { container } = render(StarBand);
     const pattern = container.querySelector('pattern#starband-tile');
     expect(pattern).toBeTruthy();
     expect(pattern?.getAttribute('patternUnits')).toBe('userSpaceOnUse');
@@ -100,9 +100,9 @@ describe('StarBandFrame', () => {
   });
 
   it('sizes the stroke band from the band prop (default ≥ one row, no notches)', () => {
-    const { container } = render(StarBandFrame);
+    const { container } = render(StarBand);
     expect(Number(container.querySelector('rect')?.getAttribute('stroke-width'))).toBeGreaterThanOrEqual(52);
-    const custom = render(StarBandFrame, { props: { band: 30 } });
+    const custom = render(StarBand, { props: { band: 30 } });
     expect(custom.container.querySelector('rect')?.getAttribute('stroke-width')).toBe('60');
   });
 });

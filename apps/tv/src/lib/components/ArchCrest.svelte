@@ -4,36 +4,47 @@
    * screen, with the eight-point star rosette at its apex. Rendered as a
    * tone-on-tone outline — ornament, never behind numerals.
    *
-   * The arch is the niche for the clock + digital time + next-prayer
-   * indicators (soul column, `.tv-clock-niche`). The viewBox is a wide,
-   * tall mihrab (140×150, legs down to y=146): the broad curved belly
-   * inscribes the clock, and the straight hall between the legs holds the
-   * text stack.
+   * The arch is the niche for the clock + next-prayer indicators (soul
+   * column, `.tv-clock-niche`). Geometry is the canonical shared mihrab
+   * from `@masjid/ui-utils` (`arch.ts`) — the same arch the consumer hero
+   * niche draws (§7.11).
    */
+  import {
+    MIHRAB_APEX_ROSETTE,
+    MIHRAB_ARCH_VIEWBOX,
+    MIHRAB_INNER_PATH,
+    MIHRAB_OUTER_PATH,
+  } from '@masjid/ui-utils';
+
   let { width = 140 }: { width?: number } = $props();
 </script>
 
 <svg
-  viewBox="0 0 140 150"
+  viewBox="0 0 {MIHRAB_ARCH_VIEWBOX.width} {MIHRAB_ARCH_VIEWBOX.height}"
   width={width}
   class="arch-crest"
   aria-hidden="true"
   focusable="false"
 >
   <!-- outer arch -->
-  <path
-    d="M 10 146 L 10 64 C 10 30 46 22 70 8 C 94 22 130 30 130 64 L 130 146"
-    class="arch-line arch-line--outer"
-  />
+  <path d={MIHRAB_OUTER_PATH} class="arch-line arch-line--outer" />
   <!-- inner echo -->
-  <path
-    d="M 21 146 L 21 66 C 21 38 52 29 70 19 C 88 29 119 38 119 66 L 119 146"
-    class="arch-line arch-line--inner"
-  />
+  <path d={MIHRAB_INNER_PATH} class="arch-line arch-line--inner" />
   <!-- rosette at the apex -->
-  <g transform="translate(70 8)" class="arch-rosette">
-    <rect x="-4.6" y="-4.6" width="9.2" height="9.2" />
-    <rect x="-4.6" y="-4.6" width="9.2" height="9.2" transform="rotate(45)" />
+  <g transform="translate({MIHRAB_APEX_ROSETTE.x} {MIHRAB_APEX_ROSETTE.y})" class="arch-rosette">
+    <rect
+      x={-MIHRAB_APEX_ROSETTE.size / 2}
+      y={-MIHRAB_APEX_ROSETTE.size / 2}
+      width={MIHRAB_APEX_ROSETTE.size}
+      height={MIHRAB_APEX_ROSETTE.size}
+    />
+    <rect
+      x={-MIHRAB_APEX_ROSETTE.size / 2}
+      y={-MIHRAB_APEX_ROSETTE.size / 2}
+      width={MIHRAB_APEX_ROSETTE.size}
+      height={MIHRAB_APEX_ROSETTE.size}
+      transform="rotate(45)"
+    />
   </g>
 </svg>
 

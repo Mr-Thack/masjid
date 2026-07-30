@@ -7,8 +7,11 @@
    * header rosette, so the whole screen shares one geometry. Tone-on-tone,
    * edges only, never behind a numeral.
    *
-   * As with the honeycomb band, the band MUST be at least one row tall
-   * (~26px) with air around the stars, or the tiling clips into mush.
+   * Shared by the TV display (panel brackets) and the consumer app
+   * (header band, §7.11).
+   *
+   * The band MUST be at least one row tall (~26px) with air around the
+   * stars, or the tiling clips into mush.
    *
    * Tiling math (tile 34 × 26):
    *  - star circumradius 10 at (17, 13): two squares, one rotated 45°

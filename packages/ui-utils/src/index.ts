@@ -21,10 +21,34 @@ export {
 export {
   dayOfYear,
   getHadithOfTheDay,
+  hadithTagsForContext,
   HADITH_COLLECTION,
   type HadithEntry,
   type HadithTag,
 } from './hadith.js';
+export {
+  ADHAAN_MOMENT_SECONDS,
+  computeCeremony,
+  getAmbientPhase,
+  getHijriParts,
+  getHijriPartsCached,
+  inWindowSeconds,
+  PRAYER_DURATION_MINUTES,
+  type AmbientPhase,
+  type CeremonyInput,
+  type CeremonyModifiers,
+  type CeremonyResult,
+  type CeremonyStateKind,
+  type HijriParts,
+  type PrayerKey,
+  type PrayerWindow,
+} from './ceremony.js';
+export {
+  MIHRAB_APEX_ROSETTE,
+  MIHRAB_ARCH_VIEWBOX,
+  MIHRAB_INNER_PATH,
+  MIHRAB_OUTER_PATH,
+} from './arch.js';
 export {
   findNearestIqaamahChanges,
   type DayWithTimes,

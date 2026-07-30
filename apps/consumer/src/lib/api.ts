@@ -49,6 +49,10 @@ export interface PagePayload {
     font_body: string;
     font_heading: string;
     layout_preset: string;
+    /** Style system: 'sakeenah' (default) or 'mishkaat' (docs/design-language.md). */
+    style_system?: string;
+    /** Per-system theme options (JSON); see StyleOptionsSchema in @masjid/schemas. */
+    style_options?: Record<string, unknown>;
     time_format: '12h' | '24h';
     label_adhaan: string;
     label_iqaamah: string;

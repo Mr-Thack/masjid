@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatTime, type TimeFormat } from '$lib/time';
+  import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
 
   let {
     name,
@@ -16,6 +17,7 @@
     isPast = false,
     asrSecondary,
     asrSecondaryLabel,
+    rosetteMarker = false,
   }: {
     name: string;
     adhaan: string;
@@ -31,6 +33,8 @@
     isPast?: boolean;
     asrSecondary?: string | null;
     asrSecondaryLabel?: string;
+    /** Mishkaat: rosette glyph on the current prayer (§7.11). */
+    rosetteMarker?: boolean;
   } = $props();
 
   let formattedAdhaan = $derived(formatTime(adhaan, timeFormat));
@@ -47,6 +51,12 @@
   class:opacity-100={!isPast}
   style="border-color: {isCurrent ? 'var(--color-primary)' : isNext ? 'var(--color-accent)' : ''};"
 >
+  {#if rosetteMarker && isCurrent}
+    <div class="c-prayer-rosette" aria-hidden="true">
+      <Rosette size={14} />
+    </div>
+  {/if}
+
   {#if isCurrent}
     <div class="absolute top-2 right-2">
       <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full text-white bg-primary">

@@ -24,12 +24,15 @@
     timeFormat = '24h',
     currentPrayerIndex = -1,
     nextPrayerIndex = -1,
+    rosetteMarker = false,
   }: {
     times: PrayerEntry[];
     labels: LabelSet;
     timeFormat?: TimeFormat;
     currentPrayerIndex?: number;
     nextPrayerIndex?: number;
+    /** Mishkaat: mark the current prayer with the rosette glyph (§7.11). */
+    rosetteMarker?: boolean;
   } = $props();
 </script>
 
@@ -51,6 +54,7 @@
         isCurrent={i === currentPrayerIndex}
         isNext={i === nextPrayerIndex}
         isPast={currentPrayerIndex >= 0 ? i < currentPrayerIndex : i < nextPrayerIndex && nextPrayerIndex >= 0}
+        {rosetteMarker}
       />
     </div>
   {/each}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Rosette from './Rosette.svelte';
+  import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
   import type { BoardPhase } from '$lib/board-cycle';
 
   interface PrayerEntry {

@@ -3,6 +3,10 @@
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import type { Snippet } from 'svelte';
   import { applyTheme } from '$lib/theme/context.svelte.ts';
+  import { ambientPhaseFor } from '$lib/ambient';
+  import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
+  import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
+  import { resolveStyleSystem } from '@masjid/ui-utils';
 
   let { children }: { children: Snippet } = $props();
 
@@ -33,6 +37,22 @@
   });
 
   let embed = $derived($page.url.searchParams.has('embed'));
+
+  // Mishkaat (docs/design-language.md §7.11): style-system branch for the
+  // ornament layer — Sakeenah markup stays exactly as before.
+  let mishkaat = $derived(resolveStyleSystem(theme) === 'mishkaat');
+
+  let now = $state(new Date());
+  $effect(() => {
+    const t = setInterval(() => {
+      now = new Date();
+    }, 60_000);
+    return () => clearInterval(t);
+  });
+
+  // Ambient palette (§7.4, mild mobile version): one background tint per
+  // solar phase, driven by the same shared helper as the TV.
+  let ambientPhase = $derived(ambientPhaseFor(theme, $page.data.prayer_times, now));
 
   const navItems = [
     {
@@ -84,8 +104,8 @@
 </svelte:head>
 
 <div
-  class="min-h-dvh flex flex-col"
-  style="background-color: var(--color-bg); color: var(--color-text);"
+  class="min-h-dvh flex flex-col c-app"
+  data-ambient-phase={ambientPhase ?? undefined}
 >
   {#if !embed}
     <header
@@ -94,9 +114,15 @@
     >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
       <a href={navHref('')} class="flex items-center gap-3 no-underline min-w-0">
+        {#if mishkaat}
+          <div class="c-header-rosette" aria-hidden="true">
+            <Rosette size={20} stroke />
+          </div>
+        {:else}
         <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold bg-primary text-white flex-shrink-0">
           {masjid?.name?.charAt(0) ?? 'M'}
         </div>
+        {/if}
         <div class="flex flex-col min-w-0">
           <span class="text-lg font-bold leading-tight font-heading truncate" style="color: var(--color-text);">
             {masjid?.name ?? 'Masjid'}
@@ -120,6 +146,11 @@
         {/each}
       </nav>
     </div>
+    {#if mishkaat}
+      <div class="c-starband-strip" aria-hidden="true">
+        <StarBand band={26} />
+      </div>
+    {/if}
   </header>
   {/if}
 

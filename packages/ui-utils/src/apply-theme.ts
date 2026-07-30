@@ -117,5 +117,5 @@ export function applyTheme(theme: ThemeInput | null | undefined): void {
   document.body.style.fontFamily = `var(--font-body)`;
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', vars['--color-primary']);
+  if (meta) meta.setAttribute('content', vars['--color-primary'] ?? '');
 }

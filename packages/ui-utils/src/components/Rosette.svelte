@@ -4,6 +4,8 @@
    * (docs/design-language.md §7.3): current-prayer marker, header divider,
    * arch apex detail. Two overlapping squares rotated 45°.
    *
+   * Shared by the TV display and the consumer app (§7.11).
+   *
    * Colors come from `currentColor` so CSS custom properties stay in control.
    */
   let { size = 16, stroke = false }: { size?: number; stroke?: boolean } = $props();

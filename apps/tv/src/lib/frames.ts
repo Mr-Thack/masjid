@@ -1,4 +1,6 @@
-import type { HadithTag } from '@masjid/ui-utils';
+// Shared with the consumer Hadith of the Day card (§7.11); re-exported so
+// existing frames imports keep working.
+export { hadithTagsForContext } from '@masjid/ui-utils';
 
 /**
  * Soul-column frames (docs/design-language.md §7.5).
@@ -78,19 +80,3 @@ export function getActiveFrameIndex(
   return Math.floor(elapsedMs / frameDurationMs) % frameCount;
 }
 
-/**
- * Occasion tags for context-seeded hadith (§4: Fajr virtues at Fajr,
- * Jumu'ah hadith on Friday, Ramadan hadith in Ramadan).
- */
-export function hadithTagsForContext(ctx: {
-  dayOfWeek: number;
-  ramadan?: boolean;
-  currentPrayer?: string | null;
-}): HadithTag[] {
-  const tags: HadithTag[] = [];
-  if (ctx.dayOfWeek === 5) tags.push('jumuah');
-  if (ctx.ramadan) tags.push('ramadan');
-  if (ctx.currentPrayer === 'fajr') tags.push('fajr');
-  if (ctx.currentPrayer) tags.push('prayer');
-  return tags;
-}
