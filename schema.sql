@@ -17,7 +17,13 @@ CREATE TABLE masjids (
     isha_angle REAL,                                -- Custom Isha twilight angle override (null = use preset)
     asr_madhab TEXT NOT NULL DEFAULT 'shafi',         -- 'shafi' | 'hanafi'
     high_latitude_rule TEXT NOT NULL DEFAULT 'seventh_of_night',  -- 'seventh_of_night' | 'middle_of_night' | 'twilight_angle' | 'none'
-    show_dual_asr INTEGER NOT NULL DEFAULT 0             -- 0=false, 1=true (display both Shafi + Hanafi Asr)
+    show_dual_asr INTEGER NOT NULL DEFAULT 0,            -- 0=false, 1=true (display both Shafi + Hanafi Asr)
+    adjust_fajr INTEGER NOT NULL DEFAULT 0,             -- manual minute offset for Fajr adhaan
+    adjust_sunrise INTEGER NOT NULL DEFAULT 0,          -- manual minute offset for Sunrise display
+    adjust_dhuhr INTEGER NOT NULL DEFAULT 0,            -- manual minute offset for Dhuhr adhaan
+    adjust_asr INTEGER NOT NULL DEFAULT 0,              -- manual minute offset for Asr adhaan
+    adjust_maghrib INTEGER NOT NULL DEFAULT 0,          -- manual minute offset for Maghrib adhaan
+    adjust_isha INTEGER NOT NULL DEFAULT 0,             -- manual minute offset for Isha adhaan
     tenant_status TEXT NOT NULL DEFAULT 'SHADOW',    -- 'SHADOW' | 'ACTIVE'
 
     -- Contact & location (public-facing)

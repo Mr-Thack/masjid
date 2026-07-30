@@ -13,6 +13,12 @@ const PrayerConfigUpdateSchema = z.object({
   show_dual_asr: z.boolean().optional(),
   fajr_angle: z.number().min(8).max(22).nullable().optional(),
   isha_angle: z.number().min(8).max(22).nullable().optional(),
+  adjust_fajr: z.number().int().optional(),
+  adjust_sunrise: z.number().int().optional(),
+  adjust_dhuhr: z.number().int().optional(),
+  adjust_asr: z.number().int().optional(),
+  adjust_maghrib: z.number().int().optional(),
+  adjust_isha: z.number().int().optional(),
   timezone: z.string().min(1).optional(),
 });
 
@@ -34,6 +40,12 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
         show_dual_asr: masjids.showDualAsr,
         fajr_angle: masjids.fajrAngle,
         isha_angle: masjids.ishaAngle,
+        adjust_fajr: masjids.adjustFajr,
+        adjust_sunrise: masjids.adjustSunrise,
+        adjust_dhuhr: masjids.adjustDhuhr,
+        adjust_asr: masjids.adjustAsr,
+        adjust_maghrib: masjids.adjustMaghrib,
+        adjust_isha: masjids.adjustIsha,
         timezone: masjids.timezone,
       })
       .from(masjids)
@@ -51,6 +63,12 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       show_dual_asr: masjid.show_dual_asr,
       fajr_angle: masjid.fajr_angle,
       isha_angle: masjid.isha_angle,
+      adjust_fajr: masjid.adjust_fajr,
+      adjust_sunrise: masjid.adjust_sunrise,
+      adjust_dhuhr: masjid.adjust_dhuhr,
+      adjust_asr: masjid.adjust_asr,
+      adjust_maghrib: masjid.adjust_maghrib,
+      adjust_isha: masjid.adjust_isha,
       timezone: masjid.timezone,
     });
   } catch {
@@ -87,6 +105,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
     if (body.show_dual_asr !== undefined) updateData.showDualAsr = body.show_dual_asr;
     if (body.fajr_angle !== undefined) updateData.fajrAngle = body.fajr_angle;
     if (body.isha_angle !== undefined) updateData.ishaAngle = body.isha_angle;
+    if (body.adjust_fajr !== undefined) updateData.adjustFajr = body.adjust_fajr;
+    if (body.adjust_sunrise !== undefined) updateData.adjustSunrise = body.adjust_sunrise;
+    if (body.adjust_dhuhr !== undefined) updateData.adjustDhuhr = body.adjust_dhuhr;
+    if (body.adjust_asr !== undefined) updateData.adjustAsr = body.adjust_asr;
+    if (body.adjust_maghrib !== undefined) updateData.adjustMaghrib = body.adjust_maghrib;
+    if (body.adjust_isha !== undefined) updateData.adjustIsha = body.adjust_isha;
     if (body.timezone !== undefined) updateData.timezone = body.timezone;
 
     if (Object.keys(updateData).length > 0) {
@@ -104,6 +128,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
         show_dual_asr: masjids.showDualAsr,
         fajr_angle: masjids.fajrAngle,
         isha_angle: masjids.ishaAngle,
+        adjust_fajr: masjids.adjustFajr,
+        adjust_sunrise: masjids.adjustSunrise,
+        adjust_dhuhr: masjids.adjustDhuhr,
+        adjust_asr: masjids.adjustAsr,
+        adjust_maghrib: masjids.adjustMaghrib,
+        adjust_isha: masjids.adjustIsha,
         timezone: masjids.timezone,
       })
       .from(masjids)
@@ -117,6 +147,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
       show_dual_asr: updated?.show_dual_asr,
       fajr_angle: updated?.fajr_angle,
       isha_angle: updated?.isha_angle,
+      adjust_fajr: updated?.adjust_fajr,
+      adjust_sunrise: updated?.adjust_sunrise,
+      adjust_dhuhr: updated?.adjust_dhuhr,
+      adjust_asr: updated?.adjust_asr,
+      adjust_maghrib: updated?.adjust_maghrib,
+      adjust_isha: updated?.adjust_isha,
       timezone: updated?.timezone,
     });
   } catch (e: unknown) {

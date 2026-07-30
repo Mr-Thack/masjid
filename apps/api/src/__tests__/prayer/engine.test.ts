@@ -20,6 +20,12 @@ interface MasjidConfig {
   calculation_method: number;
   fajr_angle: number | null;
   isha_angle: number | null;
+  adjust_fajr: number;
+  adjust_sunrise: number;
+  adjust_dhuhr: number;
+  adjust_asr: number;
+  adjust_maghrib: number;
+  adjust_isha: number;
   latitude: number;
   longitude: number;
   timezone: string;
@@ -404,6 +410,12 @@ describe('computeIqaamah', () => {
     calculation_method: 2,
     fajr_angle: null,
     isha_angle: null,
+    adjust_fajr: 0,
+    adjust_sunrise: 0,
+    adjust_dhuhr: 0,
+    adjust_asr: 0,
+    adjust_maghrib: 0,
+    adjust_isha: 0,
     latitude: 41.85,
     longitude: -87.65,
     timezone: 'America/Chicago',
@@ -465,6 +477,12 @@ describe('computeIqaamah', () => {
       calculation_method: 2,
       fajr_angle: null,
       isha_angle: null,
+      adjust_fajr: 0,
+      adjust_sunrise: 0,
+      adjust_dhuhr: 0,
+      adjust_asr: 0,
+      adjust_maghrib: 0,
+      adjust_isha: 0,
       latitude: 34.0234,
       longitude: -84.6157,
       timezone: 'America/New_York',

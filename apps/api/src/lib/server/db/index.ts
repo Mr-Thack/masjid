@@ -74,6 +74,14 @@ function ensureTables(sqlite: Database.Database) {
       asr_madhab TEXT NOT NULL DEFAULT 'shafi',
       high_latitude_rule TEXT NOT NULL DEFAULT 'seventh_of_night',
       show_dual_asr INTEGER NOT NULL DEFAULT 0,
+      adjust_fajr INTEGER NOT NULL DEFAULT 0,
+      adjust_sunrise INTEGER NOT NULL DEFAULT 0,
+      adjust_dhuhr INTEGER NOT NULL DEFAULT 0,
+      adjust_asr INTEGER NOT NULL DEFAULT 0,
+      adjust_maghrib INTEGER NOT NULL DEFAULT 0,
+      adjust_isha INTEGER NOT NULL DEFAULT 0,
+      fajr_angle REAL,
+      isha_angle REAL,
       tenant_status TEXT NOT NULL DEFAULT 'SHADOW',
       address_line1 TEXT,
       address_line2 TEXT,
@@ -343,6 +351,12 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'masjids', 'show_dual_asr', 'INTEGER NOT NULL DEFAULT 0');
   addColumnIfMissing(sqlite, 'masjids', 'fajr_angle', 'REAL');
   addColumnIfMissing(sqlite, 'masjids', 'isha_angle', 'REAL');
+  addColumnIfMissing(sqlite, 'masjids', 'adjust_fajr', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(sqlite, 'masjids', 'adjust_sunrise', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(sqlite, 'masjids', 'adjust_dhuhr', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(sqlite, 'masjids', 'adjust_asr', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(sqlite, 'masjids', 'adjust_maghrib', 'INTEGER NOT NULL DEFAULT 0');
+  addColumnIfMissing(sqlite, 'masjids', 'adjust_isha', 'INTEGER NOT NULL DEFAULT 0');
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {

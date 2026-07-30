@@ -50,6 +50,12 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       show_dual_asr: !!masjid.showDualAsr,
       fajr_angle: masjid.fajrAngle,
       isha_angle: masjid.ishaAngle,
+      adjust_fajr: masjid.adjustFajr,
+      adjust_sunrise: masjid.adjustSunrise,
+      adjust_dhuhr: masjid.adjustDhuhr,
+      adjust_asr: masjid.adjustAsr,
+      adjust_maghrib: masjid.adjustMaghrib,
+      adjust_isha: masjid.adjustIsha,
       tenant_status: masjid.tenantStatus,
       address_line1: masjid.addressLine1,
       address_line2: masjid.addressLine2,
@@ -139,6 +145,12 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.show_dual_asr !== undefined) masjidData.showDualAsr = masjidUpdate.show_dual_asr;
     if (masjidUpdate.fajr_angle !== undefined) masjidData.fajrAngle = masjidUpdate.fajr_angle;
     if (masjidUpdate.isha_angle !== undefined) masjidData.ishaAngle = masjidUpdate.isha_angle;
+    if (masjidUpdate.adjust_fajr !== undefined) masjidData.adjustFajr = masjidUpdate.adjust_fajr;
+    if (masjidUpdate.adjust_sunrise !== undefined) masjidData.adjustSunrise = masjidUpdate.adjust_sunrise;
+    if (masjidUpdate.adjust_dhuhr !== undefined) masjidData.adjustDhuhr = masjidUpdate.adjust_dhuhr;
+    if (masjidUpdate.adjust_asr !== undefined) masjidData.adjustAsr = masjidUpdate.adjust_asr;
+    if (masjidUpdate.adjust_maghrib !== undefined) masjidData.adjustMaghrib = masjidUpdate.adjust_maghrib;
+    if (masjidUpdate.adjust_isha !== undefined) masjidData.adjustIsha = masjidUpdate.adjust_isha;
     if (masjidUpdate.timezone !== undefined) masjidData.timezone = masjidUpdate.timezone;
     if (masjidUpdate.latitude !== undefined) masjidData.latitude = masjidUpdate.latitude;
     if (masjidUpdate.longitude !== undefined) masjidData.longitude = masjidUpdate.longitude;

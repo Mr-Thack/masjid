@@ -12,6 +12,12 @@ interface MasjidConfig {
   calculation_method: number;
   fajr_angle: number | null;
   isha_angle: number | null;
+  adjust_fajr: number;
+  adjust_sunrise: number;
+  adjust_dhuhr: number;
+  adjust_asr: number;
+  adjust_maghrib: number;
+  adjust_isha: number;
   latitude: number;
   longitude: number;
   timezone: string;

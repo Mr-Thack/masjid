@@ -20,6 +20,7 @@
     external_donation_url: '', calculation_method: 2, timezone: 'America/Chicago',
     asr_madhab: 'shafi', high_latitude_rule: 'seventh_of_night',
     show_dual_asr: false, fajr_angle: null as number | null, isha_angle: null as number | null,
+    adjust_fajr: 0, adjust_sunrise: 0, adjust_dhuhr: 0, adjust_asr: 0, adjust_maghrib: 0, adjust_isha: 0,
     latitude: 0, longitude: 0,
   });
 
@@ -89,6 +90,12 @@
       form.show_dual_asr = !!profile.show_dual_asr;
       form.fajr_angle = profile.fajr_angle ?? null;
       form.isha_angle = profile.isha_angle ?? null;
+      form.adjust_fajr = profile.adjust_fajr ?? 0;
+      form.adjust_sunrise = profile.adjust_sunrise ?? 0;
+      form.adjust_dhuhr = profile.adjust_dhuhr ?? 0;
+      form.adjust_asr = profile.adjust_asr ?? 0;
+      form.adjust_maghrib = profile.adjust_maghrib ?? 0;
+      form.adjust_isha = profile.adjust_isha ?? 0;
       form.timezone = profile.timezone || 'America/Chicago';
       form.latitude = profile.latitude || 0;
       form.longitude = profile.longitude || 0;
@@ -129,6 +136,12 @@
         show_dual_asr: coerceBoolean(form.show_dual_asr),
         fajr_angle: coerceAngle(form.fajr_angle),
         isha_angle: coerceAngle(form.isha_angle),
+        adjust_fajr: Number(form.adjust_fajr) || 0,
+        adjust_sunrise: Number(form.adjust_sunrise) || 0,
+        adjust_dhuhr: Number(form.adjust_dhuhr) || 0,
+        adjust_asr: Number(form.adjust_asr) || 0,
+        adjust_maghrib: Number(form.adjust_maghrib) || 0,
+        adjust_isha: Number(form.adjust_isha) || 0,
         timezone: form.timezone,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
@@ -263,6 +276,39 @@
                 <option value={r.value}>{r.label}</option>
               {/each}
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="adjust_fajr">Adhaan Adjustments (minutes, ±)</label>
+            <p class="text-xs text-text-muted mb-2">Optional per-prayer offsets applied to all calculated times. Use negative for earlier.</p>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label for="adjust_fajr" class="text-xs text-text-muted">Fajr</label>
+                <input id="adjust_fajr" type="number" step="1" class="w-full" bind:value={form.adjust_fajr} oninput={handleChange} />
+              </div>
+              <div>
+                <label for="adjust_sunrise" class="text-xs text-text-muted">Sunrise</label>
+                <input id="adjust_sunrise" type="number" step="1" class="w-full" bind:value={form.adjust_sunrise} oninput={handleChange} />
+              </div>
+              <div>
+                <label for="adjust_dhuhr" class="text-xs text-text-muted">Dhuhr</label>
+                <input id="adjust_dhuhr" type="number" step="1" class="w-full" bind:value={form.adjust_dhuhr} oninput={handleChange} />
+              </div>
+              <div>
+                <label for="adjust_asr" class="text-xs text-text-muted">Asr</label>
+                <input id="adjust_asr" type="number" step="1" class="w-full" bind:value={form.adjust_asr} oninput={handleChange} />
+              </div>
+              <div>
+                <label for="adjust_maghrib" class="text-xs text-text-muted">Maghrib</label>
+                <input id="adjust_maghrib" type="number" step="1" class="w-full" bind:value={form.adjust_maghrib} oninput={handleChange} />
+              </div>
+              <div>
+                <label for="adjust_isha" class="text-xs text-text-muted">Isha</label>
+                <input id="adjust_isha" type="number" step="1" class="w-full" bind:value={form.adjust_isha} oninput={handleChange} />
+              </div>
+            </div>
           </div>
         </div>
 
