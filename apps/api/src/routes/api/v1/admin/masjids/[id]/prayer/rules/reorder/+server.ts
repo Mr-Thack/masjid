@@ -5,7 +5,7 @@ import {
 } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { prayerRules, masjids as masjidsTable } from '$lib/server/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
 import type { RequestHandler } from './$types';
 
@@ -35,8 +35,10 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       await db
         .update(prayerRules)
         .set({ executionOrder: i })
-        .where(eq(prayerRules.id, body.order[i]!))
-        .where(eq(prayerRules.masjidId, params.id));
+        .where(and(
+          eq(prayerRules.id, body.order[i]!),
+          eq(prayerRules.masjidId, params.id),
+        ));
     }
 
     await invalidateMasjidCache(platform?.env?.CACHE, params.id);
