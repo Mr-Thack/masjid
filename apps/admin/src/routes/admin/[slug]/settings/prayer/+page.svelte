@@ -138,6 +138,14 @@
     }
   }
 
+  function handleReorder(e: MouseEvent) {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const prayer = btn.dataset.prayer!;
+    const index = parseInt(btn.dataset.index!, 10);
+    const dir = parseInt(btn.dataset.dir!, 10);
+    reorderWithinPrayer(prayer, index, dir);
+  }
+
   async function runDryRun() {
     runningDryRun = true;
     try {
@@ -401,12 +409,20 @@
                   <tr class="border-b border-border last:border-0 hover:bg-bg/50">
                     <td class="p-3">
                       <div class="flex items-center gap-1">
-                        <button class="p-0.5 text-text-muted hover:text-text disabled:opacity-30" disabled={gi === 0} onclick={() => reorderWithinPrayer(prayer, gi, -1)}>
-                          <ChevronUp size={14} />
-                        </button>
-                        <button class="p-0.5 text-text-muted hover:text-text disabled:opacity-30" disabled={gi === group.length - 1} onclick={() => reorderWithinPrayer(prayer, gi, 1)}>
-                          <ChevronDown size={14} />
-                        </button>
+                        <button
+    class="p-0.5 text-text-muted hover:text-text disabled:opacity-30"
+    disabled={gi === 0}
+    data-prayer={prayer} data-index={gi} data-dir={-1}
+    onclick={handleReorder}>
+  <ChevronUp size={14} />
+</button>
+<button
+    class="p-0.5 text-text-muted hover:text-text disabled:opacity-30"
+    disabled={gi === group.length - 1}
+    data-prayer={prayer} data-index={gi} data-dir={1}
+    onclick={handleReorder}>
+  <ChevronDown size={14} />
+</button>
                         <span class="ml-1 text-text-muted text-xs font-mono">{gi + 1}</span>
                       </div>
                     </td>
