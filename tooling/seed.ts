@@ -264,6 +264,27 @@ async function seed() {
     activeTermId: 'term-noor-01',
     enrollmentOpen: true,
     statusMessage: null,
+    programInfo: JSON.stringify({
+      goal: 'The goal of the Evening Islamic Studies is to provide the children a sound foundation in their Islamic knowledge and practice, while inculcating the love of Allah and the Prophet, Peace be Upon Him. The \'tarbiyyah\' (upbringing) of the students is highly emphasized.',
+      schedule_days: 'Monday - Thursday',
+      schedule_time: '5:00 PM - 7:30 PM',
+      curriculum: [
+        { name: 'Quraan Recitation (تلاوة)', description: 'Reading the Quraan with proper pronunciation and tajweed.' },
+        { name: 'Duas/Surah Memorization (تحفيظ)', description: 'Memorizing important Duas and Surahs under proper supervision.' },
+        { name: 'Islamic Jurisprudence (فقه الإسلام)', description: 'The basics of Islam. How to pray, make wudu, fast, and rulings on common matters.' },
+        { name: 'Biography of the Prophet (سيرة النبي)', description: 'The life history of the Prophet, peace be upon Him, as well as a brief history of some of the earlier Prophets.' },
+        { name: 'Islamic Ethics (أخلاق الإسلام)', description: 'Manners of Islam from a theoretical and practical standpoint: how to talk, respect parents, eat, sleep, and interact with others.' },
+        { name: 'Beliefs (عقائد)', description: "Beliefs that make someone a Muslim, including the beliefs about Allah, His Angels, His Books, and His Messengers from the viewpoint of the Ahl us Sunnah wal Jamaa'ah." },
+      ],
+      faqs: [
+        { question: 'From what ages are children accepted?', answer: 'Children aged 6 and up are eligible for admittance. Children under 6 may be admitted upon taking an aptitude test.' },
+        { question: 'What if my child cannot attend all days?', answer: 'We encourage full attendance so there is no shortfall in learning. However, if a child can only come for certain days, we will try our best to accommodate them.' },
+        { question: 'Can I volunteer?', answer: "Volunteers are always welcome. From teaching to being an aide, we're always looking for dedicated and child-friendly teachers." },
+        { question: 'How do I enroll my child?', answer: "Simply complete our online enrollment form and we'll process your application." },
+        { question: 'How can I support the school?', answer: 'Be a well-wisher and keep the educational programs in your duas (supplications). We also encourage your oral, physical, and monetary support.' },
+        { question: 'Who is teaching?', answer: 'Our instructors are qualified teachers with experience in Islamic education and child development.' },
+      ],
+    }),
   }).run();
 
   // ─────────────────────────────────────────────────────────────────────────────

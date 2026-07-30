@@ -111,10 +111,33 @@ export const TermPublicSchema = z.object({
 
 export type TermPublic = z.infer<typeof TermPublicSchema>;
 
+export const CurriculumItemSchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+});
+
+export const FaqItemSchema = z.object({
+  question: z.string().trim().min(1),
+  answer: z.string().trim().min(1),
+});
+
+export const ProgramInfoSchema = z.object({
+  goal: z.string().default(''),
+  schedule_days: z.string().default(''),
+  schedule_time: z.string().default(''),
+  curriculum: z.array(CurriculumItemSchema).default([]),
+  faqs: z.array(FaqItemSchema).default([]),
+});
+
+export type CurriculumItem = z.infer<typeof CurriculumItemSchema>;
+export type FaqItem = z.infer<typeof FaqItemSchema>;
+export type ProgramInfo = z.infer<typeof ProgramInfoSchema>;
+
 export const SettingsUpdateSchema = z.object({
   active_term_id: z.string().nullable().optional(),
   enrollment_open: z.boolean().optional(),
   status_message: z.string().nullable().optional(),
+  program_info: ProgramInfoSchema.optional(),
 });
 
 export type SettingsUpdateInput = z.infer<typeof SettingsUpdateSchema>;

@@ -276,6 +276,7 @@ function ensureTables(sqlite: Database.Database) {
       active_term_id TEXT REFERENCES mkt_terms(id) ON DELETE SET NULL,
       enrollment_open INTEGER NOT NULL DEFAULT 0,
       status_message TEXT,
+      program_info TEXT NOT NULL DEFAULT '{}',
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
@@ -337,6 +338,7 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'");
   addColumnIfMissing(sqlite, 'admins', 'whatsapp_phone', 'TEXT');
   addColumnIfMissing(sqlite, 'mkt_terms', 'billing_months', 'INTEGER');
+  addColumnIfMissing(sqlite, 'mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'");
   addColumnIfMissing(sqlite, 'jumuah_sessions', 'speech_time', 'TEXT');
   addColumnIfMissing(sqlite, 'masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'");
   addColumnIfMissing(sqlite, 'masjids', 'high_latitude_rule', "TEXT NOT NULL DEFAULT 'seventh_of_night'");
