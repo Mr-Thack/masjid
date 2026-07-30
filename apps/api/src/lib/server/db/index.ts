@@ -367,9 +367,50 @@ export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
   }
   // In Cloudflare Workers: use the real D1 binding.
   if (d1) {
+    ensureD1Columns(d1 as D1Database);
     return drizzle(d1 as D1Database, { schema }) as unknown as ReturnType<typeof drizzleSqlite>;
   }
   throw new Error('D1 database binding not available');
+}
+
+let d1Migrated = false;
+
+const D1_COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
+  ['masjid_themes', 'style_system', "TEXT NOT NULL DEFAULT 'sakeenah'"],
+  ['masjid_themes', 'style_options', "TEXT NOT NULL DEFAULT '{}'"],
+  ['masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'"],
+  ['masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'"],
+  ['masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'"],
+  ['masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'"],
+  ['masjid_themes', 'label_speech', "TEXT NOT NULL DEFAULT 'Speech'"],
+  ['masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'"],
+  ['masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'"],
+  ['masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'"],
+  ['masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'"],
+  ['masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'"],
+  ['masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'"],
+  ['admins', 'whatsapp_phone', 'TEXT'],
+  ['mkt_terms', 'billing_months', 'INTEGER'],
+  ['mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'"],
+  ['jumuah_sessions', 'speech_time', 'TEXT'],
+  ['masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'"],
+];
+
+function ensureD1Columns(d1db: D1Database) {
+  if (d1Migrated) return;
+  d1Migrated = true;
+
+  for (const [table, column, def] of D1_COLUMN_MIGRATIONS) {
+    try {
+      const existing = d1db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+      if (!existing.some((c) => c.name === column)) {
+        d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+        console.log(`[migration] D1: added ${table}.${column}`);
+      }
+    } catch (e) {
+      console.error(`[migration] D1: failed to add ${table}.${column}`, e instanceof Error ? e.message : e);
+    }
+  }
 }
 
 export type Db = ReturnType<typeof getDb>;
