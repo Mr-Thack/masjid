@@ -2,7 +2,6 @@
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { Loader } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
 
   let { data }: { data: { masjidSlug: string } } = $props();
@@ -13,6 +12,24 @@
   let dirty = $state(false);
 
   let form = $state({
+    style_system: 'sakeenah' as 'sakeenah' | 'mishkaat',
+    style_options: {
+      metal: 'gold' as string,
+      motif: 'eight-point-star' as string,
+      arch: true,
+      numerals: 'western' as string,
+      density: 'standard' as string,
+      ambient: true,
+      quietHours: {
+        enabled: false,
+        quietMinutes: 10,
+        sleepAfterIshaMinutes: 90,
+        wakeBeforeFajrMinutes: 30,
+      },
+      frames: [] as string[],
+      emblem: 'medallion' as string,
+      donateAppeal: '',
+    },
     layout_preset: 'glass-dark',
     primary_color: '#1e3a8a',
     accent_color: '#10b981',
@@ -31,12 +48,6 @@
     label_speech: '',
   });
 
-  const presets = [
-    { value: 'glass-dark', label: 'Glass Dark', desc: 'Dark glassmorphism' },
-    { value: 'minimal-light', label: 'Minimal Light', desc: 'Clean light mode' },
-    { value: 'modern_minimal', label: 'Modern', desc: 'Modern default' },
-  ];
-
   const fonts = [
     'Inter', 'Roboto', 'Amiri', 'Noto Naskh Arabic', 'Scheherazade New',
     'Georgia', 'serif', 'sans-serif',
@@ -48,6 +59,44 @@
     label_asr: 'Asr', label_maghrib: 'Maghrib', label_isha: 'Isha',
     label_speech: 'Speech',
   };
+
+  const metals = ['gold', 'silver', 'copper', 'rose'];
+  const motifs = ['eight-point-star', 'honeycomb', 'girih', 'arabesque', 'none'];
+  const frameOptions = [
+    { value: 'jumuah', label: "Jumu'ah Times" },
+    { value: 'hadith', label: 'Hadith of the Day' },
+    { value: 'announcements', label: 'Announcements' },
+    { value: 'donate', label: 'Donate Appeal' },
+    { value: 'qr', label: 'Scan to Give (QR)' },
+    { value: 'community', label: 'Community Frames' },
+  ];
+
+  function handleChange() { dirty = true; }
+
+  function toggleFrame(frame: string) {
+    dirty = true;
+    const idx = form.style_options.frames.indexOf(frame);
+    if (idx === -1) {
+      form.style_options.frames = [...form.style_options.frames, frame];
+    } else {
+      form.style_options.frames = form.style_options.frames.filter(f => f !== frame);
+    }
+  }
+
+  function setStyleSystem(system: 'sakeenah' | 'mishkaat') {
+    dirty = true;
+    form.style_system = system;
+    if (system === 'mishkaat') {
+      form.layout_preset = 'mishkaat';
+    } else {
+      form.layout_preset = 'glass-dark';
+    }
+  }
+
+  const sakeenahPresets = [
+    { value: 'glass-dark', label: 'Glass Dark', desc: 'Dark glassmorphism panels' },
+    { value: 'minimal-light', label: 'Minimal Light', desc: 'Clean light mode' },
+  ];
 
   function indoPakPreset() {
     dirty = true;
@@ -134,13 +183,13 @@
     loadTheme();
   });
 
-  function handleChange() { dirty = true; }
-
   async function loadTheme() {
     try {
       const profile = await api.getProfile(auth.admin!.masjid_id);
       const t = profile.theme;
       if (t) {
+        form.style_system = t.style_system || 'sakeenah';
+        form.style_options = deepMerge(form.style_options, t.style_options || {});
         form.layout_preset = t.layout_preset || 'glass-dark';
         form.primary_color = t.primary_color || '#1e3a8a';
         form.accent_color = t.accent_color || '#10b981';
@@ -165,14 +214,43 @@
     }
   }
 
+  function deepMerge(defaults: Record<string, unknown>, overrides: Record<string, unknown>): Record<string, unknown> {
+    const result = { ...defaults };
+    for (const key of Object.keys(overrides)) {
+      const ov = overrides[key];
+      if (ov !== null && typeof ov === 'object' && !Array.isArray(ov) && key in defaults && typeof defaults[key] === 'object' && defaults[key] !== null && !Array.isArray(defaults[key])) {
+        result[key] = deepMerge(defaults[key] as Record<string, unknown>, ov as Record<string, unknown>);
+      } else {
+        result[key] = ov;
+      }
+    }
+    return result;
+  }
+
   async function handleSave(e: Event) {
     e.preventDefault();
     saving = true;
     error = null;
     try {
       await api.updateProfile(auth.admin!.masjid_id, {
-        ...form,
+        style_system: form.style_system,
+        style_options: form.style_options,
+        layout_preset: form.layout_preset,
+        primary_color: form.primary_color,
+        accent_color: form.accent_color,
+        font_heading: form.font_heading,
+        font_body: form.font_body,
         time_format: form.time_format,
+        label_adhaan: form.label_adhaan,
+        label_iqaamah: form.label_iqaamah,
+        label_jumuah: form.label_jumuah,
+        label_sunrise: form.label_sunrise,
+        label_fajr: form.label_fajr,
+        label_dhuhr: form.label_dhuhr,
+        label_asr: form.label_asr,
+        label_maghrib: form.label_maghrib,
+        label_isha: form.label_isha,
+        label_speech: form.label_speech,
       });
       dirty = false;
       toast.success('Theme updated');
@@ -194,26 +272,252 @@
   {:else}
     <form onsubmit={handleSave}>
       <div class="space-y-6">
-        <!-- Presets -->
+        <!-- Style System -->
         <div class="bg-surface border border-border rounded-xl p-6">
-          <h2 class="font-heading font-semibold text-text mb-3">Layout Preset</h2>
-          <div class="grid grid-cols-3 gap-3">
-            {#each presets as preset}
-              <button
-                type="button"
-                class="border rounded-lg p-3 text-sm text-left transition-colors {form.layout_preset === preset.value ? 'border-accent bg-accent/10 text-accent' : 'border-border hover:border-text-muted text-text-muted'}"
-                onclick={() => { form.layout_preset = preset.value; dirty = true; }}
-              >
-                <div class="font-medium">{preset.label}</div>
-                <div class="text-xs mt-0.5 opacity-70">{preset.desc}</div>
-              </button>
-            {/each}
+          <h2 class="font-heading font-semibold text-text mb-3">Style</h2>
+          <p class="text-xs text-text-muted mb-4">Choose your display experience. Mishkaat is the full soul-forward experience with frames, ceremony states, and ambient colors. Sakeenah is simple and minimal.</p>
+          <div class="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              class="border rounded-xl p-4 text-left transition-colors {form.style_system === 'mishkaat' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border hover:border-text-muted text-text-muted'}"
+              onclick={() => setStyleSystem('mishkaat')}
+            >
+              <div class="font-heading font-semibold text-base mb-1.5">Mishkaat</div>
+              <div class="text-xs opacity-80 leading-relaxed">The full experience — frames, ceremony states, ambient palette, RTL layout. Warm gold on espresso.</div>
+            </button>
+            <button
+              type="button"
+              class="border rounded-xl p-4 text-left transition-colors {form.style_system === 'sakeenah' ? 'border-blue-400 bg-blue-400/10 text-blue-400' : 'border-border hover:border-text-muted text-text-muted'}"
+              onclick={() => setStyleSystem('sakeenah')}
+            >
+              <div class="font-heading font-semibold text-base mb-1.5">Sakeenah</div>
+              <div class="text-xs opacity-80 leading-relaxed">Simple &amp; minimal — clean panels, prayer times only. For masjids that want just the times.</div>
+            </button>
           </div>
         </div>
+
+        {#if form.style_system === 'mishkaat'}
+          <!-- Screen Appearance -->
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-4">Screen Appearance</h2>
+
+            <!-- Metal -->
+            <div class="mb-5">
+              <label class="block text-sm font-medium text-text mb-2">Metal</label>
+              <p class="text-xs text-text-muted mb-2">Accent metal finish — your primary styling knob. Gold is the default.</p>
+              <div class="flex flex-wrap gap-2">
+                {#each metals as metal}
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg text-xs border transition-colors capitalize {form.style_options.metal === metal ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                    onclick={() => { form.style_options.metal = metal; dirty = true; }}
+                  >
+                    {metal}
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <!-- Motif -->
+            <div class="mb-5">
+              <label class="block text-sm font-medium text-text mb-2">Pattern</label>
+              <p class="text-xs text-text-muted mb-2">Ornamental band motif on the prayer board. Rendered tone-on-tone at low contrast.</p>
+              <div class="flex flex-wrap gap-2">
+                {#each motifs as motif}
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 rounded-lg text-xs border transition-colors capitalize {form.style_options.motif === motif ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                    onclick={() => { form.style_options.motif = motif; dirty = true; }}
+                  >
+                    {motif.replace(/-/g, ' ')}
+                  </button>
+                {/each}
+              </div>
+            </div>
+
+            <!-- Arch -->
+            <div class="mb-5 flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-text">Arch</label>
+                <p class="text-xs text-text-muted">Show the mihrab arch niche around the clock</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked={form.style_options.arch} onchange={() => { form.style_options.arch = !form.style_options.arch; dirty = true; }} />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <!-- Numerals -->
+            <div class="mb-5">
+              <label class="block text-sm font-medium text-text mb-2">Numerals</label>
+              <p class="text-xs text-text-muted mb-2">Western digits (1, 2, 3) or Arabic-Indic (&#1632;&#1633;&#1634;). Clock hands and layout unaffected.</p>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.numerals === 'western' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                  onclick={() => { form.style_options.numerals = 'western'; dirty = true; }}
+                >Western (5:29)</button>
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.numerals === 'arabic-indic' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                  onclick={() => { form.style_options.numerals = 'arabic-indic'; dirty = true; }}
+                >Arabic-Indic (&#1637;:&#1633;&#1633;)</button>
+              </div>
+            </div>
+
+            <!-- Density -->
+            <div class="mb-5">
+              <label class="block text-sm font-medium text-text mb-2">Density</label>
+              <p class="text-xs text-text-muted mb-2">Large print for aging congregations.</p>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.density === 'standard' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                  onclick={() => { form.style_options.density = 'standard'; dirty = true; }}
+                >Standard</button>
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.density === 'large-print' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                  onclick={() => { form.style_options.density = 'large-print'; dirty = true; }}
+                >Large Print</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Day & Night Colors -->
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-3">Day &amp; Night Colors</h2>
+            <p class="text-xs text-text-muted mb-4">Ambient palette shifts the background tint through the solar day — deep blue before Fajr, gold at sunrise, neutral midday, amber approaching Maghrib, deep night after Isha. Subtle tints only; content colors never change.</p>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-text">Enable ambient palette</label>
+                <p class="text-xs text-text-muted">Let the screen breathe with the time of day</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked={form.style_options.ambient} onchange={() => { form.style_options.ambient = !form.style_options.ambient; dirty = true; }} />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Quiet Hours -->
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-4">Quiet Hours</h2>
+            <p class="text-xs text-text-muted mb-4">The screen observes the room's etiquette — it quiets itself after salah and dims at night. Configure the timing below.</p>
+
+            <div class="flex items-center justify-between mb-5">
+              <div>
+                <label class="text-sm font-medium text-text">Enable quiet hours</label>
+                <p class="text-xs text-text-muted">Post-iqaamah quiet mode and night calm veil</p>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" checked={form.style_options.quietHours.enabled} onchange={() => { form.style_options.quietHours.enabled = !form.style_options.quietHours.enabled; dirty = true; }} />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            {#if form.style_options.quietHours.enabled}
+              <div class="space-y-4 pl-2 border-l-2 border-border">
+                <div class="form-group">
+                  <label for="quietMinutes">Quiet minutes after iqaamah</label>
+                  <p class="text-xs text-text-muted mb-1">Screen dims after iqaamah and stays quiet for this many minutes</p>
+                  <input id="quietMinutes" type="number" min="0" max="180" class="w-32" bind:value={form.style_options.quietHours.quietMinutes} oninput={handleChange} />
+                </div>
+                <div class="form-group">
+                  <label for="sleepAfterIshaMinutes">Sleep after Isha (minutes)</label>
+                  <p class="text-xs text-text-muted mb-1">Night calm veil settles this many minutes after Isha iqaamah</p>
+                  <input id="sleepAfterIshaMinutes" type="number" min="0" max="360" class="w-32" bind:value={form.style_options.quietHours.sleepAfterIshaMinutes} oninput={handleChange} />
+                </div>
+                <div class="form-group">
+                  <label for="wakeBeforeFajrMinutes">Wake before Fajr (minutes)</label>
+                  <p class="text-xs text-text-muted mb-1">Night calm veil lifts this many minutes before Fajr adhaan</p>
+                  <input id="wakeBeforeFajrMinutes" type="number" min="0" max="180" class="w-32" bind:value={form.style_options.quietHours.wakeBeforeFajrMinutes} oninput={handleChange} />
+                </div>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Screen Panels (Frames) -->
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-4">Screen Panels</h2>
+            <p class="text-xs text-text-muted mb-4">The soul column rotates through content panels on the TV display. Enable the panels you want to show. Empty panels never render.</p>
+            <div class="space-y-2.5">
+              {#each frameOptions as frame}
+                <label class="flex items-center gap-3 p-2.5 rounded-lg border border-border hover:border-text-muted transition-colors cursor-pointer">
+                  <input
+                    type="checkbox"
+                    class="w-4 h-4 rounded accent-amber-400"
+                    checked={form.style_options.frames.includes(frame.value)}
+                    onchange={() => toggleFrame(frame.value)}
+                  />
+                  <span class="text-sm text-text">{frame.label}</span>
+                </label>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Masjid Logo -->
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-3">Masjid Logo</h2>
+            <p class="text-xs text-text-muted mb-4">Choose how your masjid identity appears. Engraved renders a line-art version of your building photo (requires an uploaded image). Medallion uses the eight-point star as default.</p>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.emblem === 'medallion' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                onclick={() => { form.style_options.emblem = 'medallion'; dirty = true; }}
+              >Medallion (star)</button>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.emblem === 'engraved' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                onclick={() => { form.style_options.emblem = 'engraved'; dirty = true; }}
+              >Engraved (photo)</button>
+            </div>
+          </div>
+
+          <!-- Donate Appeal -->
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-3">Donate Appeal</h2>
+            <p class="text-xs text-text-muted mb-2">Short appeal text shown on the donate frame (max 80 characters).</p>
+            <div class="form-group">
+              <input
+                id="donateAppeal"
+                type="text"
+                class="w-full"
+                maxlength="80"
+                bind:value={form.style_options.donateAppeal}
+                oninput={handleChange}
+                placeholder="Same great experience, in your pocket"
+              />
+              <p class="text-xs text-text-muted mt-1">{form.style_options.donateAppeal.length}/80</p>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Layout Preset (Sakeenah only) -->
+        {#if form.style_system === 'sakeenah'}
+          <div class="bg-surface border border-border rounded-xl p-6">
+            <h2 class="font-heading font-semibold text-text mb-3">Layout Preset</h2>
+            <div class="grid grid-cols-2 gap-3">
+              {#each sakeenahPresets as preset}
+                <button
+                  type="button"
+                  class="border rounded-lg p-3 text-sm text-left transition-colors {form.layout_preset === preset.value ? 'border-accent bg-accent/10 text-accent' : 'border-border hover:border-text-muted text-text-muted'}"
+                  onclick={() => { form.layout_preset = preset.value; dirty = true; }}
+                >
+                  <div class="font-medium">{preset.label}</div>
+                  <div class="text-xs mt-0.5 opacity-70">{preset.desc}</div>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         <!-- Colors -->
         <div class="bg-surface border border-border rounded-xl p-6">
           <h2 class="font-heading font-semibold text-text mb-4">Colors</h2>
+          {#if form.style_system === 'mishkaat'}
+            <p class="text-xs text-text-muted mb-4">Custom colors override the metal palette. Leave at defaults to use the metal scheme.</p>
+          {/if}
           <div class="form-row">
             <div class="form-group">
               <label for="primary_color">Primary Color</label>

@@ -13,21 +13,25 @@ vi.mock('$lib/auth.svelte', () => ({
 
 const mockGetProfile = vi.fn().mockResolvedValue({
   name: 'Test Masjid',
-  layout_preset: 'glass-dark',
-  primary_color: '#1e3a8a',
-  accent_color: '#10b981',
-  font_heading: 'Inter',
-  font_body: 'Inter',
-  time_format: '24h',
-  label_adhaan: '',
-  label_iqaamah: '',
-  label_jumuah: '',
-  label_sunrise: '',
-  label_fajr: '',
-  label_dhuhr: '',
-  label_asr: '',
-  label_maghrib: '',
-  label_isha: '',
+  theme: {
+    style_system: 'sakeenah',
+    style_options: {},
+    layout_preset: 'glass-dark',
+    primary_color: '#1e3a8a',
+    accent_color: '#10b981',
+    font_heading: 'Inter',
+    font_body: 'Inter',
+    time_format: '24h',
+    label_adhaan: '',
+    label_iqaamah: '',
+    label_jumuah: '',
+    label_sunrise: '',
+    label_fajr: '',
+    label_dhuhr: '',
+    label_asr: '',
+    label_maghrib: '',
+    label_isha: '',
+  },
 });
 
 const mockUpdateProfile = vi.fn().mockResolvedValue({ success: true });
@@ -241,6 +245,8 @@ describe('Theme page — save payload', () => {
     mockGetProfile.mockResolvedValue({
       name: 'Test Masjid',
       theme: {
+        style_system: 'sakeenah',
+        style_options: {},
         layout_preset: 'glass-dark',
         primary_color: '#1e3a8a',
         accent_color: '#10b981',
@@ -287,7 +293,26 @@ describe('Theme page — save payload', () => {
   it('sends empty string labels to server (not null/undefined)', async () => {
     mockGetProfile.mockResolvedValue({
       name: 'Test Masjid',
-      theme: null,
+      theme: {
+        style_system: 'sakeenah',
+        style_options: {},
+        layout_preset: 'glass-dark',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
     });
 
     render(ThemePage, { props: slugData });
@@ -305,6 +330,270 @@ describe('Theme page — save payload', () => {
     // Empty string labels should be present in the payload (server accepts them)
     expect(body.label_adhaan).toBe('');
     expect(body.label_dhuhr).toBe('');
+  });
+
+  it('saves style_system and style_options in payload', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'mishkaat',
+        style_options: { metal: 'gold', arch: true },
+        layout_preset: 'mishkaat',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+
+    render(ThemePage, { props: slugData });
+
+    const saveBtn = await screen.findByText('Save Changes');
+    // Change accent to make form dirty
+    const accentInput = (await screen.findAllByPlaceholderText('#10b981'))[0];
+    await fireEvent.input(accentInput, { target: { value: '#999999' } });
+
+    await fireEvent.click(saveBtn);
+
+    expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+    const body = mockUpdateProfile.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.style_system).toBe('mishkaat');
+    expect(body.style_options.metal).toBe('gold');
+    expect(body.style_options.arch).toBe(true);
+    expect(body.layout_preset).toBe('mishkaat');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Style System and Screen Appearance
+// ---------------------------------------------------------------------------
+describe('Theme page — style system', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'sakeenah',
+        style_options: {},
+        layout_preset: 'glass-dark',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+  });
+
+  it('shows Style section with Mishkaat and Sakeenah cards', async () => {
+    render(ThemePage, { props: slugData });
+    await waitFor(() => {
+      expect(screen.getByText('Style')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Mishkaat')).toBeInTheDocument();
+    expect(screen.getByText('Sakeenah')).toBeInTheDocument();
+  });
+
+  it('shows Layout Preset section when Sakeenah is selected', async () => {
+    render(ThemePage, { props: slugData });
+    await waitFor(() => {
+      expect(screen.getByText('Layout Preset')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Glass Dark')).toBeInTheDocument();
+    expect(screen.getByText('Minimal Light')).toBeInTheDocument();
+  });
+
+  it('shows Screen Appearance fields when Mishkaat is selected', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'mishkaat',
+        style_options: {},
+        layout_preset: 'mishkaat',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+
+    render(ThemePage, { props: slugData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Screen Appearance')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Metal')).toBeInTheDocument();
+    expect(screen.getByText('Pattern')).toBeInTheDocument();
+    expect(screen.getByText('Arch')).toBeInTheDocument();
+    expect(screen.getByText('Numerals')).toBeInTheDocument();
+    expect(screen.getByText('Density')).toBeInTheDocument();
+  });
+
+  it('shows Day & Night Colors section when Mishkaat', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'mishkaat',
+        style_options: {},
+        layout_preset: 'mishkaat',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+
+    render(ThemePage, { props: slugData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Day & Night Colors')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Enable ambient palette')).toBeInTheDocument();
+  });
+
+  it('shows Quiet Hours section when Mishkaat', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'mishkaat',
+        style_options: {},
+        layout_preset: 'mishkaat',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+
+    render(ThemePage, { props: slugData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Quiet Hours')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Enable quiet hours')).toBeInTheDocument();
+  });
+
+  it('shows Screen Panels with checkboxes when Mishkaat', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'mishkaat',
+        style_options: {},
+        layout_preset: 'mishkaat',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+
+    render(ThemePage, { props: slugData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Screen Panels')).toBeInTheDocument();
+    });
+    expect(screen.getByText("Jumu'ah Times")).toBeInTheDocument();
+    expect(screen.getByText('Hadith of the Day')).toBeInTheDocument();
+  });
+
+  it('shows Masjid Logo and Donate Appeal sections when Mishkaat', async () => {
+    mockGetProfile.mockResolvedValue({
+      name: 'Test Masjid',
+      theme: {
+        style_system: 'mishkaat',
+        style_options: {},
+        layout_preset: 'mishkaat',
+        primary_color: '#1e3a8a',
+        accent_color: '#10b981',
+        font_heading: 'Inter',
+        font_body: 'Inter',
+        time_format: '24h',
+        label_adhaan: '',
+        label_iqaamah: '',
+        label_jumuah: '',
+        label_sunrise: '',
+        label_fajr: '',
+        label_dhuhr: '',
+        label_asr: '',
+        label_maghrib: '',
+        label_isha: '',
+        label_speech: '',
+      },
+    });
+
+    render(ThemePage, { props: slugData });
+
+    await waitFor(() => {
+      expect(screen.getByText('Masjid Logo')).toBeInTheDocument();
+    });
+    const donateElements = screen.getAllByText('Donate Appeal');
+    expect(donateElements.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Medallion (star)')).toBeInTheDocument();
   });
 });
 
