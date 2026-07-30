@@ -114,10 +114,22 @@ describe('Prayer rules settings page', () => {
     });
   });
 
-  it('has Add Rule button', async () => {
+  it('has Add Rule buttons for each prayer', async () => {
     render(PrayerPage, { props: slugData });
     await waitFor(() => {
-      expect(screen.getByText('Add Rule')).toBeInTheDocument();
+      const buttons = screen.getAllByText('Add Rule');
+      expect(buttons.length).toBe(5);
+    });
+  });
+
+  it('renders prayer section headings', async () => {
+    render(PrayerPage, { props: slugData });
+    await waitFor(() => {
+      const headings = screen.getAllByRole('heading', { level: 2 });
+      const labels = headings.map(h => h.textContent!.toLowerCase());
+      for (const prayer of ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']) {
+        expect(labels).toContain(prayer);
+      }
     });
   });
 });

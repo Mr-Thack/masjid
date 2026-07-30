@@ -15,10 +15,31 @@ The project is a fully implemented monorepo with:
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
 
+## First-time setup (fresh clone or worktree)
+
+Every fresh checkout — whether `git clone` or `git worktree add` — needs these steps before anything else will work:
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Generate SvelteKit types in every SvelteKit workspace
+#    (vite dev/build do this automatically, but vitest / tsc don't)
+for ws in apps/api apps/consumer apps/tv apps/admin; do
+  npx --workspace=@masjid/${ws##*/} svelte-kit sync
+done
+
+# 3. Seed the local SQLite database
+npx tsx tooling/seed.ts
+```
+
+> **Per-worktree note**: each `git worktree` is a separate directory with its own `.masjid/local.db` and `node_modules`. You must `npm install` and seed inside each worktree. See "Multi-agent parallel work (worktrees)" below.
+>
+> **If admin/consumer/TV tests fail with `Cannot find module './.svelte-kit/tsconfig.json'`**, the `.svelte-kit/` output is missing — re-run step 2 above (`svelte-kit sync`).
+
 ## How to start everything
 ```bash
-# Terminal 1 — seed DB + start API
-npx tsx tooling/seed.ts   # only needed first time or after DB loss
+# Terminal 1 — start API
 npm run dev --workspace=@masjid/api          # port 5173
 
 # Terminal 2 — TV display
