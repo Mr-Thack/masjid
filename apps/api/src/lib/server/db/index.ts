@@ -345,6 +345,7 @@ function ensureTables(sqlite: Database.Database) {
   addColumnIfMissing(sqlite, 'admins', 'whatsapp_phone', 'TEXT');
   addColumnIfMissing(sqlite, 'mkt_terms', 'billing_months', 'INTEGER');
   addColumnIfMissing(sqlite, 'mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'");
+  addColumnIfMissing(sqlite, 'mkt_settings', 'assistance_code', 'TEXT');
   addColumnIfMissing(sqlite, 'jumuah_sessions', 'speech_time', 'TEXT');
   addColumnIfMissing(sqlite, 'masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'");
   addColumnIfMissing(sqlite, 'masjids', 'high_latitude_rule', "TEXT NOT NULL DEFAULT 'seventh_of_night'");

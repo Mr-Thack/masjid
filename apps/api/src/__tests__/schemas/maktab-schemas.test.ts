@@ -314,4 +314,16 @@ describe('SettingsUpdateSchema', () => {
       status_message: 'Limited spots available',
     })).not.toThrow();
   });
+
+  it('accepts assistance_code', () => {
+    expect(() => SettingsUpdateSchema.parse({ assistance_code: 'A1B2C3' })).not.toThrow();
+  });
+
+  it('accepts null assistance_code (clear)', () => {
+    expect(() => SettingsUpdateSchema.parse({ assistance_code: null })).not.toThrow();
+  });
+
+  it('accepts empty assistance_code', () => {
+    expect(() => SettingsUpdateSchema.parse({ assistance_code: '' })).not.toThrow();
+  });
 });

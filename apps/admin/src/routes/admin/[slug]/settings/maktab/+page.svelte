@@ -108,6 +108,7 @@
     enrollment_open: false,
     status_message: '',
     active_term_id: '',
+    assistance_code: '',
   });
 
   let newTerm = $state({
@@ -159,6 +160,7 @@
         enrollment_open: settingsRes.enrollment_open,
         status_message: settingsRes.status_message ?? '',
         active_term_id: settingsRes.active_term?.id ?? '',
+        assistance_code: settingsRes.assistance_code ?? '',
       };
       const pi = settingsRes.program_info;
       programInfo = {
@@ -198,6 +200,7 @@
         enrollment_open: settingsForm.enrollment_open,
         status_message: settingsForm.status_message || null,
         active_term_id: settingsForm.active_term_id || null,
+        assistance_code: settingsForm.assistance_code || null,
         program_info: programInfo,
       });
       toast.success('Maktab settings saved');
@@ -358,6 +361,25 @@
               class="w-full"
             />
           </div>
+        </div>
+
+        <div>
+          <label for="assistance_code" class="block text-sm text-text-muted mb-1">
+            Assistance Code
+            <span class="text-text-dim text-xs font-normal">(6 characters, shared with families in need)</span>
+          </label>
+          <input
+            id="assistance_code"
+            type="text"
+            maxlength="6"
+            bind:value={settingsForm.assistance_code}
+            placeholder="e.g. A1B2C3"
+            class="w-full max-w-xs font-mono tracking-widest uppercase"
+          />
+          <p class="text-xs text-text-muted mt-1">
+            Families enter this code in the Card Holder Name field to register under financial aid.
+            Leave empty to disable.
+          </p>
         </div>
 
         <div>

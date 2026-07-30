@@ -46,6 +46,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       enrollment_open: !!settings?.enrollmentOpen,
       active_term: activeTerm ? termToPublic(activeTerm) : null,
       status_message: settings?.statusMessage ?? null,
+      assistance_code: settings?.assistanceCode ?? null,
       program_info: settings?.programInfo ? parseProgramInfo(settings.programInfo) : {},
     });
   } catch (e) {
@@ -84,6 +85,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
         activeTermId: body.active_term_id ?? null,
         enrollmentOpen: body.enrollment_open ?? false,
         statusMessage: body.status_message ?? null,
+        assistanceCode: body.assistance_code ?? null,
         programInfo: body.program_info ? JSON.stringify(body.program_info) : '{}',
         updatedAt: new Date().toISOString(),
       })
@@ -93,6 +95,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
           activeTermId: body.active_term_id ?? null,
           enrollmentOpen: body.enrollment_open ?? false,
           statusMessage: body.status_message ?? null,
+          assistanceCode: body.assistance_code ?? null,
           programInfo: body.program_info ? JSON.stringify(body.program_info) : '{}',
           updatedAt: new Date().toISOString(),
         },
@@ -112,6 +115,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       enrollment_open: !!settings?.enrollmentOpen,
       active_term: activeTerm ? termToPublic(activeTerm) : null,
       status_message: settings?.statusMessage ?? null,
+      assistance_code: settings?.assistanceCode ?? null,
       program_info: settings?.programInfo ? parseProgramInfo(settings.programInfo) : {},
     });
   } catch (e: unknown) {

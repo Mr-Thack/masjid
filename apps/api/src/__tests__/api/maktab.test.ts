@@ -590,6 +590,188 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('assistance code match skips Square and registers with aid_granted', async () => {
+    const slug = `enroll-aid-${Date.now()}`;
+    const { id: masjidId, termId } = await enrollSetup(slug);
+
+    await db.update(mktSettings)
+      .set({ assistanceCode: 'HELP42' })
+      .where(eq(mktSettings.masjidId, masjidId));
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        father: { name: 'Needy Parent', phone: '+14155552001', email: 'needy@example.com' },
+        address_line1: '789 Hope St',
+        city: 'Marietta',
+        postal_code: '30060',
+        children: [{ name: 'Student Aid', dob: '2017-03-15', sex: 'female' }],
+        source_id: 'cnon:card_token',
+        card_holder_name: 'HELP42',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('aid_granted');
+      expect(body.subscription_id).toBeNull();
+
+      const regs = await db.select().from(mktRegistrations)
+        .where(eq(mktRegistrations.masjidId, masjidId))
+        .orderBy(desc(mktRegistrations.createdAt));
+      expect(regs).toHaveLength(1);
+      const reg = regs[0]!;
+      expect(reg.status).toBe('aid_granted');
+      expect(reg.paymentProvider).toBe('aid');
+      expect(reg.paymentCustomerId).toBeNull();
+      expect(reg.paymentSubscriptionId).toBeNull();
+      expect(reg.monthlyAmountCents).toBe(0);
+      expect(reg.fatherName).toBe('Needy Parent');
+      expect(reg.city).toBe('Marietta');
+      expect(reg.termId).toBe(termId);
+
+      const children = JSON.parse(reg.childrenJson);
+      expect(children).toHaveLength(1);
+      expect(children[0].name).toBe('Student Aid');
+
+      // Square should never have been called
+      const fetchCalls = mockFetch.mock.calls.filter(
+        ([url]: [string]) => !url.includes('localhost')
+      );
+      expect(fetchCalls).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('assistance code case-sensitive — wrong case falls through to payment', async () => {
+    const slug = `enroll-aidcase-${Date.now()}`;
+    const { id: masjidId } = await enrollSetup(slug);
+
+    await db.update(mktSettings)
+      .set({ assistanceCode: 'HELP42' })
+      .where(eq(mktSettings.masjidId, masjidId));
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        ...ENROLL_PAYLOAD,
+        card_holder_name: 'help42',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('payment_succeeded');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('no assistance code set — normal Square payment proceeds', async () => {
+    const slug = `enroll-noaid-${Date.now()}`;
+    const { id: masjidId } = await enrollSetup(slug);
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        ...ENROLL_PAYLOAD,
+        card_holder_name: 'SOME_RANDOM_CODE',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('payment_succeeded');
+
+      const regs = await db.select().from(mktRegistrations)
+        .where(eq(mktRegistrations.masjidId, masjidId))
+        .orderBy(desc(mktRegistrations.createdAt));
+      expect(regs).toHaveLength(1);
+      expect(regs[0]!.status).toBe('payment_succeeded');
+      expect(regs[0]!.paymentProvider).toBe('square');
+      expect(regs[0]!.monthlyAmountCents).toBe(5000);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('assistance code set but card_holder_name normal — normal payment proceeds', async () => {
+    const slug = `enroll-aid-nomatch-${Date.now()}`;
+    const { id: masjidId } = await enrollSetup(slug);
+
+    await db.update(mktSettings)
+      .set({ assistanceCode: 'HELP42' })
+      .where(eq(mktSettings.masjidId, masjidId));
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        ...ENROLL_PAYLOAD,
+        card_holder_name: 'Normal Parent',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('payment_succeeded');
+
+      const regs = await db.select().from(mktRegistrations)
+        .where(eq(mktRegistrations.masjidId, masjidId))
+        .orderBy(desc(mktRegistrations.createdAt));
+      expect(regs).toHaveLength(1);
+      expect(regs[0]!.status).toBe('payment_succeeded');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('assistance code match persists 3-child registration correctly', async () => {
+    const slug = `enroll-aid3-${Date.now()}`;
+    const { id: masjidId } = await enrollSetup(slug);
+
+    await db.update(mktSettings)
+      .set({ assistanceCode: 'AID123' })
+      .where(eq(mktSettings.masjidId, masjidId));
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        father: { name: 'Large Family', phone: '+14155553001', email: 'large@example.com' },
+        address_line1: '10 Family Ln',
+        city: 'Roswell',
+        postal_code: '30075',
+        children: [
+          { name: 'Child A', dob: '2012-05-10', sex: 'male' },
+          { name: 'Child B', dob: '2014-08-20', sex: 'female' },
+          { name: 'Child C', dob: '2017-01-05', sex: 'male' },
+        ],
+        source_id: 'cnon:card_token',
+        card_holder_name: 'AID123',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(200);
+
+      const regs = await db.select().from(mktRegistrations)
+        .where(eq(mktRegistrations.masjidId, masjidId))
+        .orderBy(desc(mktRegistrations.createdAt));
+      expect(regs).toHaveLength(1);
+      const reg = regs[0]!;
+      expect(reg.status).toBe('aid_granted');
+      expect(reg.monthlyAmountCents).toBe(0);
+      expect(reg.fatherName).toBe('Large Family');
+
+      const children = JSON.parse(reg.childrenJson);
+      expect(children).toHaveLength(3);
+      expect(children[0].name).toBe('Child A');
+      expect(children[1].sex).toBe('female');
+      expect(children[2].dob).toBe('2017-01-05');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────
@@ -676,6 +858,51 @@ describe('Admin settings', () => {
     expect(body.status_message).toBe('Limited spots!');
     expect(body.active_term.id).toBe(termId);
     expect(body.active_term.prices['1']).toBe(8000);
+  });
+
+  it('PUT sets and GET returns assistance_code', async () => {
+    const slug = `settings-aid-${Date.now()}`;
+    const id = await seedMasjid(slug);
+
+    const req = createRequest('PUT', `/api/v1/admin/masjids/${id}/settings`, {
+      assistance_code: 'A1B2C3',
+    });
+    const res = await putSettings({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.assistance_code).toBe('A1B2C3');
+
+    const getReq = createRequest('GET', `/api/v1/admin/masjids/${id}/settings`);
+    const getRes = await getSettings({ params: { id }, request: getReq, url: new URL(getReq.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(getRes.status).toBe(200);
+    const getBody = await getRes.json();
+    expect(getBody.assistance_code).toBe('A1B2C3');
+  });
+
+  it('PUT clears assistance_code when set to null', async () => {
+    const slug = `settings-aidnull-${Date.now()}`;
+    const id = await seedMasjid(slug);
+
+    await db.insert(mktSettings).values({ masjidId: id, assistanceCode: 'OLDCODE' });
+
+    const req = createRequest('PUT', `/api/v1/admin/masjids/${id}/settings`, {
+      assistance_code: null,
+    });
+    const res = await putSettings({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.assistance_code).toBeNull();
+  });
+
+  it('GET returns null assistance_code when not set', async () => {
+    const slug = `settings-noaid-${Date.now()}`;
+    const id = await seedMasjid(slug);
+
+    const req = createRequest('GET', `/api/v1/admin/masjids/${id}/settings`);
+    const res = await getSettings({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.assistance_code).toBeNull();
   });
 });
 

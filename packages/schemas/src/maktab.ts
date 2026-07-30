@@ -137,6 +137,7 @@ export const SettingsUpdateSchema = z.object({
   active_term_id: z.string().nullable().optional(),
   enrollment_open: z.boolean().optional(),
   status_message: z.string().nullable().optional(),
+  assistance_code: z.string().nullable().optional(),
   program_info: ProgramInfoSchema.optional(),
 });
 
