@@ -139,12 +139,10 @@
   }
 
   function handleReorder(e: MouseEvent) {
-    console.log('[handleReorder] called', e.type, e.currentTarget);
     const btn = e.currentTarget as HTMLButtonElement;
     const prayer = btn.dataset.prayer!;
     const index = parseInt(btn.dataset.index!, 10);
     const dir = parseInt(btn.dataset.dir!, 10);
-    console.log('[handleReorder] prayer=%s index=%d dir=%d', prayer, index, dir);
     reorderWithinPrayer(prayer, index, dir);
   }
 
