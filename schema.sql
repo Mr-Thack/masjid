@@ -123,6 +123,7 @@ CREATE TABLE jumuah_sessions (
     time TEXT NOT NULL,                 -- "13:30" — fixed, not calculated
     khateeb TEXT,
     location TEXT,                      -- "Main Hall" / "Gymnasium Overflow"
+    speech_time TEXT,                   -- Khutbah/speech start time (before iqaamah)
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
 );
