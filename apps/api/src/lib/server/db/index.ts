@@ -80,8 +80,6 @@ function ensureTables(sqlite: Database.Database) {
       adjust_asr INTEGER NOT NULL DEFAULT 0,
       adjust_maghrib INTEGER NOT NULL DEFAULT 0,
       adjust_isha INTEGER NOT NULL DEFAULT 0,
-      fajr_angle REAL,
-      isha_angle REAL,
       tenant_status TEXT NOT NULL DEFAULT 'SHADOW',
       address_line1 TEXT,
       address_line2 TEXT,
