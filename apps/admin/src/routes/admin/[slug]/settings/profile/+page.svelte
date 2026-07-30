@@ -2,6 +2,7 @@
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
+  import { coerceAsrMadhab, coerceHighLatitudeRule, coerceAngle, coerceBoolean } from '$lib/coercion';
   import { Loader } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
 
@@ -123,11 +124,11 @@
         website_url: cleanUrl(form.website_url),
         external_donation_url: cleanUrl(form.external_donation_url),
         calculation_method: Number(form.calculation_method),
-        asr_madhab: form.asr_madhab,
-        high_latitude_rule: form.high_latitude_rule,
-        show_dual_asr: form.show_dual_asr,
-        fajr_angle: form.fajr_angle,
-        isha_angle: form.isha_angle,
+        asr_madhab: coerceAsrMadhab(form.asr_madhab),
+        high_latitude_rule: coerceHighLatitudeRule(form.high_latitude_rule),
+        show_dual_asr: coerceBoolean(form.show_dual_asr),
+        fajr_angle: coerceAngle(form.fajr_angle),
+        isha_angle: coerceAngle(form.isha_angle),
         timezone: form.timezone,
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
