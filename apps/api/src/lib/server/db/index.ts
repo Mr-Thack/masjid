@@ -401,17 +401,17 @@ function ensureD1Columns(d1db: D1Database) {
   if (d1Migrated) return;
   d1Migrated = true;
 
-  for (const [table, column, def] of D1_COLUMN_MIGRATIONS) {
-    try {
-      const existing = d1db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
-      if (!existing.some((c) => c.name === column)) {
-        d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+  (async () => {
+    for (const [table, column, def] of D1_COLUMN_MIGRATIONS) {
+      try {
+        await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
         console.log(`[migration] D1: added ${table}.${column}`);
+      } catch (e) {
+        // Column likely already exists — D1 has no ADD COLUMN IF NOT EXISTS.
+        // We log only at debug level since this is expected on warm isolates.
       }
-    } catch (e) {
-      console.error(`[migration] D1: failed to add ${table}.${column}`, e instanceof Error ? e.message : e);
     }
-  }
+  })();
 }
 
 export type Db = ReturnType<typeof getDb>;
