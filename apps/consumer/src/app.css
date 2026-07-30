@@ -151,6 +151,65 @@ svg {
   pointer-events: none;
 }
 
+/* Prayer table — the classic timetable pattern: one row per prayer, adhaan
+   and iqaamah in scannable columns. Shared by both style systems; the skins
+   come from the theme CSS variables (Mishkaat-only tweaks live below). */
+.c-prayer-table { padding: 0.35rem 0.5rem; }
+.c-prayer-table table { border-collapse: collapse; }
+.c-pt-head {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-dim);
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+.c-pt-head-name { text-align: left; }
+.c-pt-head-iqaamah { color: var(--color-accent); }
+.c-prayer-table tbody tr + tr { border-top: 1px solid var(--color-border); }
+.c-pt-name {
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+.c-pt-time {
+  padding: 0.55rem 0.75rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.c-pt-iqaamah { font-weight: 800; color: var(--color-accent); }
+.c-pt-sub { display: block; font-size: 0.65rem; font-weight: 500; color: var(--color-text-dim); }
+.c-pt-current { background: color-mix(in srgb, var(--color-primary) 14%, transparent); }
+.c-pt-current .c-pt-name { color: var(--color-text); }
+.c-pt-sunrise .c-pt-name,
+.c-pt-sunrise .c-pt-time {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+}
+.c-pt-chip {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  color: #fff;
+}
+
 /* App shell root — same values the layout used to set inline; a class so the
    Mishkaat ambient palette (below) can override the background. */
 .c-app {
@@ -301,12 +360,23 @@ svg {
   color: var(--color-text-dim);
 }
 
-/* Current-prayer rosette marker on prayer cards. */
+/* Current-prayer rosette marker — inline glyph before the prayer name in the
+   prayer table (only ever rendered when the Mishkaat branch passes
+   rosetteMarker, so no data-style-system guard is needed). */
 .c-prayer-rosette {
-  position: absolute;
-  top: 0.55rem;
-  left: 0.55rem;
+  display: inline-flex;
   color: var(--color-accent);
+}
+
+/* Mishkaat prayer-table skin: gold header rule, wider tracking, current row
+   lit in gold instead of primary blue. */
+html[data-style-system='mishkaat'] .c-pt-head {
+  border-bottom-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  letter-spacing: 0.18em;
+}
+html[data-style-system='mishkaat'] .c-pt-name { letter-spacing: 0.08em; }
+html[data-style-system='mishkaat'] .c-pt-current {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 /* Ambient palette (§7.4, mild mobile version): background breathes with

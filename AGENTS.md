@@ -4,12 +4,13 @@
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 470 tests)
 - **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
-- **Working consumer frontend** (SvelteKit static/SPA, 74 tests)
+- **Working consumer frontend** (SvelteKit static/SPA, 73 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
-- **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Sakeenah consumer pages byte-identical. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
+- **Prayer table on the homepage (2026-07-30)** — the homepage prayer section is the classic masjid timetable (`PrayerTable`: one row per prayer, adhaan/iqaamah columns, sunrise row, current-row highlight + rosette, next chip, right-after-adhaan and dual-Asr notes) for BOTH style systems, replacing the card grid. `PrayerCard`/`PrayerList`/`SkeletonPrayerCard` deleted. The weekly `/prayer` page still uses day cards (conversion planned).
+- **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
@@ -35,7 +36,7 @@ npm run dev --workspace=@masjid/admin        # port 5176
 npm run test             # API unit tests, 470 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
 npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
-npm run test:consumer    # Consumer frontend, 74 tests (jsdom + testing-library)
+npm run test:consumer    # Consumer frontend, 73 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:agent       # Agent package tests (pending: ~175 expected)
@@ -124,10 +125,10 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 
 ### Theme & display settings (extensible, per-masjid)
 - **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV. Also hosts the shared Mishkaat modules: `components/Rosette.svelte` + `components/StarBand.svelte` (subpath exports `@masjid/ui-utils/components/*`), `arch.ts` (canonical mihrab geometry), `ceremony.ts` (`computeCeremony`, `getAmbientPhase`, Hijri helpers — TV re-exports via `$lib/ceremony`), `hadith.ts` (collection + `hadithTagsForContext`).
-- **Mishkaat consumer adaptation (§7.11)**: `style_system` flows through the page payload; pages branch via `resolveStyleSystem(theme)`. Hero mihrab niche (`HeroNiche`), header star band + rosette glyph, `HadithCard`, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments, ambient background via `src/lib/ambient.ts` (`data-ambient-phase` on the app root), `rosetteMarker` on PrayerCard. All Mishkaat CSS keys off `html[data-style-system='mishkaat']` or renders only under the branch — Sakeenah byte-identical.
+- **Mishkaat consumer adaptation (§7.11)**: `style_system` flows through the page payload; pages branch via `resolveStyleSystem(theme)`. Hero mihrab niche (`HeroNiche`), header star band + rosette glyph, `HadithCard`, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments, ambient background via `src/lib/ambient.ts` (`data-ambient-phase` on the app root), `rosetteMarker` on the prayer table's current row. All Mishkaat CSS keys off `html[data-style-system='mishkaat']` or renders only under the branch.
 - **`src/lib/theme/context.svelte.ts`**: Thin re-export of `applyTheme` from `@masjid/ui-utils` for consumer-specific import paths.
 - **`layout_preset` field** in `masjid_themes` table switches presets. Al-Noor seeds to `'mishkaat'` (Mishkaat style system); Al-Jabal seeds to `'minimal-light'` (Sakeenah). Unknown values fall through to the style system's default preset.
-- **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerCard`, `PrayerList`, and the weekly prayer view.
+- **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerTable` and the weekly prayer view.
 - **CSS custom properties** (16 total):
   - `--color-primary`, `--color-accent`, `--color-primary-light`, `--color-accent-light` — set by theme
   - `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-text-dim` — set by preset
@@ -135,15 +136,14 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
   - `--font-heading`, `--font-body` — set by theme
   - `--safe-bottom`, `--radius-card`, `--radius-btn` — layout
 - **Tailwind v4 `@theme`** in `app.css` maps `--color-primary: var(--color-primary)` etc. so `bg-primary`, `text-accent`, `font-heading` are valid Tailwind utilities.
-- **No prop-drilled colors**: PrayerCard, PrayerList, AnnouncementCard, DonateButton all read colors from CSS custom properties directly. No `accentColor` prop.
+- **No prop-drilled colors**: PrayerTable, AnnouncementCard, DonateButton all read colors from CSS custom properties directly. No `accentColor` prop.
 - **Fonts loaded** in `app.html`: Inter, Roboto, Amiri, Noto Naskh Arabic, Scheherazade New — all with `display=swap`.
 - **Roboto stays in the font stack** because it is the `font_body` column default (schema + Zod), even though both seed masjids now set explicit body fonts (Al-Noor: Inter, Al-Jabal: Noto Naskh Arabic).
 
 ### Component library (`src/lib/components/`)
 | Component | Purpose |
 |---|---|
-| `PrayerCard` | Single prayer time card (adhaan + iqaamah, sunrise line for Fajr, current/next badges, optional right-after-adhaan collapse, `rosetteMarker` prop for the Mishkaat current-prayer rosette) |
-| `PrayerList` | Wrapping grid of PrayerCards with current + next prayer index logic |
+| `PrayerTable` | Classic homepage timetable (one row per prayer, adhaan/iqaamah columns, dimmed sunrise row, current-row highlight + chip, right-after-adhaan collapse, dual-Asr note, `rosetteMarker` prop for the Mishkaat current-prayer rosette) |
 | `HeroNiche` | Mishkaat hero: canonical mihrab arch + apex rosette framing the countdown (§7.11) |
 | `HadithCard` | Mishkaat Hadith of the Day (Arabic RTL + English + source, rosette-flanked heading) |
 | `AnnouncementCard` | Expandable announcement (title, date, compiled_html, pin badge) |
@@ -151,14 +151,13 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 | `LoadingSpinner` | Centered spinning loader |
 | `ErrorState` | Error message card with warning icon |
 | `EmptyState` | Empty state card with icon, title, and message |
-| `SkeletonPrayerCard` | Shimmer placeholder for prayer card loading |
 
 ### Pages (under `/[masjid_slug]/`)
 | Route | Description |
 |---|---|
 | `+layout.svelte` | Shell: sticky header, top nav on desktop/bottom nav on mobile (Home | Prayer | News | Info | Maktab), theme application, nav transitions |
 | `+layout.ts` | Load function — fetches page payload, returns masjid/theme/prayer_times/jumuah/announcements |
-| `+page.svelte` | Home: hero + countdown, prayer cards grid, jumuah today, pinned announcement, donate CTA |
+| `+page.svelte` | Home: hero + countdown, prayer times table, jumuah today, pinned announcement, donate CTA |
 | `+error.svelte` | Error boundary fallback |
 | `prayer/+page.svelte` | Weekly prayer times viewer (prev/next week navigation) |
 | `jumuah/+page.svelte` | Jumu'ah sessions list with session cards (sessions now also show on homepage; location shown once when shared) |

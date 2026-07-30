@@ -323,8 +323,19 @@ The screen participates in the salah. Triggered by server-synchronized time (§7
 
 The TV serves a room; the phone serves a person. The consumer app takes Mishkaat's
 soul in still form — the palette, typography, and `data-style-system` plumbing were
-already shared via `applyTheme`; this section adds the structural layer, all keyed
-off `style_system === 'mishkaat'` with Sakeenah byte-identical.
+already shared via `applyTheme`; this section adds the structural layer. The
+Mishkaat extras are keyed off `style_system === 'mishkaat'`; the prayer table
+(below) is shared by both style systems.
+
+**Prayer table (both style systems, 2026-07-30).** The homepage prayer section
+is the classic masjid timetable — one row per prayer, adhaan/iqaamah in
+scannable columns (`PrayerTable.svelte`, a real `<table>` with row/column
+headers), replacing the card grid. Sunrise is its own dimmed row;
+right-after-adhaan collapses the iqaamah cell to an "After {adhaan}" note; dual
+Asr sits as a sub-line under the adhaan cell; the current row is highlighted
+(rosette glyph under Mishkaat) and the next prayer gets a chip. Skinning is
+entirely via theme CSS variables; Mishkaat-only tweaks key off
+`html[data-style-system='mishkaat']` in `app.css`.
 
 **Carries over (adapted):**
 
@@ -346,8 +357,8 @@ off `style_system === 'mishkaat'` with Sakeenah byte-identical.
 - **Ambient palette (mild)** — `data-ambient-phase` on the app root shifts the
   background tint per solar phase (same tint values as the TV). Off when the
   `ambient` style option is off. Text colors never shift.
-- **Current-prayer rosette marker** on the prayer card (the board marker, card
-  scale).
+- **Current-prayer rosette marker** on the current prayer-table row (the board
+  marker, mobile scale).
 
 **Does not carry over (and why):**
 

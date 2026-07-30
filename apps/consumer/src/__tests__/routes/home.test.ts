@@ -212,7 +212,7 @@ describe('homepage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows skeleton placeholders when prayer_times is missing', () => {
+  it('shows a skeleton placeholder when prayer_times is missing', () => {
     setPageData({
       masjid: { name: 'Loading Masjid' },
       prayer_times: null,
@@ -230,7 +230,7 @@ describe('homepage', () => {
     ).toBeInTheDocument();
 
     const skeletons = container.querySelectorAll('.animate-shimmer');
-    expect(skeletons).toHaveLength(5);
+    expect(skeletons).toHaveLength(1);
   });
 
   it('renders dual Asr when asr_secondary is provided on prayer_times', () => {

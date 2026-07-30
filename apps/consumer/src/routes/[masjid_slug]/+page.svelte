@@ -1,8 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import PrayerList from '$lib/components/PrayerList.svelte';
+  import PrayerTable from '$lib/components/PrayerTable.svelte';
   import DonateButton from '$lib/components/DonateButton.svelte';
-  import SkeletonPrayerCard from '$lib/components/SkeletonPrayerCard.svelte';
   import HeroNiche from '$lib/components/HeroNiche.svelte';
   import HadithCard from '$lib/components/HadithCard.svelte';
   import { fetchPrayerTimes, type PrayerTimes } from '$lib/api';
@@ -361,7 +360,7 @@
         Prayer Times
       </h2>
       {#if prayerTimes && Object.keys(prayerTimes).length > 0}
-        <PrayerList
+        <PrayerTable
           {times}
           labels={{ adhaan: theme?.label_adhaan ?? 'Adhaan', iqaamah: theme?.label_iqaamah ?? 'Iqaamah', sunrise: theme?.label_sunrise ?? 'Sunrise' }}
           timeFormat={theme?.time_format ?? '24h'}
@@ -370,13 +369,7 @@
           rosetteMarker={mishkaat}
         />
       {:else}
-        <div class="flex flex-wrap justify-center gap-3">
-          {#each Array(5) as _}
-            <div class="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)]">
-              <SkeletonPrayerCard />
-            </div>
-          {/each}
-        </div>
+        <div class="h-60 rounded-lg animate-shimmer" style="background: var(--color-surface);"></div>
       {/if}
     </section>
 

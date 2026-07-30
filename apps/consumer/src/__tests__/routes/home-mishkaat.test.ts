@@ -1,8 +1,9 @@
 // Mishkaat consumer adaptation (docs/design-language.md §7.11): under the
 // Mishkaat style system the homepage gains the mihrab hero niche, the Hadith
 // of the Day card, Thursday–Friday Jumu'ah pinning, adhaan/iqaamah hero
-// moments, and the current-prayer rosette marker. Under Sakeenah none of
-// this renders — the Sakeenah homepage is byte-identical to before.
+// moments, and the current-prayer rosette marker in the prayer table. Under
+// Sakeenah none of this renders. (The prayer table itself is shared by both
+// style systems — only the Mishkaat extras branch.)
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
@@ -153,7 +154,7 @@ describe('homepage — Mishkaat (§7.11)', () => {
     expect(niche.querySelector('.c-hero-countdown')?.textContent).toBe('0:14:00');
   });
 
-  it('marks the current prayer card with a rosette', () => {
+  it('marks the current prayer row with a rosette', () => {
     vi.setSystemTime(new Date('2026-07-30T12:30:00')); // Dhuhr is current
     const { container } = render(HomePage);
 
