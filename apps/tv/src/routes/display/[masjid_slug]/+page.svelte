@@ -13,6 +13,7 @@
   import { syncServerTime, serverNow } from '$lib/server-clock';
   import { buildFrames, hadithTagsForContext, MAX_ANNOUNCEMENT_FRAMES, FRAME_TRANSITION_MS } from '$lib/frames';
   import { computeCeremony, getHijriPartsCached, type PrayerKey } from '$lib/ceremony';
+  import { getBoardPhase, boardCycleHoldoff } from '$lib/board-cycle';
   import { fade } from 'svelte/transition';
   import PrayerBoard from '$lib/components/PrayerBoard.svelte';
   import AnnouncementBanner from '$lib/components/AnnouncementBanner.svelte';
@@ -229,6 +230,29 @@
     });
   });
 
+  // --- Board roll cycle (Mishkaat, §7.5) ----------------------------------
+  // 45s on today's times, 15s rolled into the upcoming changes; never
+  // rolls around a prayer moment (adhaan → iqaamah + 5min holdoff).
+  let boardChangesByKey = $derived.by(() => {
+    const map: Record<string, { date: string; to: string }> = {};
+    for (const change of rawUpcomingChanges) {
+      const d = new Date(change.date + 'T12:00:00');
+      map[change.prayer] = {
+        date: d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        to: formatTime(change.to, timeFormat),
+      };
+    }
+    return map;
+  });
+
+  let boardPhase = $derived(
+    getBoardPhase(now.getTime(), {
+      hasChanges: upcomingChanges.length > 0,
+      holdoff: boardCycleHoldoff(nowSeconds / 60, Object.values(prayerWindows)),
+      reducedMotion,
+    }),
+  );
+
   let formattedJumuahSessions = $derived.by(() => {
     return payload.jumuah.map((session) => ({
       id: session.id,
@@ -244,7 +268,6 @@
     buildFrames({
       jumuahSessionCount: formattedJumuahSessions.length,
       announcementCount: payload.recent_announcements?.length ?? 0,
-      changeCount: upcomingChanges.length,
       donationUrl: payload.masjid.external_donation_url,
       dayOfWeek: now.getDay(),
       enabledFrames: styleOptions.frames,
@@ -382,15 +405,15 @@
           {/if}
           <!-- §7.3: one mihrab arch per screen — an integrated niche holding
                the clock, digital time, and next-prayer indicators, the way a
-               mihrab frames the imam. Bare mode (arch off / compact) flows
-               the same content without the outline. -->
-          <div class="tv-clock-niche" class:tv-clock-niche--bare={!styleOptions.arch || compact}>
-            {#if styleOptions.arch && !compact}
-              <ArchCrest width={300} />
+               mihrab frames the imam. Kept in compact (windowed) mode at a
+               smaller size; bare mode (arch off) flows the same content
+               without the outline. -->
+          <div class="tv-clock-niche" class:tv-clock-niche--bare={!styleOptions.arch}>
+            {#if styleOptions.arch}
+              <ArchCrest width={320} />
             {/if}
             <div class="tv-niche-body">
               <AnalogClock {now} classic />
-              <p class="tv-digital-time">{digitalTime}</p>
               <p class="tv-sunrise">{theme.label_sunrise} @ {sunrise}</p>
               <p class="tv-countdown-label">
                 {#if ceremony.modifiers.ramadan && nextPrayerKey === 'maghrib'}
@@ -416,7 +439,6 @@
             jumuahLabel={theme.label_jumuah}
             speechLabel={theme.label_speech}
             announcements={announcementsForFrames}
-            changes={upcomingChanges}
             donationUrl={payload.masjid.external_donation_url}
             appeal={styleOptions.donateAppeal}
           />
@@ -437,6 +459,8 @@
               adhaanLabel={theme.label_adhaan}
               iqaamahLabel={theme.label_iqaamah}
               rosetteMarker
+              changes={boardChangesByKey}
+              phase={boardPhase}
             />
           </div>
         </section>

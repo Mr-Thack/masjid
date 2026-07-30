@@ -203,6 +203,70 @@ html, body {
   animation: flash-pulse 0.5s ease-in-out infinite alternate;
 }
 
+/* === Board roll (Mishkaat, §7.5): changed rows slide one cell left === */
+/* Each rolling cell clips its own track; the track is one item wider than
+   the cell and shifts by exactly one item, so today's iqaamah travels from
+   the iqaamah column into the adhaan column (the adhaan exits toward the
+   prayer label) and the new iqaamah rises in the iqaamah column. */
+.prayer-cell--roll,
+.prayer-board-header-cell--roll {
+  overflow: hidden;
+}
+
+.prayer-roll {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  transition: transform 0.75s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.prayer-roll-item {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+/* The outgoing item dims as it rolls away (under the prayer label). */
+.prayer-roll--shifted {
+  transform: translateX(-100%);
+}
+.prayer-roll--shifted .prayer-roll-item:first-child {
+  opacity: 0.2;
+}
+
+.prayer-roll-item--new {
+  color: var(--color-accent, #d4af37);
+  font-weight: 800;
+}
+
+/* Effective date sits under the prayer name during the changes phase —
+   absolutely positioned into the label cell's lower breathing room so the
+   board's geometry is IDENTICAL in both phases (no row-height jump). */
+.prayer-name {
+  position: relative;
+}
+.prayer-change-date {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.1rem;
+  font-size: clamp(0.7rem, 1vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: none;
+  color: var(--color-accent, #d4af37);
+  opacity: 0.85;
+  line-height: 1.2;
+  animation: prayer-change-date-in 0.6s ease;
+}
+@keyframes prayer-change-date-in {
+  from { opacity: 0; }
+  to { opacity: 0.85; }
+}
+
 @keyframes flash-pulse {
   0% { color: var(--color-accent, #10b981); transform: scale(1); }
   100% { color: var(--color-text, #fff); transform: scale(1.08);
@@ -466,46 +530,46 @@ html[data-style-system='mishkaat'] .tv-soul-column::-webkit-scrollbar { display:
 /* §7.3: one mihrab arch per screen — an integrated niche holding the
    clock, digital time, and next-prayer indicators (the way a mihrab
    frames the imam). Height-bounded so the soul column keeps room for
-   frames. Geometry vs. the 100×150 viewBox: belly (clock) occupies the
+   frames; max-width keeps it inside narrow columns (windowed mode).
+   Geometry vs. the 140×150 viewBox: the broad belly (clock) occupies the
    curved top, the text stack sits in the straight hall between the legs. */
 html[data-style-system='mishkaat'] .tv-clock-niche {
   position: relative;
   width: fit-content;
+  max-width: 100%;
   margin: 0 auto;
   flex-shrink: 0;
 }
 html[data-style-system='mishkaat'] .tv-clock-niche .arch-crest {
-  height: clamp(280px, 36vh, 400px);
+  height: clamp(310px, 41vh, 450px);
   width: auto;
+  max-width: 100%;
   display: block;
 }
-/* Niche interior: below the apex curve, inside the legs. */
+/* Niche interior: below the apex curve, inside the legs. No digital time —
+   the analog clock already carries it (with a second hand). */
 html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body {
   position: absolute;
-  inset: 16% 19% 5%;
+  inset: 15% 16% 4%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-evenly;
 }
 html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .analog-clock {
-  width: 74%;
+  width: 80%;
   max-width: none;
   margin: 0;
   flex-shrink: 0;
 }
-html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .tv-digital-time {
-  font-size: clamp(1.1rem, 2.4vh, 1.7rem);
-  margin-top: 0.5rem;
-}
 html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .tv-sunrise {
-  font-size: clamp(0.7rem, 1.5vh, 0.95rem);
+  font-size: clamp(0.8rem, 1.7vh, 1.1rem);
 }
 html[data-style-system='mishkaat'] .tv-clock-niche .tv-niche-body .tv-countdown-label {
-  font-size: clamp(0.72rem, 1.6vh, 0.95rem);
+  font-size: clamp(0.8rem, 1.8vh, 1.1rem);
   margin-top: 0.4rem;
 }
-/* Bare mode (arch off or compact): no outline, plain column flow. */
+/* Bare mode (arch off): no outline, plain column flow. */
 html[data-style-system='mishkaat'] .tv-clock-niche--bare { width: 100%; }
 html[data-style-system='mishkaat'] .tv-clock-niche--bare .tv-niche-body { display: contents; }
 
@@ -852,6 +916,18 @@ html[data-style-system='mishkaat'] .tv-night-veil {
 
 /* Compact Mishkaat: save vertical space in the soul column */
 html[data-style-system='mishkaat'] .tv-page--compact .tv-soul-column { min-width: 220px; }
+
+/* Windowed (compact): the niche stays, just smaller — it is integrated, so
+   it costs no extra vertical space. It claims a larger share of the column
+   than in fullscreen; the frames yield accordingly (smaller min-height so
+   they shrink instead of forcing the column to scroll). */
+html[data-style-system='mishkaat'] .tv-page--compact .tv-clock-niche .arch-crest {
+  height: clamp(210px, 40vh, 350px);
+}
+html[data-style-system='mishkaat'] .tv-page--compact .soul-frames {
+  min-height: 7rem;
+  margin-top: 0.6rem;
+}
 /* Compact padding is narrower than the motif band — pattern would land
    behind numerals (§4 ornament budget), so compact drops the motif and
    its inner bracket rule. */

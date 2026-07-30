@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import HadithFrame from '$lib/components/HadithFrame.svelte';
 import AnnouncementFrame from '$lib/components/AnnouncementFrame.svelte';
-import ChangesFrame from '$lib/components/ChangesFrame.svelte';
 import DonateFrame from '$lib/components/DonateFrame.svelte';
 import QrFrame from '$lib/components/QrFrame.svelte';
 import JumuahFrame from '$lib/components/JumuahFrame.svelte';
@@ -31,7 +30,6 @@ const soulProps = {
     { title: 'Iftar this Saturday', html: '<p>Join us for iftar.</p>' },
     { title: 'Eid prayer at 8 AM', html: null },
   ],
-  changes: [{ date: 'Fri, Aug 1', label: 'Fajr', from: '5:55 AM', to: '5:56 AM' }],
   donationUrl: 'https://example.com/donate',
   appeal: 'Every contribution makes a difference',
 };
@@ -64,23 +62,6 @@ describe('AnnouncementFrame', () => {
     });
     expect(screen.getByText('Eid prayer at 8 AM')).toBeDefined();
     expect(container.querySelector('.frame-announcement-body')).toBeNull();
-  });
-});
-
-describe('ChangesFrame', () => {
-  it('renders each schedule change row', () => {
-    render(ChangesFrame, {
-      props: {
-        changes: [
-          { date: 'Fri, Aug 1', label: 'Fajr', from: '5:55 AM', to: '5:56 AM' },
-          { date: 'Sat, Aug 2', label: 'Isha', from: '9:45 PM', to: '9:40 PM' },
-        ],
-      },
-    });
-    expect(screen.getByText('Schedule Changes')).toBeDefined();
-    expect(screen.getByText('Fajr')).toBeDefined();
-    expect(screen.getByText('Isha')).toBeDefined();
-    expect(screen.getByText('5:56 AM')).toBeDefined();
   });
 });
 
@@ -135,7 +116,6 @@ describe('SoulColumn', () => {
     { kind: 'hadith', pinned: false },
     { kind: 'announcements', pinned: false, index: 0 },
     { kind: 'announcements', pinned: false, index: 1 },
-    { kind: 'changes', pinned: false },
     { kind: 'donate', pinned: false },
     { kind: 'donate-qr', pinned: false },
   ];

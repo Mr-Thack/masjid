@@ -15,7 +15,6 @@ import {
 const fullInput = {
   jumuahSessionCount: 2,
   announcementCount: 3,
-  changeCount: 2,
   donationUrl: 'https://example.com/donate',
   dayOfWeek: 3, // Wednesday
   enabledFrames: null,
@@ -30,7 +29,6 @@ describe('buildFrames', () => {
       'announcements',
       'announcements',
       'announcements',
-      'changes',
       'donate',
       'donate-qr',
     ]);
@@ -56,7 +54,6 @@ describe('buildFrames', () => {
     const frames = buildFrames({
       jumuahSessionCount: 0,
       announcementCount: 0,
-      changeCount: 0,
       donationUrl: null,
       dayOfWeek: 3,
       enabledFrames: null,

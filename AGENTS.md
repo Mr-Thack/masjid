@@ -8,7 +8,7 @@ The project is a fully implemented monorepo with:
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
-- **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/changes/donate appeal + QR as two slides), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
+- **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
@@ -179,16 +179,16 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 | Component | Purpose |
 |---|---|
 | `AnalogClock` | SVG clock; `classic` prop renders the Mishkaat face (deep face, gold hands, 60 clean ticks) |
-| `PrayerBoard` | 6-column CSS grid table (label + 5 prayers) with adhaan/iqamah/sunrise rows, current prayer highlight, sharp flash pulse, optional rosette current-prayer marker |
+| `PrayerBoard` | 6-column CSS grid table (label + 5 prayers) with adhaan/iqamah/sunrise rows, current prayer highlight, sharp flash pulse, optional rosette current-prayer marker; Mishkaat also rolls upcoming iqaamah changes through the board on a 45s/15s cycle (see `board-cycle.ts`) |
 | `Countdown` | Compact `<span>` showing "6h 07m" or "04:32" until next iqaamah |
 | `JumuahNotice` | One-liner: `* Jumu'ah: 1:30 PM (Eng) · 2:30 PM (Arb)` |
 | `AnnouncementBanner` | Marquee banner at page bottom (Sakeenah only — Mishkaat demotes announcements to frames, §7.5 motion budget) |
 | `Rosette` | Eight-point star identity glyph (§7.3) |
 | `HoneycombFrame` | Honeycomb hairline border SVG (opt-in motif). Band must be ≥ one tiling row — narrower renders as clipped "notches" |
 | `StarBandFrame` | Default motif: eight-point stars + interlocking octagons band (§7.3), bracketed by the panel border + an inset hairline rule |
-| `ArchCrest` | Mihrab arch + apex rosette; one arch per screen (§7.3) — rendered as a **niche around the clock** (`.tv-clock-niche`), height-bounded via `clamp(280px, 36vh, 400px)`; the elongated 100×150 viewBox lets the arch also encapsulate the digital time + sunrise + countdown (`.tv-niche-body`), one integrated unit |
+| `ArchCrest` | Mihrab arch + apex rosette; one arch per screen (§7.3) — rendered as a **niche around the clock** (`.tv-clock-niche`), height-bounded via `clamp(310px, 41vh, 450px)` (claims a larger share of the column in compact/windowed mode, never dropped); the wide 140×150 viewBox lets the arch encapsulate the clock + sunrise + countdown (`.tv-niche-body`), one integrated unit. No digital time inside the niche — the analog clock already carries it |
 | `SoulColumn` | Frame rotation host — one visible frame, 20s cadence, rightward slide, reduced-motion static (§7.5) |
-| `HadithFrame` / `JumuahFrame` / `AnnouncementFrame` / `ChangesFrame` / `DonateFrame` / `QrFrame` | Soul-column frames (§7.5); donate is two separate slides — appeal text (`DonateFrame`) then scan-to-give QR (`QrFrame`, via `qrcode` package SVG) |
+| `HadithFrame` / `JumuahFrame` / `AnnouncementFrame` / `DonateFrame` / `QrFrame` | Soul-column frames (§7.5); donate is two separate slides — appeal text (`DonateFrame`) then scan-to-give QR (`QrFrame`, via `qrcode` package SVG). Schedule changes are NOT a frame — they roll through the prayer board |
 | `CeremonyOverlay` | Full-screen ceremony states: adhaan → iqaamah countdown → prayer in progress → quiet (§7.6); night calm is a page-level 20% veil (`.tv-night-veil`), not an overlay — the board stays readable |
 
 ### Key libraries (`src/lib/`)
@@ -196,6 +196,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 |---|---|
 | `server-clock.ts` | Server-time sync (§7.7): offset-corrects the TV clock against board `server_time` |
 | `frames.ts` | Frame list builder (priority order, pinned Jumu'ah Thu–Fri, empty suppression) + rotation math + hadith occasion tags |
+| `board-cycle.ts` | Prayer-board roll cycle (§7.5): 45s times / 15s changes, wall-clock anchored; per-row roll (today's iqaamah slides into the adhaan column, new iqaamah rises in gold, date under the label; headers roll too — ADHAAN→IQAAMAH, IQAAMAH→NEW IQAAMAH); holdoff from adhaan → iqaamah+5min; reduced-motion pins to today's times. Pure, fully unit-tested |
 | `ceremony.ts` | Ceremony state machine (§7.6) + ambient palette phases (§7.4) + Hijri helpers — pure, fully unit-tested |
 
 ### Mishkaat implementation notes

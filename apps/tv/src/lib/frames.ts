@@ -6,9 +6,12 @@ import type { HadithTag } from '@masjid/ui-utils';
  * The soul column hosts exactly one visible frame at a time; the prayer
  * board and clock never move. Frames with no content do not render — an
  * empty "JUMU'AH SESSIONS" header must be impossible.
+ *
+ * Upcoming iqaamah changes are NOT a frame: they roll through the prayer
+ * board itself (see board-cycle.ts).
  */
 
-export type FrameKind = 'jumuah' | 'hadith' | 'announcements' | 'changes' | 'donate' | 'donate-qr';
+export type FrameKind = 'jumuah' | 'hadith' | 'announcements' | 'donate' | 'donate-qr';
 
 export interface Frame {
   kind: FrameKind;
@@ -21,7 +24,6 @@ export interface Frame {
 export interface FrameInput {
   jumuahSessionCount: number;
   announcementCount: number;
-  changeCount: number;
   donationUrl: string | null;
   /** Local weekday: 0 = Sunday … 4 = Thursday, 5 = Friday. */
   dayOfWeek: number;
@@ -54,9 +56,6 @@ export function buildFrames(input: FrameInput): Frame[] {
     for (let i = 0; i < count; i++) {
       frames.push({ kind: 'announcements', pinned: false, index: i });
     }
-  }
-  if (input.changeCount > 0 && enabled('changes')) {
-    frames.push({ kind: 'changes', pinned: false });
   }
   // Donate is two separate slides: the appeal text, then the QR code.
   // Together in one frame was visually too much (§4 ornament budget).

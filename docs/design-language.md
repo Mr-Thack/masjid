@@ -195,7 +195,13 @@ gives RTL readers a screen that feels made for them.
   arabesque | none`. A motif band must always be at least one tiling row tall — narrower bands
   clip the pattern into meaningless notches.
 - **One mihrab arch** per screen, as a **niche for the clock** in the soul column (the way a
-  mihrab frames the imam); theme option `arch: true | false`.
+  mihrab frames the imam). The arch is wide and tall (140×150 viewBox): the curved belly
+  inscribes the analog clock and the straight hall between the legs holds the sunrise and
+  next-prayer countdown — one integrated unit, not an outline floating above a column of
+  text. No digital time inside the niche: the analog clock (with second hand) already
+  carries the time. Height-bounded with `vh` clamps and `max-width: 100%`, so it scales down
+  gracefully in windowed (non-fullscreen) mode instead of dropping out. Theme option
+  `arch: true | false`.
 - **Eight-point star rosette** as the recurring identity glyph: current-prayer marker, header
   divider, arch apex detail.
 - Corner flourishes permitted on panels (manuscript discipline). No pattern behind numerals, ever.
@@ -226,13 +232,25 @@ time-slicing. The soul column hosts exactly one visible frame at a time.
 | Jumu'ah Times | board payload | **Pinned** Thursday–Friday; rotates normally otherwise |
 | Hadith of the Day | curated collection (new data) | Arabic (Amiri) + English + source; date-seeded; context-seeded by occasion |
 | Announcements | board payload (already returns 20) | One at a time |
-| Schedule Changes | board payload upcoming changes | Suppressed when empty |
 | Donate (two slides) | masjid donation URL | Slide 1: appeal text ("Same times, in your pocket"); slide 2: scan-to-give QR. Text and QR never share a frame — together they are visually too much |
 | Community frames | announcements system | Taraweeh/Juz', fundraisers, events — masjid-controlled |
 
+**Schedule changes are not a frame — they roll through the prayer board itself.** The board
+runs a wall-clock cycle: 45 seconds on today's times, then 15 seconds on the changes. In the
+changes phase, each changed row's iqaamah slides left into the adhaan column (the adhaan rolls
+out toward the prayer label and dims away), the new iqaamah rises in gold in the iqaamah
+column, and the effective date appears under the prayer name (absolutely positioned into the
+label cell's breathing room, so the board's geometry is pixel-identical in both phases — the
+panel never jumps in size). The column headers roll with their columns — ADHAAN becomes IQAAMAH, IQAAMAH becomes NEW IQAAMAH in gold — so a header
+never mislabels what sits beneath it. After 15 seconds the rows roll back. The roll never happens around a prayer moment — from each adhaan until 5 minutes after
+the iqaamah the board stays on today's times — and with `prefers-reduced-motion` the board is
+pinned to today's times. Rows without a change never move; unchanged values never re-render.
+
 **Choreography rules:**
 
-1. **The prayer board and clock NEVER move.** Rotation happens only in the soul column.
+1. **The prayer board and clock NEVER move** — with one exception: the scheduled board roll
+   for upcoming iqaamah changes (above), which moves only the changed rows, only inside its
+   15-second window, and never near a prayer moment.
 2. 15–30s per frame; 600–900ms crossfade or slow rightward slide; ease-out.
 3. One island animates at a time. Nothing else on the screen may move during a transition
    (the marquee pauses or is demoted to a frame at implementer's discretion).
@@ -365,7 +383,7 @@ cryptic "next change" columns, clip-art, fast motion.
 |---|---|---|
 | **0. Plumbing** | `style_system` + `style_options` columns (schema.sql + Drizzle), Zod updates, `applyTheme` sets `data-style-system` | Existing tests green; Sakeenah behavior identical |
 | **1. Mishkaat core** | Preset tokens (espresso/gold), RTL layout, Amiri headings, honeycomb hairline + arch, classic clock face, server-time sync | Static flagship board renders on TV; board demo ready |
-| **2. Frames** | Soul column, rotation choreography, hadith collection, schedule-changes frame, donate QR | Rotation respects all budgets + reduced-motion |
+| **2. Frames** | Soul column, rotation choreography, hadith collection, schedule-changes board roll, donate QR | Rotation respects all budgets + reduced-motion |
 | **3. Ceremony** | Adhaan/iqaamah states, quiet mode, night calm, ambient palette, Friday/Ramadan/Eid modes | State machine driven by server time; glare solved at Fajr |
 | **4. Vanity** | Logo engraving pipeline, numerals option, density option, admin "Screen Appearance" page | Admin can restyle without an agent |
 | **5. Later** | Displays (roles), federation, anything parked | New decision required |

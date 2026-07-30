@@ -14,7 +14,6 @@
   import HadithFrame from './HadithFrame.svelte';
   import JumuahFrame from './JumuahFrame.svelte';
   import AnnouncementFrame from './AnnouncementFrame.svelte';
-  import ChangesFrame from './ChangesFrame.svelte';
   import DonateFrame from './DonateFrame.svelte';
   import QrFrame from './QrFrame.svelte';
 
@@ -34,7 +33,6 @@
     jumuahLabel,
     speechLabel,
     announcements,
-    changes,
     donationUrl,
     appeal,
   }: {
@@ -45,7 +43,6 @@
     jumuahLabel: string;
     speechLabel: string;
     announcements: Array<{ title: string; html: string | null }>;
-    changes: Array<{ date: string; label: string; from: string; to: string }>;
     donationUrl: string | null;
     appeal: string;
   } = $props();
@@ -89,8 +86,6 @@
           {#if announcement}
             <AnnouncementFrame title={announcement.title} html={announcement.html} />
           {/if}
-        {:else if active.kind === 'changes'}
-          <ChangesFrame {changes} />
         {:else if active.kind === 'donate' && donationUrl}
           <DonateFrame url={donationUrl} {appeal} />
         {:else if active.kind === 'donate-qr' && donationUrl}

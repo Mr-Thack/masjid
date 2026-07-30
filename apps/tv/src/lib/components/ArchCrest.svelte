@@ -5,15 +5,16 @@
    * tone-on-tone outline — ornament, never behind numerals.
    *
    * The arch is the niche for the clock + digital time + next-prayer
-   * indicators (soul column, `.tv-clock-niche`). The viewBox is elongated
-   * (100×150, legs down to y=146) so the straight hall below the curved
-   * belly can hold the text stack — a real mihrab is taller than wide.
+   * indicators (soul column, `.tv-clock-niche`). The viewBox is a wide,
+   * tall mihrab (140×150, legs down to y=146): the broad curved belly
+   * inscribes the clock, and the straight hall between the legs holds the
+   * text stack.
    */
-  let { width = 120 }: { width?: number } = $props();
+  let { width = 140 }: { width?: number } = $props();
 </script>
 
 <svg
-  viewBox="0 0 100 150"
+  viewBox="0 0 140 150"
   width={width}
   class="arch-crest"
   aria-hidden="true"
@@ -21,18 +22,18 @@
 >
   <!-- outer arch -->
   <path
-    d="M 8 146 L 8 62 C 8 32 34 26 50 10 C 66 26 92 32 92 62 L 92 146"
+    d="M 10 146 L 10 64 C 10 30 46 22 70 8 C 94 22 130 30 130 64 L 130 146"
     class="arch-line arch-line--outer"
   />
   <!-- inner echo -->
   <path
-    d="M 18 146 L 18 64 C 18 40 38 34 50 22 C 62 34 82 40 82 64 L 82 146"
+    d="M 21 146 L 21 66 C 21 38 52 29 70 19 C 88 29 119 38 119 66 L 119 146"
     class="arch-line arch-line--inner"
   />
   <!-- rosette at the apex -->
-  <g transform="translate(50 10)" class="arch-rosette">
-    <rect x="-4.2" y="-4.2" width="8.4" height="8.4" />
-    <rect x="-4.2" y="-4.2" width="8.4" height="8.4" transform="rotate(45)" />
+  <g transform="translate(70 8)" class="arch-rosette">
+    <rect x="-4.6" y="-4.6" width="9.2" height="9.2" />
+    <rect x="-4.6" y="-4.6" width="9.2" height="9.2" transform="rotate(45)" />
   </g>
 </svg>
 
