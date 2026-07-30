@@ -208,23 +208,21 @@ describe('PUT /admin/masjids/:id — style fields', () => {
     expect(body.theme.label_fajr).toBe('Subh');
   });
 
-  // NOTE: the admin PUT uses UpdateThemeSchema.safeParse — invalid theme input
-  // is skipped (200, theme unchanged) rather than rejected with 400. This is
-  // the pre-existing contract for every theme field; style fields follow it.
-  it('ignores an invalid style_system (theme unchanged)', async () => {
+  // Invalid theme input now returns 400 VALIDATION_ERROR.
+  it('rejects an invalid style_system (validation error)', async () => {
     const { id } = await seedMasjid('put-badsystem');
     const res = await callAdminPut(id, { style_system: 'fancy' });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.theme.style_system).toBe('sakeenah');
+    expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('ignores invalid style_options values (theme unchanged)', async () => {
+  it('rejects invalid style_options values (validation error)', async () => {
     const { id } = await seedMasjid('put-badoptions');
     const res = await callAdminPut(id, { style_options: { metal: 'platinum' } });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.theme.style_options).toEqual({});
+    expect(body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('round-trips through the board endpoint after a PUT', async () => {

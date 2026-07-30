@@ -58,9 +58,9 @@ describe('StyleOptionsSchema', () => {
     expect(parsed.donateAppeal).toBe('Keep our doors open');
   });
 
-  it('validates donateAppeal (trimmed, 1–80 chars)', () => {
+  it('validates donateAppeal (trimmed, max 80 chars)', () => {
     expect(StyleOptionsSchema.parse({ donateAppeal: '  Give well  ' }).donateAppeal).toBe('Give well');
-    expect(() => StyleOptionsSchema.parse({ donateAppeal: '' })).toThrow();
+    expect(StyleOptionsSchema.parse({ donateAppeal: '' }).donateAppeal).toBe('');
     expect(() => StyleOptionsSchema.parse({ donateAppeal: 'x'.repeat(81) })).toThrow();
     expect(() => StyleOptionsSchema.parse({ donateAppeal: 42 })).toThrow();
   });

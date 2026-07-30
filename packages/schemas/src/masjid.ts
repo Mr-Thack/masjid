@@ -54,7 +54,7 @@ export const StyleOptionsSchema = z
       .optional(),
     frames: z.array(z.string()).optional(),
     emblem: StyleEmblem.optional(),
-    donateAppeal: z.string().trim().min(1).max(80).optional(),
+    donateAppeal: z.string().trim().max(80).optional(),
   })
   .passthrough();
 export type StyleOptions = z.infer<typeof StyleOptionsSchema>;

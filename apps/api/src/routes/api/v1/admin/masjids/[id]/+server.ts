@@ -193,6 +193,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
         if (Object.keys(themeData).length > 0) {
           await db.update(masjidThemes).set(themeData).where(eq(masjidThemes.masjidId, params.id));
         }
+      } else if (!themeUpdate.success) {
+        console.error('Theme validation failed:', themeUpdate.error.issues);
+        return ErrorJsonResponse('VALIDATION_ERROR', 'Theme update contains invalid fields');
       }
     }
 
