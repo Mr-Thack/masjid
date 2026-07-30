@@ -389,23 +389,25 @@ export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
   throw new Error('D1 database binding not available');
 }
 
-let d1Migrated = false;
+let d1MigrationPromise: Promise<void> | null = null;
 
 function ensureD1Columns(d1db: D1Database) {
-  if (d1Migrated) return;
-  d1Migrated = true;
-
-  (async () => {
+  if (d1MigrationPromise) return;
+  d1MigrationPromise = (async () => {
     for (const [table, column, def] of COLUMN_MIGRATIONS) {
       try {
         await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
         console.log(`[migration] D1: added ${table}.${column}`);
       } catch (e) {
         // Column likely already exists — D1 has no ADD COLUMN IF NOT EXISTS.
-        // We log only at debug level since this is expected on warm isolates.
       }
     }
   })();
+}
+
+/** Await this in hooks.server.ts before any route runs to ensure columns exist. */
+export async function waitForD1Migrations() {
+  if (d1MigrationPromise) await d1MigrationPromise;
 }
 
 export type Db = ReturnType<typeof getDb>;
