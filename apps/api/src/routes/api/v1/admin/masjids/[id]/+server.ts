@@ -8,6 +8,7 @@ import { getDb } from '$lib/server/db';
 import { masjids, masjidThemes } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
+import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals, platform }) => {
@@ -64,6 +65,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       created_at: masjid.createdAt,
       theme: theme
         ? {
+            style_system: theme.styleSystem,
+            style_options: parseStyleOptionsJson(theme.styleOptions),
             layout_preset: theme.layoutPreset,
             primary_color: theme.primaryColor,
             accent_color: theme.accentColor,
@@ -140,7 +143,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       await db.update(masjids).set(masjidData).where(eq(masjids.id, params.id));
     }
 
-    const THEME_KEYS = ['layout_preset', 'primary_color', 'accent_color', 'font_heading', 'font_body', 'time_format',
+    const THEME_KEYS = ['style_system', 'style_options', 'layout_preset', 'primary_color', 'accent_color',
+      'font_heading', 'font_body', 'time_format',
       'label_adhaan', 'label_iqaamah', 'label_jumuah', 'label_speech', 'label_sunrise',
       'label_fajr', 'label_dhuhr', 'label_asr', 'label_maghrib', 'label_isha'];
     const hasThemeKeys = THEME_KEYS.some((k) => k in body);
@@ -149,6 +153,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       const themeUpdate = UpdateThemeSchema.safeParse(body);
       if (themeUpdate.success && Object.keys(themeUpdate.data).length > 0) {
         const themeData: Record<string, unknown> = {};
+        if (themeUpdate.data.style_system !== undefined) themeData.styleSystem = themeUpdate.data.style_system;
+        if (themeUpdate.data.style_options !== undefined) themeData.styleOptions = JSON.stringify(themeUpdate.data.style_options);
         if (themeUpdate.data.layout_preset !== undefined) themeData.layoutPreset = themeUpdate.data.layout_preset;
         if (themeUpdate.data.primary_color !== undefined) themeData.primaryColor = themeUpdate.data.primary_color;
         if (themeUpdate.data.accent_color !== undefined) themeData.accentColor = themeUpdate.data.accent_color;
@@ -205,6 +211,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       created_at: updated?.createdAt,
       theme: updatedTheme
         ? {
+            style_system: updatedTheme.styleSystem,
+            style_options: parseStyleOptionsJson(updatedTheme.styleOptions),
             layout_preset: updatedTheme.layoutPreset,
             primary_color: updatedTheme.primaryColor,
             accent_color: updatedTheme.accentColor,

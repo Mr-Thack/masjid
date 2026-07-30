@@ -9,6 +9,55 @@ export const AsrMadhab = z.enum(['shafi', 'hanafi']).default('shafi');
 export const HighLatitudeRule = z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).default('seventh_of_night');
 export const ShowDualAsr = z.boolean().default(false);
 
+// ---------------------------------------------------------------------------
+// Style systems (see docs/design-language.md)
+// ---------------------------------------------------------------------------
+
+/** A top-level design family. `sakeenah` = minimal, `mishkaat` = flagship. */
+export const StyleSystem = z.enum(['sakeenah', 'mishkaat']).default('sakeenah');
+export type StyleSystem = z.infer<typeof StyleSystem>;
+
+export const StyleMetal = z.enum(['gold', 'silver', 'copper', 'rose']);
+export type StyleMetal = z.infer<typeof StyleMetal>;
+export const StyleMotif = z.enum(['honeycomb', 'eight-point-star', 'girih', 'arabesque', 'none']);
+export type StyleMotif = z.infer<typeof StyleMotif>;
+export const StyleNumerals = z.enum(['western', 'arabic-indic']);
+export type StyleNumerals = z.infer<typeof StyleNumerals>;
+export const StyleDensity = z.enum(['standard', 'large-print']);
+export type StyleDensity = z.infer<typeof StyleDensity>;
+export const StyleEmblem = z.enum(['engraved', 'medallion']);
+export type StyleEmblem = z.infer<typeof StyleEmblem>;
+
+/**
+ * Theme options for a style system, stored as JSON in `masjid_themes.style_options`.
+ * Missing keys fall back to defaults at render time; unknown keys pass through
+ * (and are ignored by renderers) so newer clients can write options older
+ * clients do not understand yet.
+ */
+export const StyleOptionsSchema = z
+  .object({
+    metal: StyleMetal.optional(),
+    motif: StyleMotif.optional(),
+    arch: z.boolean().optional(),
+    numerals: StyleNumerals.optional(),
+    density: StyleDensity.optional(),
+    ambient: z.boolean().optional(),
+    quietHours: z
+      .object({
+        enabled: z.boolean().optional(),
+        quietMinutes: z.number().int().min(0).max(180).optional(),
+        sleepAfterIshaMinutes: z.number().int().min(0).max(360).optional(),
+        wakeBeforeFajrMinutes: z.number().int().min(0).max(180).optional(),
+      })
+      .passthrough()
+      .optional(),
+    frames: z.array(z.string()).optional(),
+    emblem: StyleEmblem.optional(),
+    donateAppeal: z.string().trim().min(1).max(80).optional(),
+  })
+  .passthrough();
+export type StyleOptions = z.infer<typeof StyleOptionsSchema>;
+
 export const CreateMasjidSchema = z.object({
   slug: z
     .string()
@@ -53,6 +102,8 @@ export const UpdateMasjidSchema = z.object({
 });
 
 export const ThemeSchema = z.object({
+  style_system: StyleSystem,
+  style_options: StyleOptionsSchema.default({}),
   layout_preset: z.string(),
   primary_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   accent_color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
