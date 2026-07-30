@@ -144,7 +144,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.longitude !== undefined) masjidData.longitude = masjidUpdate.longitude;
 
     if (Object.keys(masjidData).length > 0) {
+      console.log('PUT masjid update fields:', Object.keys(masjidData).join(', '));
       await db.update(masjids).set(masjidData).where(eq(masjids.id, params.id));
+      console.log('PUT masjid update OK');
     }
 
     const THEME_KEYS = ['style_system', 'style_options', 'layout_preset', 'primary_color', 'accent_color',
@@ -152,6 +154,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       'label_adhaan', 'label_iqaamah', 'label_jumuah', 'label_speech', 'label_sunrise',
       'label_fajr', 'label_dhuhr', 'label_asr', 'label_maghrib', 'label_isha'];
     const hasThemeKeys = THEME_KEYS.some((k) => k in body);
+    console.log('PUT hasThemeKeys:', hasThemeKeys);
 
     if (hasThemeKeys) {
       const themeUpdate = UpdateThemeSchema.safeParse(body);
@@ -184,7 +187,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     await invalidateMasjidCache(platform?.env?.CACHE, params.id);
     await invalidatePageCache(platform?.env?.CACHE, existing.slug);
 
+    console.log('PUT fetching updated masjid');
     const updated = await db.select().from(masjids).where(eq(masjids.id, params.id)).get();
+    console.log('PUT updated masjid OK, building response');
     const updatedTheme = await db.select().from(masjidThemes).where(eq(masjidThemes.masjidId, params.id)).get();
 
     return JsonResponse({
@@ -237,6 +242,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
         : null,
     });
   } catch (e: unknown) {
+    console.error('PUT masjid update failed:', e instanceof Error ? e.message : e, e instanceof Error ? e.stack : '');
     if (e instanceof Error && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
     }
