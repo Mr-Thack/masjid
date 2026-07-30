@@ -20,18 +20,23 @@ The project is a fully implemented monorepo with:
 Every fresh checkout — whether `git clone` or `git worktree add` — needs these steps before anything else will work:
 
 ```bash
-# 1. Install dependencies
+# 1. One-shot setup (install + sync + seed)
+npm run setup
+
+# 2. (Legacy manual steps kept for reference)
 npm install
 
-# 2. Generate SvelteKit types in every SvelteKit workspace
+# 3. Generate SvelteKit types in every SvelteKit workspace
 #    (vite dev/build do this automatically, but vitest / tsc don't)
 for ws in apps/api apps/consumer apps/tv apps/admin; do
   npx --workspace=@masjid/${ws##*/} svelte-kit sync
 done
 
-# 3. Seed the local SQLite database
+# 4. Seed the local SQLite database
 npx tsx tooling/seed.ts
 ```
+
+> **`npm run setup`** runs all of the above in one pass. Use it for fresh clones and new worktrees.
 
 > **Per-worktree note**: each `git worktree` is a separate directory with its own `.masjid/local.db` and `node_modules`. You must `npm install` and seed inside each worktree. See "Multi-agent parallel work (worktrees)" below.
 >
