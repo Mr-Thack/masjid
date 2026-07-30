@@ -31,7 +31,11 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     }
 
     const settings = await db
-      .select({ activeTermId: mktSettings.activeTermId, enrollmentOpen: mktSettings.enrollmentOpen })
+      .select({
+        activeTermId: mktSettings.activeTermId,
+        enrollmentOpen: mktSettings.enrollmentOpen,
+        assistanceCode: mktSettings.assistanceCode,
+      })
       .from(mktSettings)
       .where(eq(mktSettings.masjidId, masjid.id))
       .get();
@@ -51,21 +55,8 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     }
 
     const refs: PaymentRefs = JSON.parse(term.paymentRefsJson || '{}');
-    if (!refs.square) {
-      return ErrorJsonResponse('INTERNAL_ERROR', 'Active term is not linked to Square plans');
-    }
 
     const env = (platform?.env ?? {}) as Record<string, string | undefined>;
-    const squareEnv = {
-      SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN,
-      SQUARE_APP_ID: env.SQUARE_APP_ID,
-      SQUARE_LOCATION_ID: env.SQUARE_LOCATION_ID,
-      ENVIRONMENT: env.ENVIRONMENT,
-    };
-
-    if (!hasSquare(squareEnv)) {
-      return ErrorJsonResponse('INTERNAL_ERROR', 'Square is not configured');
-    }
 
     const childrenCount = body.children.length;
     const monthlyAmountCents = monthlyAmount(term, childrenCount);
@@ -75,44 +66,70 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       : { name: body.mother!.name!, email: body.mother!.email!, phone: body.mother!.phone! };
 
     const registrationId = crypto.randomUUID();
-    let subscriptionId: string;
-    let customerId: string;
+    const isAssistance = settings.assistanceCode && body.card_holder_name === settings.assistanceCode;
 
-    try {
-      const result = await createSquareSubscription(
-        {
-          parent,
-          address: {
-            line1: body.address_line1,
-            city: body.city,
-            state: 'GA',
-            postal_code: body.postal_code,
-            country: body.country,
+    let status: string;
+    let paymentProvider: string;
+    let subscriptionId: string | null = null;
+    let customerId: string | null = null;
+
+    if (isAssistance) {
+      status = 'aid_granted';
+      paymentProvider = 'aid';
+    } else {
+      if (!refs.square) {
+        return ErrorJsonResponse('INTERNAL_ERROR', 'Active term is not linked to Square plans');
+      }
+
+      const squareEnv = {
+        SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN,
+        SQUARE_APP_ID: env.SQUARE_APP_ID,
+        SQUARE_LOCATION_ID: env.SQUARE_LOCATION_ID,
+        ENVIRONMENT: env.ENVIRONMENT,
+      };
+
+      if (!hasSquare(squareEnv)) {
+        return ErrorJsonResponse('INTERNAL_ERROR', 'Square is not configured');
+      }
+
+      try {
+        const result = await createSquareSubscription(
+          {
+            parent,
+            address: {
+              line1: body.address_line1,
+              city: body.city,
+              state: 'GA',
+              postal_code: body.postal_code,
+              country: body.country,
+            },
+            childrenCount,
+            sourceId: body.source_id,
+            cardHolderName: body.card_holder_name,
+            refs: refs.square,
           },
-          childrenCount,
-          sourceId: body.source_id,
-          cardHolderName: body.card_holder_name,
-          refs: refs.square,
-        },
-        squareEnv,
-      );
-      subscriptionId = result.subscriptionId;
-      customerId = result.customerId;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return ErrorJsonResponse('INTERNAL_ERROR', `Payment setup failed: ${message}`);
+          squareEnv,
+        );
+        subscriptionId = result.subscriptionId;
+        customerId = result.customerId;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return ErrorJsonResponse('INTERNAL_ERROR', `Payment setup failed: ${message}`);
+      }
+      status = 'payment_succeeded';
+      paymentProvider = 'square';
     }
 
     await db.insert(mktRegistrations).values({
       id: registrationId,
       masjidId: masjid.id,
       termId: term.id,
-      status: 'payment_succeeded',
-      paymentProvider: 'square',
+      status,
+      paymentProvider,
       paymentCustomerId: customerId ?? null,
       paymentSubscriptionId: subscriptionId ?? null,
       paymentSessionId: null,
-      monthlyAmountCents,
+      monthlyAmountCents: isAssistance ? 0 : monthlyAmountCents,
       fatherName: body.father?.name ?? null,
       fatherPhone: body.father?.phone ?? null,
       fatherEmail: body.father?.email ?? null,
@@ -142,7 +159,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         {
           name: term.name,
           length_months: term.lengthMonths,
-          monthly_cost_cents: monthlyAmountCents,
+          monthly_cost_cents: isAssistance ? 0 : monthlyAmountCents,
         },
         {
           BREVO_API_KEY: env.BREVO_API_KEY as string | undefined,
@@ -162,7 +179,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     return JsonResponse({
       registration_id: registrationId,
       subscription_id: subscriptionId,
-      status: 'payment_succeeded',
+      status,
     });
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'name' in e && e.name === 'ZodError') {
