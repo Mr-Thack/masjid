@@ -4,6 +4,11 @@ import { masjids, mktSettings, mktTerms } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
+function parseProgramInfo(raw: string): Record<string, unknown> {
+  try { return JSON.parse(raw); }
+  catch { return {}; }
+}
+
 export const GET: RequestHandler = async ({ params, platform }) => {
   try {
     const db = getDb(platform?.env?.DB);
@@ -51,6 +56,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           }
         : null,
       status_message: settings?.statusMessage ?? null,
+      program_info: settings?.programInfo ? parseProgramInfo(settings.programInfo) : {},
       square_config: hasSquare
         ? {
             app_id: env.SQUARE_APP_ID,

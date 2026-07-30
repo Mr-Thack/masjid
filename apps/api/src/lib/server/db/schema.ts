@@ -144,6 +144,7 @@ export const mktSettings = sqliteTable('mkt_settings', {
   activeTermId: text('active_term_id').references(() => mktTerms.id, { onDelete: 'set null' }),
   enrollmentOpen: integer('enrollment_open', { mode: 'boolean' }).notNull().default(false),
   statusMessage: text('status_message'),
+  programInfo: text('program_info').notNull().default('{}'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });

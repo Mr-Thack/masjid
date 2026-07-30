@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { BookOpen, Users, ExternalLink, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-svelte';
+  import { BookOpen, Users, ExternalLink, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2 } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
   import ErrorCard from '$lib/components/ErrorCard.svelte';
   import {
@@ -119,6 +119,20 @@
     price_3plus: '',
   });
 
+  let programInfo = $state<{
+    goal: string;
+    schedule_days: string;
+    schedule_time: string;
+    curriculum: { name: string; description: string }[];
+    faqs: { question: string; answer: string }[];
+  }>({
+    goal: '',
+    schedule_days: '',
+    schedule_time: '',
+    curriculum: [],
+    faqs: [],
+  });
+
   $effect(() => {
     if (!masjidId) return;
     loadAll();
@@ -145,6 +159,14 @@
         enrollment_open: settingsRes.enrollment_open,
         status_message: settingsRes.status_message ?? '',
         active_term_id: settingsRes.active_term?.id ?? '',
+      };
+      const pi = settingsRes.program_info;
+      programInfo = {
+        goal: pi?.goal ?? '',
+        schedule_days: pi?.schedule_days ?? '',
+        schedule_time: pi?.schedule_time ?? '',
+        curriculum: Array.isArray(pi?.curriculum) ? pi.curriculum : [],
+        faqs: Array.isArray(pi?.faqs) ? pi.faqs : [],
       };
       if (settingsRes.active_term?.id && !selectedTermId) {
         selectedTermId = settingsRes.active_term.id;
@@ -176,6 +198,7 @@
         enrollment_open: settingsForm.enrollment_open,
         status_message: settingsForm.status_message || null,
         active_term_id: settingsForm.active_term_id || null,
+        program_info: programInfo,
       });
       toast.success('Maktab settings saved');
     } catch (e: unknown) {
@@ -363,6 +386,79 @@
           </button>
         </div>
       </form>
+
+      <div class="bg-surface border border-border rounded-xl p-6 space-y-6">
+        <h2 class="font-heading font-semibold text-text">Program Info</h2>
+        <p class="text-xs text-text-muted">Shown on the public Maktab page. Leave sections empty to hide them.</p>
+
+        <div class="form-group">
+          <label for="pi_goal">Goal</label>
+          <textarea id="pi_goal" rows="3" class="w-full" bind:value={programInfo.goal} placeholder="The goal of the Evening Islamic Studies is to provide..."></textarea>
+        </div>
+
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div class="form-group">
+            <label for="pi_schedule_days">Schedule days</label>
+            <input id="pi_schedule_days" type="text" bind:value={programInfo.schedule_days} class="w-full" placeholder="Tuesday - Thursday" />
+          </div>
+          <div class="form-group">
+            <label for="pi_schedule_time">Schedule time</label>
+            <input id="pi_schedule_time" type="text" bind:value={programInfo.schedule_time} class="w-full" placeholder="5:30 PM - 7:00 PM" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm text-text-muted">Curriculum</label>
+            <button type="button" class="btn-secondary text-xs" onclick={() => programInfo.curriculum = [...programInfo.curriculum, { name: '', description: '' }]}>
+              <Plus size={14} /> Add Subject
+            </button>
+          </div>
+          {#if programInfo.curriculum.length === 0}
+            <p class="text-sm text-text-muted">No subjects added yet.</p>
+          {:else}
+            <div class="space-y-3">
+              {#each programInfo.curriculum as subject, i}
+                <div class="flex gap-3 items-start">
+                  <div class="flex-1 grid sm:grid-cols-2 gap-2">
+                    <input type="text" bind:value={subject.name} class="w-full" placeholder="Subject name" />
+                    <input type="text" bind:value={subject.description} class="w-full" placeholder="Description" />
+                  </div>
+                  <button type="button" class="btn-secondary text-xs text-red-400 mt-1" onclick={() => programInfo.curriculum = programInfo.curriculum.filter((_, j) => j !== i)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm text-text-muted">FAQs</label>
+            <button type="button" class="btn-secondary text-xs" onclick={() => programInfo.faqs = [...programInfo.faqs, { question: '', answer: '' }]}>
+              <Plus size={14} /> Add FAQ
+            </button>
+          </div>
+          {#if programInfo.faqs.length === 0}
+            <p class="text-sm text-text-muted">No FAQs added yet.</p>
+          {:else}
+            <div class="space-y-3">
+              {#each programInfo.faqs as faq, i}
+                <div class="flex gap-3 items-start">
+                  <div class="flex-1 grid gap-2">
+                    <input type="text" bind:value={faq.question} class="w-full" placeholder="Question" />
+                    <textarea rows="2" bind:value={faq.answer} class="w-full" placeholder="Answer"></textarea>
+                  </div>
+                  <button type="button" class="btn-secondary text-xs text-red-400 mt-1" onclick={() => programInfo.faqs = programInfo.faqs.filter((_, j) => j !== i)}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
 
       <div class="bg-surface border border-border rounded-xl p-6">
         <h2 class="font-heading font-semibold text-text mb-4">Terms</h2>

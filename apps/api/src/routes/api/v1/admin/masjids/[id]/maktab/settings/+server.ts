@@ -4,6 +4,11 @@ import { mktSettings, mktTerms } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
+function parseProgramInfo(raw: string): Record<string, unknown> {
+  try { return JSON.parse(raw); }
+  catch { return {}; }
+}
+
 function termToPublic(term: typeof mktTerms.$inferSelect) {
   return {
     id: term.id,
@@ -41,6 +46,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       enrollment_open: !!settings?.enrollmentOpen,
       active_term: activeTerm ? termToPublic(activeTerm) : null,
       status_message: settings?.statusMessage ?? null,
+      program_info: settings?.programInfo ? parseProgramInfo(settings.programInfo) : {},
     });
   } catch (e) {
     console.error('GET maktab settings error:', e);
@@ -78,6 +84,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
         activeTermId: body.active_term_id ?? null,
         enrollmentOpen: body.enrollment_open ?? false,
         statusMessage: body.status_message ?? null,
+        programInfo: body.program_info ? JSON.stringify(body.program_info) : '{}',
         updatedAt: new Date().toISOString(),
       })
       .onConflictDoUpdate({
@@ -86,6 +93,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
           activeTermId: body.active_term_id ?? null,
           enrollmentOpen: body.enrollment_open ?? false,
           statusMessage: body.status_message ?? null,
+          programInfo: body.program_info ? JSON.stringify(body.program_info) : '{}',
           updatedAt: new Date().toISOString(),
         },
       });
@@ -104,6 +112,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       enrollment_open: !!settings?.enrollmentOpen,
       active_term: activeTerm ? termToPublic(activeTerm) : null,
       status_message: settings?.statusMessage ?? null,
+      program_info: settings?.programInfo ? parseProgramInfo(settings.programInfo) : {},
     });
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'name' in e && e.name === 'ZodError') {

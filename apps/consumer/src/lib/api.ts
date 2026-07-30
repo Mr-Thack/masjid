@@ -84,6 +84,13 @@ export interface MaktabInfo {
     prices: { '1': number; '2': number; '3plus': number };
   } | null;
   status_message: string | null;
+  program_info: {
+    goal?: string;
+    schedule_days?: string;
+    schedule_time?: string;
+    curriculum?: { name: string; description: string }[];
+    faqs?: { question: string; answer: string }[];
+  };
   square_config: {
     app_id: string;
     location_id: string;

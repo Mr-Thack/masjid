@@ -192,6 +192,7 @@ CREATE TABLE mkt_settings (
     active_term_id TEXT REFERENCES mkt_terms(id) ON DELETE SET NULL,
     enrollment_open INTEGER NOT NULL DEFAULT 0,
     status_message TEXT,
+    program_info TEXT NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
