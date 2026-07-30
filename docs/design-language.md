@@ -337,6 +337,16 @@ Asr sits as a sub-line under the adhaan cell; the current row is highlighted
 entirely via theme CSS variables; Mishkaat-only tweaks key off
 `html[data-style-system='mishkaat']` in `app.css`.
 
+**Weekly table (Times tab, both style systems).** The `/prayer` page is the
+printed-week timetable: days as rows, prayers as columns
+(`WeeklyPrayerTable.svelte`), each cell stacking iqaamah (bold) over adhaan
+(dim) — the legend under the table styles each word like its cell counterpart.
+The today row is tinted with a chip; times that change versus the previous day
+pop in accent while unchanged times dim, so drift across the week reads at a
+glance. Dual Asr appears as a wrapping sub-line in the Asr cell. Narrow phones
+(≤480px) get trimmed type/padding so all six columns fit without sideways
+scroll.
+
 **Carries over (adapted):**
 
 - **The hero is the mihrab.** The countdown hero renders inside the canonical

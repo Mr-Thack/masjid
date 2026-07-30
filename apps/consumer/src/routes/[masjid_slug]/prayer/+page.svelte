@@ -3,20 +3,18 @@
   import { fetchPrayerTimes } from '$lib/api';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-
-  import { formatTime } from '$lib/time';
+  import WeeklyPrayerTable, { type WeekDay } from '$lib/components/WeeklyPrayerTable.svelte';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
   let theme = $derived(data.theme);
 
   let weekOffset = $state(0);
-  let weekData = $state<Map<string, { times: Record<string, { adhaan: string; iqaamah: string; right_after_adhaan?: boolean }>; asr_secondary?: string }>>(new Map());
+  let weekData = $state<Map<string, { times: Record<string, { adhaan: string; iqaamah: string }>; asr_secondary?: string }>>(new Map());
   let loading = $state(false);
   let error = $state('');
   let today = $state(new Date());
 
-  const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
   let prayerLabels: Record<string, string> = $derived({
     fajr: theme?.label_fajr ?? 'Fajr',
     dhuhr: theme?.label_dhuhr ?? 'Dhuhr',
@@ -55,29 +53,23 @@
     return date.toISOString().split('T')[0]!;
   }
 
-  function formatDayLabel(date: Date): string {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
-  }
-
-  function formatDateLabel(date: Date): string {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  }
-
-  function isToday(date: Date): boolean {
-    const t = new Date(today);
-    return (
-      date.getFullYear() === t.getFullYear() &&
-      date.getMonth() === t.getMonth() &&
-      date.getDate() === t.getDate()
-    );
-  }
-
   let weekDates = $derived(getWeekDates(weekOffset));
   let weekLabel = $derived.by(() => {
     const first = weekDates[0]!;
     const last = weekDates[6]!;
     return `${first.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
   });
+
+  let days: WeekDay[] = $derived(
+    weekDates.map((date) => {
+      const dayData = weekData.get(formatDate(date));
+      return {
+        date,
+        times: dayData?.times ?? null,
+        asrSecondary: dayData?.asr_secondary ?? null,
+      };
+    }),
+  );
 
   async function loadWeek() {
     if (!masjid?.slug) return;
@@ -138,82 +130,6 @@
   {:else if error}
     <ErrorState message={error} />
   {:else}
-    <div class="space-y-4">
-      {#each weekDates as date, dayIndex}
-        {@const dateStr = formatDate(date)}
-        {@const dayData = weekData.get(dateStr)}
-        {@const dayTimes = dayData?.times}
-        {@const asrSecondary = dayData?.asr_secondary}
-        {@const prevDateStr = dayIndex > 0 ? formatDate(weekDates[dayIndex - 1]!) : null}
-        {@const prevData = prevDateStr ? weekData.get(prevDateStr) : null}
-        {@const prevTimes = prevData?.times}
-        {@const prayerChanges = dayIndex > 0 && prevTimes && dayTimes
-          ? Object.fromEntries(
-              prayerNames.map((name) => {
-                const cur = dayTimes[name];
-                const prv = prevTimes[name];
-                if (!cur || !prv) return [name, { iqaamah: false, adhaan: false }];
-                return [name, {
-                  iqaamah: cur.iqaamah !== prv.iqaamah,
-                  adhaan: cur.adhaan !== prv.adhaan,
-                }];
-              }),
-            )
-          : null}
-        <div
-          class="glass-card overflow-hidden"
-          class:ring-1={isToday(date)}
-          style="border-color: {isToday(date) ? 'var(--color-accent)' : ''};"
-        >
-          <div class="px-4 py-3 flex items-center" style="background: {isToday(date) ? 'rgba(255,255,255,0.03)' : 'transparent'};">
-            <span class="text-sm font-semibold" style="color: {isToday(date) ? 'var(--color-accent)' : 'var(--color-text-muted)'};">
-              {formatDayLabel(date)}
-            </span>
-            <span class="text-sm ml-2" style="color: var(--color-text-dim);">{formatDateLabel(date)}</span>
-            {#if isToday(date)}
-              <span class="ml-2 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded text-white bg-accent">Today</span>
-            {/if}
-          </div>
-
-          {#if dayTimes}
-            <div class="p-4 grid grid-cols-5 gap-2">
-              {#each prayerNames as name}
-                {@const time = dayTimes[name]}
-                {#if time}
-                  {@const chg = prayerChanges?.[name]}
-                  {@const changed = chg && (chg.iqaamah || chg.adhaan)}
-                  <div class="flex flex-col items-center text-center">
-                    <span class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--color-text-dim);">
-                      {prayerLabels[name]}
-                    </span>
-                    <span
-                      class="text-sm font-bold tabular-nums mt-0.5"
-                      style="color: {changed && chg.iqaamah ? 'var(--color-accent)' : 'var(--color-text-muted)'}; opacity: {changed || dayIndex === 0 ? '1' : '0.3'};"
-                    >
-                      {formatTime(time.iqaamah, timeFormat)}
-                    </span>
-                    <span
-                      class="text-[10px] tabular-nums"
-                      style="color: {changed && chg.adhaan ? 'var(--color-accent)' : 'var(--color-text-dim)'}; opacity: {changed || dayIndex === 0 ? '1' : '0.3'};"
-                    >
-                      {adhaanLabel}: {formatTime(time.adhaan, timeFormat)}
-                    </span>
-                    {#if name === 'asr' && asrSecondary}
-                      <span class="text-[10px] tabular-nums mt-0.5" style="color: var(--color-text-dim);">
-                        {asrSecondaryLabel}: {formatTime(asrSecondary, timeFormat)}
-                      </span>
-                    {/if}
-                  </div>
-                {/if}
-              {/each}
-            </div>
-          {:else}
-            <div class="px-4 py-3">
-              <p class="text-sm italic" style="color: var(--color-text-dim);">No data available</p>
-            </div>
-          {/if}
-        </div>
-      {/each}
-    </div>
+    <WeeklyPrayerTable {days} {prayerLabels} {timeFormat} {adhaanLabel} {iqaamahLabel} {asrSecondaryLabel} {today} />
   {/if}
 </div>

@@ -4,12 +4,12 @@
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 470 tests)
 - **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
-- **Working consumer frontend** (SvelteKit static/SPA, 73 tests)
+- **Working consumer frontend** (SvelteKit static/SPA, 83 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
-- **Prayer table on the homepage (2026-07-30)** — the homepage prayer section is the classic masjid timetable (`PrayerTable`: one row per prayer, adhaan/iqaamah columns, sunrise row, current-row highlight + rosette, next chip, right-after-adhaan and dual-Asr notes) for BOTH style systems, replacing the card grid. `PrayerCard`/`PrayerList`/`SkeletonPrayerCard` deleted. The weekly `/prayer` page still uses day cards (conversion planned).
+- **Prayer tables shipped (2026-07-30)** — the homepage prayer section is the classic masjid timetable (`PrayerTable`: one row per prayer, adhaan/iqaamah columns, sunrise row, current-row highlight + rosette, next chip, right-after-adhaan and dual-Asr notes) and the Times tab is the weekly timetable (`WeeklyPrayerTable`: days × prayers, iqaamah over adhaan per cell, today row, cross-week change accents, styled legend) — BOTH style systems, replacing the card grid and the stacked day cards. `PrayerCard`/`PrayerList`/`SkeletonPrayerCard` deleted.
 - **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
@@ -36,7 +36,7 @@ npm run dev --workspace=@masjid/admin        # port 5176
 npm run test             # API unit tests, 470 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
 npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
-npm run test:consumer    # Consumer frontend, 73 tests (jsdom + testing-library)
+npm run test:consumer    # Consumer frontend, 83 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
 npm run test:agent       # Agent package tests (pending: ~175 expected)
@@ -144,6 +144,7 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 | Component | Purpose |
 |---|---|
 | `PrayerTable` | Classic homepage timetable (one row per prayer, adhaan/iqaamah columns, dimmed sunrise row, current-row highlight + chip, right-after-adhaan collapse, dual-Asr note, `rosetteMarker` prop for the Mishkaat current-prayer rosette) |
+| `WeeklyPrayerTable` | Times-tab week timetable (days × prayers, iqaamah over adhaan per cell, today row + chip, cross-week change accents vs dim, styled legend, dual-Asr note) |
 | `HeroNiche` | Mishkaat hero: canonical mihrab arch + apex rosette framing the countdown (§7.11) |
 | `HadithCard` | Mishkaat Hadith of the Day (Arabic RTL + English + source, rosette-flanked heading) |
 | `AnnouncementCard` | Expandable announcement (title, date, compiled_html, pin badge) |
@@ -159,7 +160,7 @@ Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md
 | `+layout.ts` | Load function — fetches page payload, returns masjid/theme/prayer_times/jumuah/announcements |
 | `+page.svelte` | Home: hero + countdown, prayer times table, jumuah today, pinned announcement, donate CTA |
 | `+error.svelte` | Error boundary fallback |
-| `prayer/+page.svelte` | Weekly prayer times viewer (prev/next week navigation) |
+| `prayer/+page.svelte` | Weekly prayer times viewer (prev/next week navigation, `WeeklyPrayerTable`) |
 | `jumuah/+page.svelte` | Jumu'ah sessions list with session cards (sessions now also show on homepage; location shown once when shared) |
 | `announcements/+page.svelte` | Announcements feed |
 | `donate/+page.svelte` | Donation page with CTA and "Why Give" section |

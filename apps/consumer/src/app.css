@@ -210,6 +210,82 @@ svg {
   color: #fff;
 }
 
+/* Weekly prayer table (Times tab) — days as rows, prayers as columns, the
+   classic printed-week timetable. Same skinning rules as the daily table. */
+.c-week-table { padding: 0.35rem 0.5rem; }
+.c-week-table table { border-collapse: collapse; }
+.c-wt-head {
+  padding: 0.5rem 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+  text-align: center;
+  border-bottom: 1px solid var(--color-border);
+}
+.c-wt-head-day { text-align: left; }
+.c-week-table tbody tr + tr { border-top: 1px solid var(--color-border); }
+.c-wt-day {
+  padding: 0.5rem 0.5rem;
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.c-wt-day-name { display: block; }
+.c-wt-day-date {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+}
+.c-wt-day .c-pt-chip { margin-top: 0.2rem; display: inline-block; }
+.c-wt-cell { padding: 0.5rem 0.4rem; text-align: center; }
+.c-wt-iqaamah {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.c-wt-adhaan {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.c-wt-asr2 {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--color-text-dim);
+}
+/* Narrow phones: trim type/padding so all six columns fit (12h times are
+   the tightest). The dual-Asr note may wrap instead of widening the column. */
+@media (max-width: 480px) {
+  .c-wt-iqaamah { font-size: 0.78rem; }
+  .c-wt-adhaan { font-size: 0.58rem; }
+  .c-wt-asr2 { font-size: 0.55rem; }
+  .c-wt-cell { padding: 0.45rem 0.2rem; }
+  .c-wt-day { padding: 0.45rem 0.35rem; }
+  .c-wt-head { padding: 0.5rem 0.2rem; }
+}
+.c-wt-empty { color: var(--color-text-dim); }
+.c-wt-today { background: color-mix(in srgb, var(--color-accent) 8%, transparent); }
+
+/* Legend: the words are styled like their cell counterparts, so the key
+   reads as a sample — bold = iqaamah, dim = adhaan. */
+.c-wt-legend {
+  margin: 0;
+  padding: 0.35rem 0 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+.c-wt-legend-iqaamah { font-size: 0.8rem; font-weight: 700; color: var(--color-text); }
+.c-wt-legend-adhaan { font-size: 0.65rem; font-weight: 500; color: var(--color-text-dim); }
+
 /* App shell root — same values the layout used to set inline; a class so the
    Mishkaat ambient palette (below) can override the background. */
 .c-app {
@@ -373,6 +449,10 @@ svg {
 html[data-style-system='mishkaat'] .c-pt-head {
   border-bottom-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
   letter-spacing: 0.18em;
+}
+html[data-style-system='mishkaat'] .c-wt-head {
+  border-bottom-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  letter-spacing: 0.15em;
 }
 html[data-style-system='mishkaat'] .c-pt-name { letter-spacing: 0.08em; }
 html[data-style-system='mishkaat'] .c-pt-current {
