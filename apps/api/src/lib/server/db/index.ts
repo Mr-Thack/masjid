@@ -59,6 +59,46 @@ function migrateMktTables(sqlite: Database.Database) {
   }
 }
 
+// Shared column migrations — applied to BOTH local SQLite and production D1.
+// When you add a column to the Drizzle schema, ADD IT HERE.
+const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
+  // masjid_themes
+  ['masjid_themes', 'style_system', "TEXT NOT NULL DEFAULT 'sakeenah'"],
+  ['masjid_themes', 'style_options', "TEXT NOT NULL DEFAULT '{}'"],
+  ['masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'"],
+  ['masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'"],
+  ['masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'"],
+  ['masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'"],
+  ['masjid_themes', 'label_speech', "TEXT NOT NULL DEFAULT 'Speech'"],
+  ['masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'"],
+  ['masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'"],
+  ['masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'"],
+  ['masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'"],
+  ['masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'"],
+  ['masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'"],
+  // admins
+  ['admins', 'whatsapp_phone', 'TEXT'],
+  // mkt_terms
+  ['mkt_terms', 'billing_months', 'INTEGER'],
+  // mkt_settings
+  ['mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'"],
+  ['mkt_settings', 'assistance_code', 'TEXT'],
+  // jumuah_sessions
+  ['jumuah_sessions', 'speech_time', 'TEXT'],
+  // masjids
+  ['masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'"],
+  ['masjids', 'high_latitude_rule', "TEXT NOT NULL DEFAULT 'seventh_of_night'"],
+  ['masjids', 'show_dual_asr', 'INTEGER NOT NULL DEFAULT 0'],
+  ['masjids', 'fajr_angle', 'REAL'],
+  ['masjids', 'isha_angle', 'REAL'],
+  ['masjids', 'adjust_fajr', 'INTEGER NOT NULL DEFAULT 0'],
+  ['masjids', 'adjust_sunrise', 'INTEGER NOT NULL DEFAULT 0'],
+  ['masjids', 'adjust_dhuhr', 'INTEGER NOT NULL DEFAULT 0'],
+  ['masjids', 'adjust_asr', 'INTEGER NOT NULL DEFAULT 0'],
+  ['masjids', 'adjust_maghrib', 'INTEGER NOT NULL DEFAULT 0'],
+  ['masjids', 'adjust_isha', 'INTEGER NOT NULL DEFAULT 0'],
+];
+
 function ensureTables(sqlite: Database.Database) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS masjids (
@@ -328,36 +368,11 @@ function ensureTables(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_mkt_outbox_poll ON mkt_outbox(status, scheduled_at);
   `);
 
-  // Migrate existing local databases created before these columns existed.
-  addColumnIfMissing(sqlite, 'masjid_themes', 'style_system', "TEXT NOT NULL DEFAULT 'sakeenah'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'style_options', "TEXT NOT NULL DEFAULT '{}'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_speech', "TEXT NOT NULL DEFAULT 'Speech'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'");
-  addColumnIfMissing(sqlite, 'masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'");
-  addColumnIfMissing(sqlite, 'admins', 'whatsapp_phone', 'TEXT');
-  addColumnIfMissing(sqlite, 'mkt_terms', 'billing_months', 'INTEGER');
-  addColumnIfMissing(sqlite, 'mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'");
-  addColumnIfMissing(sqlite, 'mkt_settings', 'assistance_code', 'TEXT');
-  addColumnIfMissing(sqlite, 'jumuah_sessions', 'speech_time', 'TEXT');
-  addColumnIfMissing(sqlite, 'masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'");
-  addColumnIfMissing(sqlite, 'masjids', 'high_latitude_rule', "TEXT NOT NULL DEFAULT 'seventh_of_night'");
-  addColumnIfMissing(sqlite, 'masjids', 'show_dual_asr', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(sqlite, 'masjids', 'fajr_angle', 'REAL');
-  addColumnIfMissing(sqlite, 'masjids', 'isha_angle', 'REAL');
-  addColumnIfMissing(sqlite, 'masjids', 'adjust_fajr', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(sqlite, 'masjids', 'adjust_sunrise', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(sqlite, 'masjids', 'adjust_dhuhr', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(sqlite, 'masjids', 'adjust_asr', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(sqlite, 'masjids', 'adjust_maghrib', 'INTEGER NOT NULL DEFAULT 0');
-  addColumnIfMissing(sqlite, 'masjids', 'adjust_isha', 'INTEGER NOT NULL DEFAULT 0');
+  // Migrate existing databases created before these columns existed.
+  // This is the SINGLE source of truth — used by both local SQLite and D1.
+  for (const [table, column, def] of COLUMN_MIGRATIONS) {
+    addColumnIfMissing(sqlite, table, column, def);
+  }
 }
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
@@ -376,33 +391,12 @@ export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
 
 let d1Migrated = false;
 
-const D1_COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
-  ['masjid_themes', 'style_system', "TEXT NOT NULL DEFAULT 'sakeenah'"],
-  ['masjid_themes', 'style_options', "TEXT NOT NULL DEFAULT '{}'"],
-  ['masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'"],
-  ['masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'"],
-  ['masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'"],
-  ['masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'"],
-  ['masjid_themes', 'label_speech', "TEXT NOT NULL DEFAULT 'Speech'"],
-  ['masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'"],
-  ['masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'"],
-  ['masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'"],
-  ['masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'"],
-  ['masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'"],
-  ['masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'"],
-  ['admins', 'whatsapp_phone', 'TEXT'],
-  ['mkt_terms', 'billing_months', 'INTEGER'],
-  ['mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'"],
-  ['jumuah_sessions', 'speech_time', 'TEXT'],
-  ['masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'"],
-];
-
 function ensureD1Columns(d1db: D1Database) {
   if (d1Migrated) return;
   d1Migrated = true;
 
   (async () => {
-    for (const [table, column, def] of D1_COLUMN_MIGRATIONS) {
+    for (const [table, column, def] of COLUMN_MIGRATIONS) {
       try {
         await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
         console.log(`[migration] D1: added ${table}.${column}`);
