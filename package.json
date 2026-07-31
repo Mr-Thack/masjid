@@ -35,7 +35,6 @@
     "db:seed": "npx tsx tooling/seed.ts",
     "setup": "node tooling/setup.js",
     "typecheck": "npm run check --workspaces --if-present",
-    "deploy:changed": "node tooling/changed-packages.js",
     "deploy:workers": "node tooling/deploy-workers.js",
     "deploy:pages": "node tooling/deploy-pages.js",
     "deploy:all": "node tooling/deploy-all.js"

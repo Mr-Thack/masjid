@@ -3,56 +3,14 @@ name: Deploy to Cloudflare
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
-  detect-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      workers_json: ${{ steps.changes.outputs.workers_json }}
-      pages_changed: ${{ steps.changes.outputs.pages_changed }}
-      changed: ${{ steps.changes.outputs.changed }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Detect changed packages
-        id: changes
-        run: |
-          set -eo pipefail
-          node tooling/changed-packages.js | tee /tmp/changes_raw.txt
-          tail -1 /tmp/changes_raw.txt > /tmp/changes.json
-
-          if ! jq -e . /tmp/changes.json > /dev/null 2>&1; then
-            echo "::error::Failed to parse changes JSON — deploying nothing"
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "workers_json=[]" >> $GITHUB_OUTPUT
-            echo "pages_changed=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          CHANGED=$(jq -r '.changed' /tmp/changes.json)
-          WORKERS=$(jq -c '.workers' /tmp/changes.json)
-          PAGES_CHANGED=$(jq -r '.pages_changed' /tmp/changes.json)
-
-          echo "changed=${CHANGED}" >> $GITHUB_OUTPUT
-          echo "workers_json=${WORKERS}" >> $GITHUB_OUTPUT
-          echo "pages_changed=${PAGES_CHANGED}" >> $GITHUB_OUTPUT
-
-          echo "::notice::changed=${CHANGED} workers=$(jq -r '[.workers[].name] | join(",")' /tmp/changes.json) pages_changed=${PAGES_CHANGED}"
-
   deploy-workers:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.workers_json != '[]'
     runs-on: ubuntu-latest
     environment: Prod
     env:
@@ -73,7 +31,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.detect-changes.outputs.workers_json) }}
+        include:
+          - name: api
+            workspace: '@masjid/api'
+            dir: apps/api
+          - name: whatsapp
+            workspace: '@masjid/worker-whatsapp'
+            dir: workers/whatsapp
+          - name: push
+            workspace: '@masjid/worker-push'
+            dir: workers/push
     steps:
       - uses: actions/checkout@v4
 
@@ -114,8 +81,6 @@ jobs:
         working-directory: ${{ matrix.dir }}
 
   deploy-pages:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.changed == 'true' && needs.detect-changes.outputs.pages_changed == 'true'
     runs-on: ubuntu-latest
     environment: Prod
     env:
@@ -139,16 +104,12 @@ jobs:
         run: npx wrangler@latest pages deploy .merged --project-name=masjid-live --branch=master
 
   summary:
-    needs: [detect-changes, deploy-workers, deploy-pages]
+    needs: [deploy-workers, deploy-pages]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Deployment summary
         run: |
-          if [ "${{ needs.detect-changes.outputs.changed }}" != "true" ]; then
-            echo "## No deployable changes — skipped." >> $GITHUB_STEP_SUMMARY
-            exit 0
-          fi
           echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "Workers: ${{ needs.deploy-workers.result }}" >> $GITHUB_STEP_SUMMARY
           echo "Pages: ${{ needs.deploy-pages.result }}" >> $GITHUB_STEP_SUMMARY

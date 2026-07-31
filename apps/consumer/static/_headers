@@ -3,10 +3,7 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Access-Control-Allow-Origin: *
 
 /sw.js
   Cache-Control: no-cache
-
-/*
-  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
-  Access-Control-Allow-Origin: *
