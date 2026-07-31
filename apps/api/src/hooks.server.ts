@@ -52,7 +52,7 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
-  await waitForD1Migrations();
+  await waitForD1Migrations(event.platform?.env?.DB);
 
   const origin = event.request.headers.get('origin');
   const pathname = new URL(event.request.url).pathname;

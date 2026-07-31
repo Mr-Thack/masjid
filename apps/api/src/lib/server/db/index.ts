@@ -406,7 +406,8 @@ function ensureD1Columns(d1db: D1Database) {
 }
 
 /** Await this in hooks.server.ts before any route runs to ensure columns exist. */
-export async function waitForD1Migrations() {
+export async function waitForD1Migrations(d1?: unknown) {
+  if (d1) ensureD1Columns(d1 as D1Database);
   if (d1MigrationPromise) await d1MigrationPromise;
 }
 
