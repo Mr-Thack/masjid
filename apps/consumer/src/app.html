@@ -27,18 +27,11 @@
       </div>
     </noscript>
     <script>
+      // Service worker disabled — ALL caching turned off.
+      // Existing SW registrations will auto-update to the pass-through
+      // version on next page load, which no longer caches anything.
       if ('serviceWorker' in navigator && !/sw-kill/.test(location.pathname)) {
-        navigator.serviceWorker.register('/sw.js').then(function (reg) {
-          reg.addEventListener('updatefound', function () {
-            var newWorker = reg.installing;
-            if (!newWorker) return;
-            newWorker.addEventListener('statechange', function () {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[sw] New version available — refresh to update.');
-              }
-            });
-          });
-        }).catch(function (err) {
+        navigator.serviceWorker.register('/sw.js').catch(function (err) {
           console.warn('[sw] Registration failed:', err);
         });
       }

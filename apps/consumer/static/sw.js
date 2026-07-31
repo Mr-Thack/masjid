@@ -1,19 +1,13 @@
 // ---------------------------------------------------------------------------
 // Service worker for Masjid consumer PWA
 //
-// - Cache-first for static assets (JS, CSS, images, fonts, icons)
-// - Offline-ready prayer-time shell
-// - Push notification handler (future)
-// - /sw-kill emergency self-destruct route
-// - Reports errors to page clients via postMessage
+// - Push notification handler
+// - Notification click — focus existing window or open new one
+// - Message — respond to page health-check requests
+// - ALL request caching is DISABLED — fetch events pass through to the browser
 // ---------------------------------------------------------------------------
 
-const CACHE_NAME = 'masjid-consumer-__BUILD_HASH__';
-
-const SKIP_PATH_PREFIXES = ['/api/', '/@'];
-const CACHEABLE_EXTENSIONS = /\.(js|css|png|svg|ico|woff2)$/;
-const CACHEABLE_PATH_PREFIXES = ['/icon-'];
-const MAX_CACHE_ENTRIES = 100;
+const CACHE_NAME = 'masjid-consumer-nocache';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,11 +26,6 @@ async function getCacheStats() {
   const cache = await caches.open(CACHE_NAME);
   const keys = await cache.keys();
   return { name: CACHE_NAME, count: keys.length, urls: keys.map((r) => r.url) };
-}
-
-function isCacheable(url) {
-  return CACHEABLE_EXTENSIONS.test(url.pathname) ||
-    CACHEABLE_PATH_PREFIXES.some((p) => url.pathname.startsWith(p));
 }
 
 // ---------------------------------------------------------------------------
@@ -65,92 +54,14 @@ self.addEventListener('activate', (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// Fetch — cache-first for static assets, pass-through for everything else
+// Fetch — PASS-THROUGH ONLY, no caching, no interception
 // ---------------------------------------------------------------------------
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // --- Guards ---
-
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
-  if (event.request.method !== 'GET') return;
-  if (event.request.mode === 'navigate') return;
-  if (SKIP_PATH_PREFIXES.some((p) => url.pathname.startsWith(p))) return;
-  if (url.origin !== self.location.origin) return;
-
-  // --- /sw-kill self-destruct ---
-
-  if (url.pathname === '/sw-kill') {
-    event.respondWith(
-      self.registration.unregister()
-        .then(() => caches.keys())
-        .then((names) => Promise.all(names.map((n) => caches.delete(n))))
-        .then(() => {
-          console.log('[sw] self-destruct complete');
-          return new Response('Service worker unregistered and caches cleared.', {
-            status: 200,
-            headers: { 'content-type': 'text/plain' },
-          });
-        })
-        .catch((err) => {
-          console.error('[sw] self-destruct failed', err);
-          return new Response('Self-destruct failed', { status: 500 });
-        }),
-    );
-    return;
-  }
-
-  // --- Cache-first handler ---
-
-  let cacheWork;
-
-  event.respondWith(
-    (async () => {
-      try {
-        const cached = await caches.match(event.request);
-        if (cached) return cached;
-      } catch (err) {
-        console.warn('[sw] cache.match failed', url.href, err);
-      }
-
-      let response;
-      try {
-        response = await fetch(event.request);
-      } catch (err) {
-        console.warn('[sw] fetch failed, checking cache fallback', url.href, err);
-        return (await caches.match(event.request)) || Response.error();
-      }
-
-      if (!response.ok) return response;
-      if (response.type === 'opaque') return response;
-
-      if (isCacheable(url)) {
-        const clone = response.clone();
-        cacheWork = (async () => {
-          try {
-            const cache = await caches.open(CACHE_NAME);
-            await cache.put(event.request, clone);
-            // Trim cache if over limit
-            const keys = await cache.keys();
-            if (keys.length > MAX_CACHE_ENTRIES) {
-              const toDelete = keys.slice(0, keys.length - MAX_CACHE_ENTRIES);
-              await Promise.all(toDelete.map((r) => cache.delete(r)));
-            }
-          } catch (err) {
-            console.warn('[sw] cache.put failed', url.href, err);
-            postToClients({ type: 'sw-error', detail: `cache.put failed for ${url.pathname}` });
-          }
-        })();
-      }
-
-      return response;
-    })(),
-  );
-
-  if (cacheWork) {
-    event.waitUntil(cacheWork);
-  }
+  // All requests pass through to the browser's native network handling.
+  // No respondWith() call means the browser handles the request normally.
+  // The event listener exists only so we can add logging if needed;
+  // it never caches, never blocks, never returns error responses.
 });
 
 // ---------------------------------------------------------------------------
