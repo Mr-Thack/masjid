@@ -163,3 +163,17 @@ export async function submitMaktabEnrollment(
   }
   return res.json();
 }
+
+export async function verifyAssistanceCode(
+  slug: string,
+  card_holder_name: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<{ needs_payment: boolean }> {
+  const res = await customFetch(`${BASE}/${slug}/maktab/verify-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ card_holder_name }),
+  });
+  if (!res.ok) return { needs_payment: true };
+  return res.json();
+}

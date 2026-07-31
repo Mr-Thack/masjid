@@ -2,7 +2,7 @@
   import { page } from '$app/stores';
   import { onDestroy } from 'svelte';
   import { formatCents, monthlyPriceCents } from '$lib/money';
-  import { submitMaktabEnrollment } from '$lib/api';
+  import { submitMaktabEnrollment, verifyAssistanceCode } from '$lib/api';
   import ErrorState from '$lib/components/ErrorState.svelte';
 
   let slug = $derived($page.params.masjid_slug);
@@ -23,10 +23,14 @@
 
   let cardReady = $state(false);
   let cardError = $state<string | null>(null);
+  let cardLoading = $state(false);
+  let needsPayment = $state<boolean | null>(null);
+  let verifying = $state(false);
   let submitting = $state(false);
   let submitError = $state<string | null>(null);
   let success = $state(false);
   let cardInstance: { destroy: () => void } | null = null;
+  let verifyTimer: ReturnType<typeof setTimeout> | null = null;
 
   let amountCents = $derived(
     maktab?.term ? monthlyPriceCents(maktab.term, form.children.length) : 0,
@@ -37,9 +41,11 @@
     childrenCount === 1 ? '1' : childrenCount === 2 ? '2' : '3plus',
   );
 
-  $effect(() => {
+  function loadSquareCard() {
+    if (cardLoading || cardReady) return;
     if (!maktab?.square_config?.app_id || !maktab.square_config.location_id) return;
 
+    cardLoading = true;
     const script = document.createElement('script');
     script.src = 'https://sandbox.web.squarecdn.com/v1/square.js';
     if (maktab.square_config.environment === 'production') {
@@ -66,21 +72,41 @@
       cardError = 'Payment script failed to load';
     };
     document.body.appendChild(script);
+  }
 
-    return () => {
-      script.remove();
-      if (cardInstance) {
-        cardInstance.destroy();
-        cardInstance = null;
-      }
-    };
+  async function verifyCode() {
+    const name = form.card_holder_name.trim();
+    if (!name) {
+      needsPayment = null;
+      return;
+    }
+    verifying = true;
+    try {
+      const result = await verifyAssistanceCode(slug, name);
+      needsPayment = result.needs_payment;
+    } catch {
+      needsPayment = true;
+    } finally {
+      verifying = false;
+    }
+  }
+
+  $effect(() => {
+    form.card_holder_name;
+    if (verifyTimer) clearTimeout(verifyTimer);
+    verifyTimer = setTimeout(verifyCode, 500);
   });
 
   onDestroy(() => {
+    if (verifyTimer) clearTimeout(verifyTimer);
     if (cardInstance) {
       cardInstance.destroy();
       cardInstance = null;
     }
+  });
+
+  $effect(() => {
+    loadSquareCard();
   });
 
   function addChild() {
@@ -114,19 +140,19 @@
       return;
     }
 
-    if (!cardInstance) {
-      submitError = 'Payment form is not ready yet.';
-      return;
-    }
-
     submitting = true;
     try {
-      const tokenResult = await (cardInstance as any).tokenize();
-      if (tokenResult.status !== 'OK' || !tokenResult.token) {
-        throw new Error(tokenResult.errors?.[0]?.message || 'Card tokenization failed');
+      let sourceId: string | undefined;
+
+      if (cardInstance) {
+        const tokenResult = await (cardInstance as any).tokenize();
+        if (tokenResult.status !== 'OK' || !tokenResult.token) {
+          throw new Error(tokenResult.errors?.[0]?.message || 'Card tokenization failed');
+        }
+        sourceId = tokenResult.token;
       }
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         father: form.father.name ? form.father : undefined,
         mother: form.mother.name ? form.mother : undefined,
         address_line1: form.address_line1,
@@ -134,9 +160,12 @@
         postal_code: form.postal_code,
         country: form.country,
         children: form.children.map((c) => ({ name: c.name, dob: c.dob, sex: c.sex })),
-        source_id: tokenResult.token,
         card_holder_name: form.card_holder_name,
       };
+
+      if (sourceId) {
+        payload.source_id = sourceId;
+      }
 
       await submitMaktabEnrollment(slug, payload);
       success = true;
@@ -375,58 +404,79 @@
                 type="text"
                 bind:value={form.card_holder_name}
                 autocomplete="cc-name"
-                class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
+                disabled={needsPayment === false}
+                class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
                 style="border-color: var(--color-border); color: var(--color-text);"
               />
             </label>
           </div>
-          <div class="sm:col-span-2">
-            <span class="text-sm font-medium" style="color: var(--color-text-muted);">Card Details</span>
-            <div
-              id="card-container"
-              class="mt-1 min-h-[120px] rounded-lg p-3 border flex items-center justify-center"
-              style="border-color: var(--color-border); background-color: var(--color-surface);"
-            >
-              {#if !cardReady && !cardError}
-                <span class="text-sm" style="color: var(--color-text-dim);">Loading secure card form…</span>
+
+          {#if needsPayment === false}
+            <div class="sm:col-span-2 rounded-lg p-4 text-sm flex items-center gap-2" style="background-color: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary);">
+              <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span>Enrollment will be submitted without payment.</span>
+            </div>
+          {:else}
+            <div class="sm:col-span-2">
+              <span class="text-sm font-medium" style="color: var(--color-text-muted);">Card Details</span>
+              <div class="mt-1 relative">
+                <div
+                  id="card-container"
+                  class="min-h-[120px] rounded-lg p-3 border"
+                  style="border-color: var(--color-border); background-color: var(--color-surface);"
+                ></div>
+                {#if !cardReady && !cardError}
+                  <div class="absolute inset-0 flex items-center justify-center rounded-lg pointer-events-none" style="background-color: var(--color-surface);">
+                    <span class="text-sm" style="color: var(--color-text-dim);">Loading secure card form…</span>
+                  </div>
+                {/if}
+              </div>
+              {#if cardError}
+                <p class="text-sm mt-2" style="color: var(--color-accent);">{cardError}</p>
               {/if}
             </div>
-            {#if cardError}
-              <p class="text-sm mt-2" style="color: var(--color-accent);">{cardError}</p>
-            {/if}
-          </div>
+          {/if}
         </div>
 
         <div class="glass rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <p class="text-sm" style="color: var(--color-text-muted);">
-              {maktab.term.billing_months} month subscription · {childrenCount} child{childrenCount === 1 ? '' : 'ren'} ({tier} student{tier === '1' ? '' : 's'})
-            </p>
-            <p class="text-2xl font-bold font-heading">{formatCents(amountCents)}<span class="text-sm font-normal" style="color: var(--color-text-muted);">/month</span></p>
+            {#if needsPayment === false}
+              <p class="text-sm" style="color: var(--color-text-muted);">
+                {maktab.term.billing_months} month program · {childrenCount} child{childrenCount === 1 ? '' : 'ren'}
+              </p>
+              <p class="text-base font-medium font-heading" style="color: var(--color-text-muted);">Financial Aid</p>
+            {:else}
+              <p class="text-sm" style="color: var(--color-text-muted);">
+                {maktab.term.billing_months} month subscription · {childrenCount} child{childrenCount === 1 ? '' : 'ren'} ({tier} student{tier === '1' ? '' : 's'})
+              </p>
+              <p class="text-2xl font-bold font-heading">{formatCents(amountCents)}<span class="text-sm font-normal" style="color: var(--color-text-muted);">/month</span></p>
+            {/if}
           </div>
           <button
             type="submit"
-            disabled={submitting || !cardReady}
+            disabled={submitting}
             class="px-8 py-3 rounded-xl font-semibold text-white transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
             style="background-color: var(--color-primary);"
           >
-            {submitting ? 'Processing…' : 'Complete Enrollment'}
+            {submitting ? 'Processing…' : needsPayment === false ? 'Submit Enrollment' : 'Complete Enrollment'}
           </button>
         </div>
 
-        <div class="mt-6 rounded-xl p-5 text-sm space-y-3" style="background-color: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted);">
-          <h3 class="font-semibold font-heading" style="color: var(--color-text);">When you continue to payment, you agree to the following:</h3>
-          <ol class="list-decimal pl-5 space-y-1">
-            <li>You are signing up for the <strong style="color: var(--color-text);">full {maktab.term.length_months}-month program</strong>, billed over {maktab.term.billing_months} monthly payments.</li>
-            <li><strong style="color: var(--color-text);">There are no refunds</strong>, even if your child stops coming.</li>
-            <li><strong style="color: var(--color-text);">You will still be charged each month</strong>, even if your child does not attend.</li>
-            <li><strong style="color: var(--color-text);">You cannot cancel or leave</strong> the program once you are signed up.</li>
-            <li>Your card will be <strong style="color: var(--color-text);">charged automatically every month</strong>.</li>
-          </ol>
-          <p>
-            By clicking the <em style="color: var(--color-text);">"Complete Enrollment"</em> button above, you agree to these terms.
-          </p>
-        </div>
+        {#if needsPayment !== false}
+          <div class="mt-6 rounded-xl p-5 text-sm space-y-3" style="background-color: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-muted);">
+            <h3 class="font-semibold font-heading" style="color: var(--color-text);">When you continue to payment, you agree to the following:</h3>
+            <ol class="list-decimal pl-5 space-y-1">
+              <li>You are signing up for the <strong style="color: var(--color-text);">full {maktab.term.length_months}-month program</strong>, billed over {maktab.term.billing_months} monthly payments.</li>
+              <li><strong style="color: var(--color-text);">There are no refunds</strong>, even if your child stops coming.</li>
+              <li><strong style="color: var(--color-text);">You will still be charged each month</strong>, even if your child does not attend.</li>
+              <li><strong style="color: var(--color-text);">You cannot cancel or leave</strong> the program once you are signed up.</li>
+              <li>Your card will be <strong style="color: var(--color-text);">charged automatically every month</strong>.</li>
+            </ol>
+            <p>
+              By clicking the <em style="color: var(--color-text);">"Complete Enrollment"</em> button above, you agree to these terms.
+            </p>
+          </div>
+        {/if}
       </section>
 
       {#if submitError}

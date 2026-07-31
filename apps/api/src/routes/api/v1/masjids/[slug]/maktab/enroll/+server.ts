@@ -77,6 +77,10 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
       status = 'aid_granted';
       paymentProvider = 'aid';
     } else {
+      if (!body.source_id) {
+        return ErrorJsonResponse('VALIDATION_ERROR', 'Card payment details are required');
+      }
+
       if (!refs.square) {
         return ErrorJsonResponse('INTERNAL_ERROR', 'Active term is not linked to Square plans');
       }

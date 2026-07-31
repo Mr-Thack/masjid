@@ -178,19 +178,19 @@ describe('SquareEnrollmentSchema', () => {
     })).not.toThrow();
   });
 
-  it('rejects missing source_id', () => {
+  it('accepts missing source_id (optional for assistance codes)', () => {
     expect(() => SquareEnrollmentSchema.parse({
       ...base,
-      card_holder_name: 'Test Dad',
-    })).toThrow();
+      card_holder_name: 'HELP42',
+    })).not.toThrow();
   });
 
-  it('rejects empty source_id', () => {
+  it('accepts empty source_id', () => {
     expect(() => SquareEnrollmentSchema.parse({
       ...base,
       source_id: '',
       card_holder_name: 'Test Dad',
-    })).toThrow();
+    })).not.toThrow();
   });
 
   it('rejects missing card_holder_name', () => {

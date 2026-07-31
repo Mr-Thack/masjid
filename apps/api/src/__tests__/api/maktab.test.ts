@@ -772,6 +772,73 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('assistance code match WITHOUT source_id — frontend skipped card form', async () => {
+    const slug = `enroll-aid-nocard-${Date.now()}`;
+    const { id: masjidId } = await enrollSetup(slug);
+
+    await db.update(mktSettings)
+      .set({ assistanceCode: 'NO-CARD' })
+      .where(eq(mktSettings.masjidId, masjidId));
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        father: { name: 'No Card Parent', phone: '+14155554001', email: 'nocard@example.com' },
+        address_line1: '222 Cardless St',
+        city: 'Decatur',
+        postal_code: '30030',
+        children: [{ name: 'Student NoCard', dob: '2016-07-01', sex: 'female' }],
+        card_holder_name: 'NO-CARD',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.status).toBe('aid_granted');
+      expect(body.subscription_id).toBeNull();
+
+      const regs = await db.select().from(mktRegistrations)
+        .where(eq(mktRegistrations.masjidId, masjidId))
+        .orderBy(desc(mktRegistrations.createdAt));
+      expect(regs).toHaveLength(1);
+      const reg = regs[0]!;
+      expect(reg.status).toBe('aid_granted');
+      expect(reg.paymentProvider).toBe('aid');
+      expect(reg.monthlyAmountCents).toBe(0);
+
+      const fetchCalls = mockFetch.mock.calls.filter(
+        ([url]: [string]) => !url.includes('localhost')
+      );
+      expect(fetchCalls).toHaveLength(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('missing source_id without valid assistance code returns error', async () => {
+    const slug = `enroll-nosource-${Date.now()}`;
+    await enrollSetup(slug);
+
+    const mockFetch = squareMockFetch();
+    vi.stubGlobal('fetch', mockFetch);
+    try {
+      const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+        father: { name: 'Normal Parent', phone: '+14155555001', email: 'normal@example.com' },
+        address_line1: '333 NoCard St',
+        city: 'Atlanta',
+        postal_code: '30303',
+        children: [{ name: 'Student', dob: '2015-05-05', sex: 'male' }],
+        card_holder_name: 'Normal Name',
+      });
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────

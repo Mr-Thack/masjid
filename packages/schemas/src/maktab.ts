@@ -75,7 +75,7 @@ export const StripeEnrollmentSchema = BaseEnrollmentSchema.extend({
 export type StripeEnrollmentInput = z.infer<typeof StripeEnrollmentSchema>;
 
 export const SquareEnrollmentSchema = BaseEnrollmentSchema.extend({
-  source_id: z.string().min(1),
+  source_id: z.string().optional(),
   card_holder_name: z.string().min(1),
 }).refine(
   (data) => {
