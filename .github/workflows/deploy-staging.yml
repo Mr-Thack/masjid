@@ -1,0 +1,128 @@
+name: Deploy Staging
+
+# Staging = FULL mirror of production (docs/integration-testing.md §2.1):
+#   API worker  mapi-staging → mapi-staging.mr-thack.workers.dev
+#   D1          masjid-db-staging (separate, disposable — seeded per checklist)
+#   Pages       masjid-staging → masjid-staging.pages.dev (VITE_API_URL=mapi-staging)
+# The e2e-staging job gates promotion: merge staging → master only when green.
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy-worker-staging:
+    runs-on: ubuntu-latest
+    environment: Staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_D1_STAGING_ID: ${{ vars.CLOUDFLARE_D1_STAGING_ID || secrets.CLOUDFLARE_D1_STAGING_ID }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+      SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
+      SQUARE_LOCATION_ID: ${{ secrets.SQUARE_LOCATION_ID }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Lesson-18 guard: fail the deploy BEFORE anything ships if
+      # schema.sql and the Drizzle schema have drifted.
+      - name: Schema drift check
+        run: npm run check-schema
+
+      - name: Build API worker
+        run: npm run build --workspace=@masjid/api
+
+      # Only the staging placeholder — never touch the prod database_id.
+      - name: Inject staging D1 database ID
+        run: sed -i "s/placeholder-staging-db-id/$CLOUDFLARE_D1_STAGING_ID/g" apps/api/wrangler.toml
+
+      # Loop-built --var args (lessons 4/27: && chains abort silently).
+      # --keep-vars preserves any dashboard-set vars.
+      - name: Deploy API worker (staging)
+        run: |
+          VAR_ARGS=()
+          for v in JWT_SECRET SQUARE_ACCESS_TOKEN SQUARE_APP_ID SQUARE_LOCATION_ID BREVO_API_KEY LLM_API_KEY; do
+            val="${!v}"; [ -n "$val" ] && VAR_ARGS+=(--var "$v:$val")
+          done
+          npx wrangler@latest deploy --env staging --keep-vars --var ENVIRONMENT:staging "${VAR_ARGS[@]}"
+        working-directory: apps/api
+
+  deploy-pages-staging:
+    runs-on: ubuntu-latest
+    environment: Staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Build-time API URL — staging pages call the STAGING API:
+      VITE_API_URL: https://mapi-staging.mr-thack.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build & merge all page apps
+        run: node tooling/merge-pages.js
+
+      - name: Deploy staging Pages project (advanced-mode _worker.js router)
+        # --branch=master = the project's production branch, so the stable
+        # masjid-staging.pages.dev hostname (not a preview URL) is updated.
+        run: npx wrangler@latest pages deploy .merged --project-name=masjid-staging --branch=master
+
+  e2e-staging:
+    needs: [deploy-worker-staging, deploy-pages-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+
+      # NOTE: whatsapp/agent vitest suites are intentionally NOT run here
+      # (currently red — missing tokens; tracked separately). This gate is
+      # the browser/API smoke suite only. Staging's DB is disposable, so
+      # write cases (WRK-03 registration, admin flows) run here too.
+      - name: Browser E2E smoke vs staging
+        # Edge propagation: give the deploys a moment before hammering them.
+        run: sleep 30 && npm run test:e2e:staging
+        env:
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
+
+  summary:
+    needs: [deploy-worker-staging, deploy-pages-staging, e2e-staging]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "## Staging Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "API worker: ${{ needs.deploy-worker-staging.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Pages: ${{ needs.deploy-pages-staging.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E gate: ${{ needs.e2e-staging.result }}" >> $GITHUB_STEP_SUMMARY

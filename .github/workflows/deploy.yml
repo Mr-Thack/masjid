@@ -51,6 +51,11 @@ jobs:
 
       - run: npm ci
 
+      # Lesson-18 guard: fail BEFORE shipping if schema.sql and the Drizzle
+      # schema have drifted (runs for every worker; cheap static check).
+      - name: Schema drift check
+        run: npm run check-schema
+
       - name: Build worker
         run: npm run build --workspace=${{ matrix.workspace }}
 
@@ -103,8 +108,31 @@ jobs:
       - name: Deploy unified Pages project (advanced-mode _worker.js router)
         run: npx wrangler@latest pages deploy .merged --project-name=masjid-live --branch=master
 
-  summary:
+  e2e-prod:
     needs: [deploy-workers, deploy-pages]
+    if: always() && needs.deploy-workers.result == 'success' && needs.deploy-pages.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+
+      # Read-only smoke vs production. The deploy is already live at this
+      # point — a red result pages a human; it does not roll back.
+      # (whatsapp/agent vitest suites intentionally not run — currently red.)
+      - name: Browser E2E smoke vs prod (read-only)
+        run: sleep 30 && npm run test:e2e:prod
+
+  summary:
+    needs: [deploy-workers, deploy-pages, e2e-prod]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
@@ -113,3 +141,4 @@ jobs:
           echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "Workers: ${{ needs.deploy-workers.result }}" >> $GITHUB_STEP_SUMMARY
           echo "Pages: ${{ needs.deploy-pages.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E (prod, read-only): ${{ needs.e2e-prod.result }}" >> $GITHUB_STEP_SUMMARY

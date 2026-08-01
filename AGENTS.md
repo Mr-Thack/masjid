@@ -68,6 +68,9 @@ npm run test:sw          # Service worker integration, 26 tests (Playwright, req
 npm run test:agent       # Agent package tests (pending: ~175 expected)
 npm run test:admin       # Admin app tests, 115 tests (jsdom + testing-library)
 npm run test:tooling     # Tooling tests (merge-pages, build integrity — 13 tests)
+npm run test:e2e         # Browser E2E smoke vs local dev servers (tests/e2e/ — api + consumer suites live; spec: docs/integration-testing.md, cases: docs/integration-test-cases.md)
+npm run test:e2e:staging # Browser E2E vs staging (masjid-staging.pages.dev + mapi-staging worker + masjid-db-staging; writes OK — disposable DB)
+npm run test:e2e:prod    # Browser E2E vs prod, read-only
 npm run test:all         # everything (excluding test:sw and test:admin since they need servers running)
 ```
 
@@ -271,6 +274,8 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - `docs/admin-ai-capabilities.md` — Admin AI bot chat panel design (DiffReceiptCard, vision, SSE streaming)
 - `docs/admin-tests.md` — Admin app test strategy (~202 tests: unit + integration + E2E)
 - **`docs/unified-deploy.md` — Unified deployment (all apps on masjid-live.pages.dev via Pages advanced mode), merge pipeline, deploy/verify runbook, cutover plan (read before any deploy work)**
+- **`docs/integration-testing.md` — Browser E2E smoke-test spec: staging environment (masjid-staging.pages.dev + mapi-staging worker + masjid-db-staging), staging branch flow, test catalog, swarm work packages (read before any E2E/deploy work)**
+- **`docs/integration-test-cases.md` — Enumerated E2E test-case catalog + swarm work order (exact steps/assertions per case; statuses)**
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 

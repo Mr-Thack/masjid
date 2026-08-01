@@ -47,3 +47,31 @@ database_id = "dbd92070-15d9-4442-9b10-fe0eb03b47df"
 [env.production.assets]
 binding = "ASSETS"
 directory = ".svelte-kit/cloudflare"
+
+# Staging mirror (docs/integration-testing.md §2.1) — full API + its OWN D1.
+# Deployed by .github/workflows/deploy-staging.yml on pushes to `staging`.
+# CI injects the real database id over placeholder-staging-db-id.
+[env.staging]
+name = "mapi-staging"
+
+[env.staging.vars]
+JWT_SECRET = ""
+ENVIRONMENT = "staging"
+SQUARE_ACCESS_TOKEN = ""
+SQUARE_APP_ID = ""
+SQUARE_LOCATION_ID = ""
+BREVO_API_KEY = ""
+SENDER_EMAIL = "automated@masjidsuffah.com"
+SENDER_NAME = "Masjid Suffah (Staging)"
+FORWARD_TO_EMAIL = "suffahmasjid@gmail.com"
+LOGGING_EMAIL = "masjidsuffahlogging@gmail.com"
+BOT_NAME = "masjid-api-staging/1.0"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "masjid-db-staging"
+database_id = "placeholder-staging-db-id"
+
+[env.staging.assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
