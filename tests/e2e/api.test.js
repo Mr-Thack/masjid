@@ -113,4 +113,133 @@ for (const [id, slug] of [
   );
 }
 
+// API-09 — masjid sub-endpoints return valid data (no 400/500)
+for (const [id, path, check] of [
+  ['API-09a', `prayer?date=2026-08-01`, (b) => b?.times && b?.masjid],
+  ['API-09b', 'jumuah', (b) => Array.isArray(b?.sessions)],
+  ['API-09c', 'announcements', (b) => Array.isArray(b?.announcements)],
+]) {
+  const r = await getJson(`/api/v1/masjids/${SLUG_A}/${path}`);
+  t.assert(r.status === 200, `${id} ${path} → 200 (got ${r.status})`);
+  t.assert(r.isJson && check(r.body), `${id} body passes shape check`);
+}
+
+// API-10 — non-existent announcement returns proper error, never 500
+{
+  const r = await getJson(`/api/v1/masjids/${SLUG_A}/announcements/this-does-not-exist`);
+  t.assert(
+    r.status === 404 && r.isJson,
+    `API-10 unknown announcement → 404 JSON (got ${r.status})`,
+  );
+}
+
+// API-11 — maktab verify-code without body returns validation error, never 500
+{
+  const resp = await fetch(`${cfg.api}/api/v1/masjids/${SLUG_A}/maktab/verify-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  const text = await resp.text();
+  let body = null;
+  try { body = JSON.parse(text); } catch { /* body stays null */ }
+  t.assert(
+    resp.status < 500,
+    `API-11 verify-code without code → status < 500 (got ${resp.status})`,
+  );
+  t.assert(
+    body !== null,
+    `API-11 verify-code returns JSON (not HTML/empty)`,
+  );
+}
+
+// API-12 — board endpoint for unknown masjid returns 404
+{
+  const r = await getJson(`/api/v1/masjids/${SLUG_UNKNOWN}/board`);
+  t.assert(r.status === 404, `API-12 unknown board → 404 (got ${r.status})`);
+  t.assert(r.isJson, 'API-12 body is JSON, not HTML');
+}
+
+// API-13 — prayer endpoint for unknown masjid returns 404
+{
+  const r = await getJson(`/api/v1/masjids/${SLUG_UNKNOWN}/prayer?date=2026-08-01`);
+  t.assert(r.status === 404, `API-13 unknown prayer → 404 (got ${r.status})`);
+  t.assert(r.isJson, 'API-13 body is JSON, not HTML');
+}
+
+// API-14 — bogus API sub-path returns proper error JSON, never HTML/500
+{
+  const r = await getJson('/api/v1/this-path-does-not-exist');
+  t.assert(
+    r.isJson && r.body?.error,
+    `API-14 bogus API path → JSON error (isJson: ${r.isJson}, has error: ${Boolean(r.body?.error)})`,
+  );
+}
+
+// API-15 — SLUG_B endpoints return valid data too (cross-masjid coverage)
+for (const [id, path, check] of [
+  ['API-15a', `prayer?date=2026-08-01`, (b) => b?.times && b?.masjid],
+  ['API-15b', 'jumuah', (b) => Array.isArray(b?.sessions)],
+  ['API-15c', 'announcements', (b) => Array.isArray(b?.announcements)],
+  ['API-15d', 'maktab', (b) => typeof b?.open === 'boolean'],
+]) {
+  const r = await getJson(`/api/v1/masjids/${SLUG_B}/${path}`);
+  t.assert(r.status === 200, `${id} SLUG_B ${path} → 200 (got ${r.status})`);
+  t.assert(r.isJson && check(r.body), `${id} SLUG_B body passes shape check`);
+}
+
+// API-16 — maktab: rapid sequential fetches (no race-condition 500s)
+{
+  const results = await Promise.all([
+    getJson(`/api/v1/masjids/${SLUG_A}/maktab`),
+    getJson(`/api/v1/masjids/${SLUG_B}/maktab`),
+    getJson(`/api/v1/masjids/${SLUG_A}/maktab`),
+  ]);
+  const all200 = results.every((r) => r.status === 200);
+  const allJson = results.every((r) => r.isJson && typeof r.body?.open === 'boolean');
+  t.assert(all200, `API-16 rapid maktab fetches all 200 (got ${results.map((r) => r.status).join(',')})`);
+  t.assert(allJson, 'API-16 rapid maktab fetches all valid JSON');
+}
+
+// API-17 — maktab: verify-code with invalid postal code returns error, not 500
+{
+  const resp = await fetch(`${cfg.api}/api/v1/masjids/${SLUG_A}/maktab/verify-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: 'DEFINITELY-INVALID-CODE' }),
+  });
+  const text = await resp.text();
+  let body = null;
+  try { body = JSON.parse(text); } catch { /* body stays null */ }
+  t.assert(
+    resp.status < 500,
+    `API-17 verify-code with bad code → status < 500 (got ${resp.status})`,
+  );
+  t.assert(body !== null, 'API-17 verify-code returns JSON');
+}
+
+// API-18 — maktab: POST enroll without Square token returns validation error, never 500
+{
+  const resp = await fetch(`${cfg.api}/api/v1/masjids/${SLUG_A}/maktab/enroll`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  t.assert(
+    resp.status < 500,
+    `API-18 enroll with empty body → status < 500 (got ${resp.status})`,
+  );
+  const text = await resp.text();
+  let body = null;
+  try { body = JSON.parse(text); } catch { /* body stays null */ }
+  t.assert(body !== null, 'API-18 enroll returns JSON');
+}
+
+// API-19 — maktab: unknown masjid maktab returns 404
+{
+  const r = await getJson(`/api/v1/masjids/${SLUG_UNKNOWN}/maktab`);
+  t.assert(r.status === 404, `API-19 unknown maktab → 404 (got ${r.status})`);
+  t.assert(r.isJson, 'API-19 body is JSON, not HTML');
+}
+
 process.exit((await t.done()) > 0 ? 1 : 0);

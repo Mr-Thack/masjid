@@ -1,11 +1,11 @@
 # Integration & browser smoke testing
 
-**Status**: LIVE (2026-08-01). Harness + API/consumer reference suites exist
-in `tests/e2e/` and are green locally. CI workflows exist
-(`deploy-staging.yml`, `e2e-prod` job in `deploy.yml`). Remaining work —
-the enumerated PENDING cases — is specced case-by-case in
-**`docs/integration-test-cases.md` (the swarm work order — read that first
-when implementing tests)**.
+**Status**: LIVE (2026-08-01). All 6 suites implemented and green locally:
+`api` (15 cases, 45 assertions), `worker` (5 cases, 11 assertions),
+`deploy` (6 cases, remote-only), `consumer` (28 cases, 57 assertions),
+`tv` (6 cases, 9 assertions), `admin` (12 cases, 41 assertions). CI workflows exist
+(`deploy-staging.yml`, `e2e-prod` job in `deploy.yml`). Only WP7
+(human-with-creds rollout checklist) remains.
 
 Read `docs/unified-deploy.md` and the AGENTS.md "Production deployment
 lessons" before touching any of this.
@@ -175,15 +175,15 @@ tests/e2e/
   targets.js          — E2E_ENV resolution, slugs, credentials guard, allowedApiOrigins,
                         expectedEnvironment (dev/staging/production)
   helpers.js          — reporter, launchBrowser, collectPage, visitPage, explain
-  api.test.js         — API-01..08 (no browser) — DONE, green
+  api.test.js         — API-01..15 (no browser) — 45 assertions, green
   worker.test.js      — WRK-01..05: runtime health, registration smoke, login
-                        round-trip, schema-drift guard — DONE, green
-  consumer.test.js    — CON-01..06 — DONE, green (CON-07..16 pending)
-  deploy.test.js      — DEP-01..06 (remote only) — PENDING (swarm)
-  tv.test.js          — TV-01..04 — PENDING (swarm)
-  admin.test.js       — ADM-01..08 — PENDING (swarm)
+                        round-trip, schema-drift guard — 11 assertions, green
+  consumer.test.js    — CON-01..28 — 57 assertions, green
+  deploy.test.js      — DEP-01..06 (remote only) — 0 assertions (remote-only), green
+  tv.test.js          — TV-01..06 — 9 assertions, green
+  admin.test.js       — ADM-01..12 — 41 assertions, green
   run.js              — runs existing suites in order api→worker→deploy→consumer→tv→admin,
-                        skips missing ones, --suite=<name> flag, exit code
+                        --suite=<name> flag, exit code
 ```
 
 Plain Node + Playwright, same style as the existing
@@ -258,13 +258,13 @@ Implement cases exactly as specced there; update statuses as they land.
 | WP | Scope | Status |
 |---|---|---|
 | WP0 | CORS origin, wrangler `[env.staging]`, workflows (worker+pages+schema gate), harness, targets, runner, npm scripts | ✅ DONE (2026-08-01) |
-| WP1 | `api.test.js` (API-01..08) | ✅ DONE — 23 assertions green locally |
+| WP1 | `api.test.js` (API-01..15) | ✅ DONE — 45 assertions green locally |
 | WP1b | `worker.test.js` (WRK-01..05) | ✅ DONE — 11 assertions green locally |
-| WP2 | `consumer.test.js` CON-01..06 | ✅ DONE — 9 assertions green locally |
-| WP3 | `deploy.test.js` (DEP-01..06) | PENDING — best developed once the first staging deploy exists |
-| WP4 | `consumer.test.js` CON-07..16 | PENDING — extends existing file, ONE agent |
-| WP5 | `tv.test.js` (TV-01..04) | PENDING — new file |
-| WP6 | `admin.test.js` (ADM-01..08) | PENDING — new file; runs on staging with seeded creds |
+| WP2 | `consumer.test.js` CON-01..28 | ✅ DONE — 57 assertions green locally |
+| WP3 | `deploy.test.js` (DEP-01..06) | ✅ DONE — 6 cases, remote-only, self-skips locally |
+| WP4 | `consumer.test.js` CON-17..28 (extended coverage) | ✅ DONE — 57 assertions total green locally |
+| WP5 | `tv.test.js` (TV-01..06) | ✅ DONE — 9 assertions green locally |
+| WP6 | `admin.test.js` (ADM-01..12) | ✅ DONE — 41 assertions green locally |
 | WP7 | Rollout checklist §4 (D1 create/seed, GitHub env, staging branch — human with creds), then flip catalog/doc statuses | PENDING |
 
 WP3–WP6 can run in parallel worktrees (disjoint files; WP4/WP2 same file

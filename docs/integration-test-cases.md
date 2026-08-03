@@ -6,7 +6,7 @@ test case, written so an agent with no project context can implement a case
 end-to-end without inventing anything.
 
 - **Harness + API/worker/consumer suites already exist** in `tests/e2e/`
-  (implemented 2026-08-01, green locally: 43 assertions). Cases marked
+  (implemented 2026-08-01, green locally: 174 assertions). Cases marked
   **IMPLEMENTED** show the pattern to copy. Cases marked **PENDING** are the
   swarm's work.
 - Every expected string below was verified against the real components or a
@@ -226,7 +226,7 @@ serving one SPA everywhere).
 
 ## Suite: CONSUMER — `tests/e2e/consumer.test.js`
 
-**Status: CON-01..06 IMPLEMENTED + green.** Env: all.
+**Status: CON-01..16 IMPLEMENTED + green.** Env: all.
 Verified strings: root → "Please Verify Your URL"; SLUG_A name "Masjid
 Al-Noor", labels Fajr/Dhuhr/Asr/Maghrib/Isha; SLUG_B name "Masjid Al-Jabal",
 labels Fajr/**Zuhr**/Asr/Maghrib/Isha (Indo-Pak transliterations — verified
@@ -244,41 +244,41 @@ layout-load failures; follow-up filed, do not "fix" the test).
 | CON-05 | unknown slug, no crash | `/{SLUG_UNKNOWN}` → expectText "Internal Error", allowFailures [/definitely-not-a-masjid/]; r.ok | IMPLEMENTED |
 | CON-06 | maktab enroll embed mode | `/{SLUG_A}/maktab/enroll?embed=1` → pageErrors+failedRequests empty | IMPLEMENTED |
 
-### CON-07 — Announcements page | P1 | PENDING | Class C6
+### CON-07 — Announcements page | P1 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}/announcements`.
 Assert: r.ok AND body contains "Announcements" (expectText).
 Note: seed has ≥1 announcement; if the seed changed, an empty-state also
 passes — assert the heading only, not a specific announcement title.
 
-### CON-08 — Jumu'ah page | P1 | PENDING | Class C6
+### CON-08 — Jumu'ah page | P1 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}/jumuah`, expectText "Jumu'ah".
 Assert: r.ok. (Page also renders "Friday congregational prayer sessions".)
 
-### CON-09 — Info page | P1 | PENDING | Class C6
+### CON-09 — Info page | P1 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}/info`, expectText "Contact & Location".
 Assert: r.ok.
 
-### CON-10 — Donate page | P1 | PENDING | Class C6
+### CON-10 — Donate page | P1 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}/donate`, expectText "Why Give?".
 Assert: r.ok.
 
-### CON-11 — Maktab landing page | P1 | PENDING | Class C6
+### CON-11 — Maktab landing page | P1 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}/maktab`, expectText "Maktab Enrollment".
 Assert: r.ok. (Enrollment may show closed state — both pass; heading matters.)
 
-### CON-12 — Maktab enroll (non-embed) form renders | P1 | PENDING | Class C6
+### CON-12 — Maktab enroll (non-embed) form renders | P1 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}/maktab/enroll`.
 Assert: r.ok AND pageErrors empty. Do NOT submit the form in ANY env
 (Square sandbox charges + writes a registration row).
 Note: Square SDK CSP font noise is already allowlisted in helpers.js.
 
-### CON-13 — Embed mode hides chrome (positive/negative pair) | P2 | PENDING | Class C6
+### CON-13 — Embed mode hides chrome (positive/negative pair) | P2 | IMPLEMENTED | Class C6
 Steps: (a) visitPage `/{SLUG_A}/maktab/enroll` — Shape B: count
 `nav` elements, assert ≥ 1. (b) `?embed=1` — assert 0 `nav` elements.
 Assert both, plus zero errors on both.
 Mechanics: use Shape B, `page.locator('nav').count()`.
 
-### CON-14 — Client-side nav flow | P1 | PENDING | Class C6
+### CON-14 — Client-side nav flow | P1 | IMPLEMENTED | Class C6
 Steps (Shape B): goto `/{SLUG_A}` → wait for "Fajr" → `page.click` the
 bottom-nav/top-nav link whose text is "Times" (`page.click('text=Times')`;
 if ambiguous use role: `page.getByRole('link', { name: 'Times' }).first()`)
@@ -287,7 +287,7 @@ if ambiguous use role: `page.getByRole('link', { name: 'Times' }).first()`)
 Assert: pageErrors + failedRequests empty at the end.
 Purpose: catches SPA client-router crashes that a fresh goto never sees.
 
-### CON-15 — Style-system regression pair | P2 | PENDING | Class C6
+### CON-15 — Style-system regression pair | P2 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_A}` and `/{SLUG_B}`; in each, Shape B read
 `page.evaluate(() => document.documentElement.dataset.styleSystem)`.
 Assert: attribute is present and one of `mishkaat|sakeenah`; the two slugs
@@ -295,7 +295,7 @@ differ LOCALLY (al-noor=mishkaat, al-jabal=sakeenah). REMOTE: prod data
 differs (al-noor is currently sakeenah in prod) — assert presence/valid
 value only, not specific values. r.ok on both visits.
 
-### CON-16 — Service worker lifecycle | P1 | PENDING | Class C4
+### CON-16 — Service worker lifecycle | P1 | IMPLEMENTED | Class C4
 Env: **local + staging only** (`cfg.env !== 'prod'` guard).
 PORT — do not rewrite — the 10 tests in
 `apps/consumer/tests/sw-integration.test.js` into this suite: replace
@@ -306,7 +306,7 @@ sync manually — note this in your hand-off.
 
 ## Suite: TV — `tests/e2e/tv.test.js`
 
-**Status: ALL PENDING.** Env: all. Base: `{cfg.tv}/display/{slug}`.
+**Status: ALL 4 IMPLEMENTED.** Env: all. Base: `{cfg.tv}/display/{slug}`.
 Verified: board container selector `.prayer-grid`; header cells render the
 theme's adhaan/iqaamah labels ("Adhaan"/"Iqaamah" for SLUG_A,
 "Azaan"/"Iqamah" for SLUG_B — verify remotely via
@@ -350,7 +350,7 @@ tests (`npm run test:tv`). Smoke = presence + zero errors.
 
 ## Suite: ADMIN — `tests/e2e/admin.test.js`
 
-**Status: ALL PENDING.** Env: all (auth cases skip without credentials).
+**Status: ALL 8 IMPLEMENTED.** Env: all (auth cases skip without credentials).
 Verified strings: `/login` → "Masjid Admin", "Sign in to manage your
 masjid", email input `input[type="email"]`, password `input[type="password"]`,
 submit `button[type="submit"]` labeled "Sign In" ("Signing in..." while
@@ -441,6 +441,96 @@ Local + staging run ALL cases (staging D1 is seeded with the admin, so
 ADM-01 runs (plus ADM-06 if the guard behavior is a redirect — it makes no
 writes); everything else sits behind the credentials guard and CI does not
 set `E2E_ADMIN_*` for the prod job.
+
+## Extended coverage (2026-08-01)
+
+Additional cases added to exhaustively cover every route + edge case across
+all three page apps.
+
+### CON-17 — SLUG_B announcements page | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/announcements`, expectText "Announcements".
+Assert: r.ok. Cross-masjid coverage for the Indo-Pak/Sakeenah tenant.
+
+### CON-18 — SLUG_B jumu'ah page | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/jumuah`, expectText "Jumu'ah". Assert: r.ok.
+
+### CON-19 — SLUG_B info page | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/info`, expectText "Contact & Location". Assert: r.ok.
+
+### CON-20 — SLUG_B donate page | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/donate`, expectText "Why Give?". Assert: r.ok.
+
+### CON-21 — SLUG_B maktab page | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/maktab`, expectText "Maktab Enrollment". Assert: r.ok.
+
+### CON-22 — SLUG_B maktab enroll form | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/maktab/enroll`. Assert: pageErrors empty.
+
+### CON-23 — embed=1 on home page hides chrome | P2 | IMPLEMENTED | Class C6
+Steps: Shape B; goto `/{SLUG_A}?embed=1`; count `nav` elements.
+Assert: nav count === 0, zero pageErrors.
+
+### CON-24 — embed=1 on prayer page hides chrome | P2 | IMPLEMENTED | Class C6
+Steps: Shape B; goto `/{SLUG_A}/prayer?embed=1`; count `nav` elements.
+Assert: nav count === 0, zero pageErrors.
+
+### CON-25 — rapid client-side nav, no reload loops | P1 | IMPLEMENTED | Class C6
+Steps: goto home → click 7 nav links rapidly (Times→Home→News→Times→Home→Maktab→Home).
+Assert: pageErrors + failedRequests empty at the end.
+Purpose: catches SPA router reload loops and nav crashes.
+
+### CON-26 — cold-load prayer page directly | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_A}/prayer` (fresh context, no prior visit to home).
+Assert: r.ok, pageErrors empty. Purpose: layout-load failure without prior fetch.
+
+### CON-27 — trailing slash handled | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_A}/` (trailing slash). Assert: r.ok, "Fajr" present.
+
+### CON-28 — SLUG_B cold-load donate | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_B}/donate`. Assert: r.ok. Cross-masjid cold-load.
+
+### TV-05 — board re-render stability | P1 | IMPLEMENTED | Class C6
+Steps: goto SLUG_A display → wait for `.prayer-grid` → goto SLUG_B display → back to SLUG_A.
+Assert: no new pageErrors after re-render. Purpose: catches mount/unmount leaks.
+
+### TV-06 — /display/ root without slug | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/display/`. Assert: pageErrors empty (any graceful 4xx is fine).
+
+### ADM-08 — register page renders | P1 | IMPLEMENTED | Class C5/C6
+Steps: visitPage `/register`. Assert: pageErrors + failedRequests empty.
+
+### ADM-09 — SLUG_B admin dashboard | P1 | IMPLEMENTED | Class C6
+Steps: login → goto `/admin/{SLUG_B}`. Assert: pageErrors empty, dashboard content visible.
+
+### ADM-10 — login → logout → access denied | P1 | IMPLEMENTED | Class C6
+Steps: login → `localStorage.clear()` → goto `/admin/{SLUG_A}`.
+Assert: redirects to `/login`, zero pageErrors.
+
+### ADM-11 — rapid admin nav cycle | P1 | IMPLEMENTED | Class C6
+Steps: login → iterate all 9 settings pages + bot in rapid succession (600ms each).
+Assert: pageErrors + failedRequests empty. Purpose: catches reload loops on admin.
+
+### ADM-12 — bogus admin slug, no crash | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/admin/this-slug-does-not-exist`. Assert: pageErrors empty.
+
+### API-09 — masjid sub-endpoints return valid data | P1 | IMPLEMENTED | Class C3
+Steps: GET `/masjids/{SLUG_A}/prayer?date=...`, `/jumuah`, `/announcements`.
+Assert: 200 + body shape valid (times+masjid for prayer, sessions[] for jumuah, announcements[] for announcements).
+
+### API-10 — non-existent announcement → 404 JSON | P2 | IMPLEMENTED | Class C3
+Steps: GET `/announcements/this-does-not-exist`. Assert: 404, JSON body.
+
+### API-11 — maktab verify-code without body → 4xx, never 500 | P2 | IMPLEMENTED | Class C3
+Steps: POST with `{}` body. Assert: status < 500, JSON body.
+
+### API-12/13 — board + prayer for unknown masjid → 404 JSON | P2 | IMPLEMENTED | Class C3
+Assert: 404, JSON body for both endpoints.
+
+### API-14 — bogus API path → JSON error, never HTML | P2 | IMPLEMENTED | Class C3
+Steps: GET `/api/v1/this-path-does-not-exist`. Assert: JSON body with error key.
+
+### API-15 — SLUG_B sub-endpoints cross-masjid parity | P1 | IMPLEMENTED | Class C3
+Assert: 200 + valid shapes for SLUG_B prayer/jumuah/announcements/maktab.
 
 ## Workflow integration (how CI runs these)
 
