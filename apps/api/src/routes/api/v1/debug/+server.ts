@@ -14,6 +14,19 @@ export const GET: RequestHandler = async ({ platform }) => {
     results.drizzle = 'ok';
     results.masjid_count = all.length;
 
+    // Raw D1 query for theme data
+    try {
+      const d1 = platform?.env?.DB as any;
+      if (d1?.prepare) {
+        const themeResult = await d1.prepare(
+          'SELECT style_system, layout_preset, primary_color, font_heading, label_adhaan FROM masjid_themes'
+        ).all();
+        results.raw_themes = themeResult.results;
+      }
+    } catch (e) {
+      results.raw_error = String(e);
+    }
+
     const admin = await db.select().from(admins).where(eq(admins.email, 'admin@masjid-alnoor.org')).get();
     if (admin) {
       results.admin_found = true;
