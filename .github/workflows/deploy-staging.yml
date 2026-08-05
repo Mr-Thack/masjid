@@ -7,8 +7,6 @@ name: Deploy Staging
 # The e2e-staging job gates promotion: merge staging → master only when green.
 
 on:
-  push:
-    branches: [staging]
   workflow_dispatch:
 
 concurrency:
