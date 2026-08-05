@@ -194,7 +194,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -221,7 +221,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -230,7 +230,7 @@ if (!cfg.adminEmail) {
 
   // Log out — clear localStorage (the auth store reads from there)
   await page.evaluate(() => localStorage.clear());
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
 
   // Try to navigate to admin — should redirect to /login
   await page.goto(`${cfg.admin}/admin/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
@@ -250,7 +250,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -302,7 +302,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -319,7 +319,7 @@ if (!cfg.adminEmail) {
     const placeholder = await textarea.getAttribute('placeholder');
     t.assert(Boolean(placeholder), `ADM-13 ChatInput placeholder: "${placeholder}"`);
     await textarea.fill('test message');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(2000);
     const value = await textarea.inputValue();
     t.assert(value === 'test message', `ADM-13 can type into ChatInput (got "${value}")`);
   } else {
@@ -338,7 +338,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -364,7 +364,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -400,7 +400,7 @@ if (!cfg.writes || !cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -428,7 +428,7 @@ if (!cfg.writes || !cfg.adminEmail) {
     if (hasCity) {
       const originalCity = await cityInput.inputValue();
       await cityInput.fill('E2E-Test-City');
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(2000);
       await page.click('button:has-text("Save Changes")');
       await page.waitForTimeout(2000);
       const saved = await verifyToast('saved') || await verifyToast('updated') || await verifyToast('Saved');
@@ -436,7 +436,7 @@ if (!cfg.writes || !cfg.adminEmail) {
         `ADM-16 profile city was "${originalCity}"`);
       // Restore original
       await cityInput.fill(originalCity);
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(2000);
       await page.click('button:has-text("Save Changes")');
       await page.waitForTimeout(2000);
     }
@@ -459,7 +459,7 @@ if (!cfg.writes || !cfg.adminEmail) {
       } else if (!is12Active && has12) {
         await timeBtn12.click();
       }
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(2000);
       await page.click('button:has-text("Save Changes")');
       await page.waitForTimeout(2000);
       // Toggle back
@@ -468,7 +468,7 @@ if (!cfg.writes || !cfg.adminEmail) {
       } else if (!is12Active && has12) {
         await timeBtn24.click();
       }
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(2000);
       await page.click('button:has-text("Save Changes")');
       await page.waitForTimeout(2000);
     }
@@ -672,7 +672,7 @@ if (!cfg.writes || !cfg.adminEmail) {
     await gotoWithRetry(`${cfg.admin}/admin/${SLUG_A}/settings/theme`);
     // Scroll down to find the label_sunrise input
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.5));
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(2000);
 
     // The label inputs are near the bottom of the page. Find one whose
     // current value or placeholder suggests it's for sunrise.
@@ -692,7 +692,7 @@ if (!cfg.writes || !cfg.adminEmail) {
     if (sunriseIndex >= 0 && sunriseValue !== null) {
       const originalValue = sunriseValue || 'Sunrise';
       await allInputs.nth(sunriseIndex).fill('E2E-Sun');
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(2000);
       // Scroll back to find Save button
       await page.evaluate(() => window.scrollTo(0, 0));
       await page.waitForTimeout(300);
@@ -723,7 +723,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -750,7 +750,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
@@ -777,7 +777,7 @@ if (!cfg.adminEmail) {
   const b = collectPage(page, cfg);
 
   await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(2000);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');

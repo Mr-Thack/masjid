@@ -88,35 +88,75 @@ jobs:
         # masjid-staging.pages.dev hostname (not a preview URL) is updated.
         run: npx wrangler@latest pages deploy .merged --project-name=masjid-staging --branch=master
 
-  e2e-staging:
+  e2e-api:
     needs: [deploy-worker-staging, deploy-pages-staging]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
+        with: { node-version: 22, cache: npm }
       - run: npm ci
+      - name: API + worker smoke (no browser)
+        run: node tests/e2e/run.js --suite=api --suite=worker
 
+  e2e-deploy:
+    needs: [deploy-worker-staging, deploy-pages-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Deploy integrity (no browser)
+        run: node tests/e2e/run.js --suite=deploy
+
+  e2e-consumer:
+    needs: [deploy-worker-staging, deploy-pages-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
       - name: Install Chromium
         run: npx playwright install chromium --with-deps
+      - name: Consumer browser E2E
+        run: sleep 30 && node tests/e2e/run.js --suite=consumer
+        env:
+          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
+          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
 
-      # NOTE: whatsapp/agent vitest suites are intentionally NOT run here
-      # (currently red — missing tokens; tracked separately). This gate is
-      # the browser/API smoke suite only. Staging's DB is disposable, so
-      # write cases (WRK-03 registration, admin flows) run here too.
-      - name: Browser E2E smoke vs staging
-        # Edge propagation: give the deploys a moment before hammering them.
-        run: sleep 30 && npm run test:e2e:staging
+  e2e-tv:
+    needs: [deploy-worker-staging, deploy-pages-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+      - name: TV browser E2E
+        run: sleep 30 && node tests/e2e/run.js --suite=tv
+
+  e2e-admin:
+    needs: [deploy-worker-staging, deploy-pages-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install chromium --with-deps
+      - name: Admin browser E2E
+        run: sleep 30 && node tests/e2e/run.js --suite=admin
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
 
   summary:
-    needs: [deploy-worker-staging, deploy-pages-staging, e2e-staging]
+    needs: [deploy-worker-staging, deploy-pages-staging, e2e-api, e2e-deploy, e2e-consumer, e2e-tv, e2e-admin]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:

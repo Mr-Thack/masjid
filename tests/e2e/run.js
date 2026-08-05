@@ -18,7 +18,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SUITES = ['api', 'worker', 'deploy', 'consumer', 'tv', 'admin'];
 
 const flag = process.argv.find((a) => a.startsWith('--suite='));
-const selected = flag ? [flag.slice('--suite='.length)] : SUITES;
+const selected = flag
+  ? [flag.slice('--suite='.length)]
+  : process.argv.filter((a) => a.startsWith('--suite=')).map((a) => a.slice('--suite='.length)).length > 0
+    ? process.argv.filter((a) => a.startsWith('--suite=')).map((a) => a.slice('--suite='.length))
+    : SUITES;
 
 console.log(`E2E_ENV=${process.env.E2E_ENV || 'local'}`);
 
