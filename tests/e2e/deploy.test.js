@@ -142,20 +142,34 @@ console.log('\n  DEP-04 service worker headers');
 // DEP-05 — API URL baked into the bundle. The api.ts module is in a
 // lazy-loaded chunk, so it won't appear in the root page HTML. We walk
 // the JS dependency chain: start from all chunks referenced in the root
-// and masjid page HTML, download each one, extract any import("…") or
-// from"…" references, and follow those recursively until we find the
+// and masjid page HTML, download each one, extract any chunk references
+// (both absolute _"app/immutable/…"_ paths and relative _../chunks/…_
+// import specifiers), and follow those recursively until we find the
 // API host or exhaust the set of known chunk URLs.
 console.log('\n  DEP-05 API URL in bundle');
 {
   const apiHost = new URL(cfg.api).host;
 
-  // Collect all unique chunk paths from page HTML
   function chunkPaths(html) {
     const paths = new Set();
     for (const m of html.matchAll(/_app\/immutable\/[^"')<> ]+\.js/g)) {
       paths.add(m[0]);
     }
     return paths;
+  }
+
+  /**
+   * Normalise a chunk reference into an _app/immutable/… path.
+   *   ".. / chunks / foo.js"  →  "_app/immutable/chunks/foo.js"
+   *   ".  / chunks / foo.js"  →  "_app/immutable/chunks/foo.js"
+   *   "_app/immutable/…"      →  kept as-is
+   */
+  function normaliseRef(ref) {
+    if (ref.startsWith('_app/')) return ref;
+    // relative import, e.g.  "../chunks/DHDIa3K-.js"
+    const cleaned = ref.replace(/^["'(]+/, '').replace(/^\.\.?\//, '');
+    if (cleaned.startsWith('chunks/')) return `_app/immutable/${cleaned}`;
+    return null;
   }
 
   const rootHtml = (await getResponse(`${cfg.consumer}/`)).text;
@@ -176,12 +190,16 @@ console.log('\n  DEP-05 API URL in bundle');
       break;
     }
 
-    // Follow dynamic imports and static chunk references
-    const refs = [
+    // Collect both absolute and relative chunk references
+    const fromSource = [
       ...cr.text.matchAll(/_app\/immutable\/[^"')<> ]+\.js/g),
+      ...cr.text.matchAll(/["'(]\.\.\/chunks\/[^"')<> ]+\.js/g),
+      ...cr.text.matchAll(/["'(]\.\/chunks\/[^"')<> ]+\.js/g),
     ].map((m) => m[0]);
-    for (const ref of refs) {
-      if (!seen.has(ref)) {
+
+    for (const raw of fromSource) {
+      const ref = normaliseRef(raw);
+      if (ref && !seen.has(ref)) {
         seen.add(ref);
         queue.push(ref);
       }

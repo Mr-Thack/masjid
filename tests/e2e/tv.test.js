@@ -71,11 +71,12 @@ const browser = await launchBrowser();
     allowFailures: [/definitely-not-a-masjid/],
   });
   t.assert(r.pageErrors.length === 0, `TV-04 unknown slug no crash — ${explain(r)}`);
-  // Verify SOMETHING renders (not an empty white page)
+  // Verify SOMETHING renders (not an empty white page).  The SvelteKit
+  // error page renders asynchronously in SPA mode — wait for it.
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(`${cfg.tv}/display/${SLUG_UNKNOWN}`, { waitUntil: 'load', timeout: 30000 });
-  await page.waitForTimeout(2000);
+  try { await page.waitForFunction(() => document.body.innerText.length > 0, { timeout: 15000 }); } catch { /* still record length */ }
   const bodyLen = await page.evaluate(() => document.body.innerText.length);
   t.assert(bodyLen > 0, `TV-04 unknown slug renders something (body.innerText length: ${bodyLen})`);
   await context.close();
