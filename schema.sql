@@ -57,11 +57,6 @@ CREATE INDEX idx_masjids_slug ON masjids(slug);
 CREATE TABLE masjid_themes (
     masjid_id TEXT PRIMARY KEY,
 
-    -- Style system: 'sakeenah' (minimal) | 'mishkaat' (flagship)
-    style_system TEXT NOT NULL DEFAULT 'sakeenah',
-    -- JSON theme options interpreted per style system (metal, motif, arch, ...)
-    style_options TEXT NOT NULL DEFAULT '{}',
-
     layout_preset TEXT NOT NULL DEFAULT 'modern_minimal',
     primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
     accent_color TEXT NOT NULL DEFAULT '#10b981',
@@ -80,6 +75,11 @@ CREATE TABLE masjid_themes (
     label_asr TEXT NOT NULL DEFAULT 'Asr',
     label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
     label_isha TEXT NOT NULL DEFAULT 'Isha',
+
+    -- Style system: 'sakeenah' (minimal) | 'mishkaat' (flagship)
+    style_system TEXT NOT NULL DEFAULT 'sakeenah',
+    -- JSON theme options interpreted per style system (metal, motif, arch, ...)
+    style_options TEXT NOT NULL DEFAULT '{}',
 
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
 );

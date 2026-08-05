@@ -44,8 +44,6 @@ export const masjids = sqliteTable('masjids', {
 
 export const masjidThemes = sqliteTable('masjid_themes', {
   masjidId: text('masjid_id').primaryKey().references(() => masjids.id, { onDelete: 'cascade' }),
-  styleSystem: text('style_system').notNull().default('sakeenah'),
-  styleOptions: text('style_options').notNull().default('{}'),
   layoutPreset: text('layout_preset').notNull().default('modern_minimal'),
   primaryColor: text('primary_color').notNull().default('#1e3a8a'),
   accentColor: text('accent_color').notNull().default('#10b981'),
@@ -63,6 +61,9 @@ export const masjidThemes = sqliteTable('masjid_themes', {
   labelAsr: text('label_asr').notNull().default('Asr'),
   labelMaghrib: text('label_maghrib').notNull().default('Maghrib'),
   labelIsha: text('label_isha').notNull().default('Isha'),
+
+  styleSystem: text('style_system').notNull().default('sakeenah'),
+  styleOptions: text('style_options').notNull().default('{}'),
 });
 
 export const prayerRules = sqliteTable('prayer_rules', {

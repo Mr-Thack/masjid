@@ -63,8 +63,6 @@ function migrateMktTables(sqlite: Database.Database) {
 // When you add a column to the Drizzle schema, ADD IT HERE.
 const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
   // masjid_themes
-  ['masjid_themes', 'style_system', "TEXT NOT NULL DEFAULT 'sakeenah'"],
-  ['masjid_themes', 'style_options', "TEXT NOT NULL DEFAULT '{}'"],
   ['masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'"],
   ['masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'"],
   ['masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'"],
@@ -141,8 +139,6 @@ function ensureTables(sqlite: Database.Database) {
 
     CREATE TABLE IF NOT EXISTS masjid_themes (
       masjid_id TEXT PRIMARY KEY REFERENCES masjids(id) ON DELETE CASCADE,
-      style_system TEXT NOT NULL DEFAULT 'sakeenah',
-      style_options TEXT NOT NULL DEFAULT '{}',
       layout_preset TEXT NOT NULL DEFAULT 'modern_minimal',
       primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
       accent_color TEXT NOT NULL DEFAULT '#10b981',
@@ -158,7 +154,9 @@ function ensureTables(sqlite: Database.Database) {
       label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
       label_asr TEXT NOT NULL DEFAULT 'Asr',
       label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
-      label_isha TEXT NOT NULL DEFAULT 'Isha'
+      label_isha TEXT NOT NULL DEFAULT 'Isha',
+      style_system TEXT NOT NULL DEFAULT 'sakeenah',
+      style_options TEXT NOT NULL DEFAULT '{}'
     );
 
     CREATE TABLE IF NOT EXISTS prayer_rules (
@@ -394,6 +392,28 @@ let d1MigrationPromise: Promise<void> | null = null;
 function ensureD1Columns(d1db: D1Database) {
   if (d1MigrationPromise) return;
   d1MigrationPromise = (async () => {
+    // First: fix column ORDER for masjid_themes — style_system/style_options
+    // were originally added via ALTER TABLE ADD COLUMN (end of table) in
+    // migrated databases, but CREATE TABLE in the original schema.sql had
+    // them right after masjid_id.  The canonical order is now at the end
+    // (after label_isha), matching the Drizzle schema.  Tables with them at
+    // position 2-3 need to be recreated.
+    try {
+      const tableSql = await d1db
+        .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='masjid_themes'")
+        .first<{ sql: string }>();
+      if (tableSql?.sql) {
+        const s = tableSql.sql;
+        const stylePos = s.indexOf('style_system');
+        const layoutPos = s.indexOf('layout_preset');
+        // style_system before layout_preset means the table was created from
+        // the old schema.sql order — needs recreation to match canonical order.
+        if (stylePos !== -1 && layoutPos !== -1 && stylePos < layoutPos) {
+          await fixMasjidThemesColumnOrder(d1db);
+        }
+      }
+    } catch { /* sqlite_master may not be available; skip check */ }
+
     for (const [table, column, def] of COLUMN_MIGRATIONS) {
       try {
         await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
@@ -403,6 +423,48 @@ function ensureD1Columns(d1db: D1Database) {
       }
     }
   })();
+}
+
+async function fixMasjidThemesColumnOrder(d1db: D1Database) {
+  console.log('[migration] D1: recreating masjid_themes with canonical column order');
+  // SQLite has no ALTER COLUMN POSITION; recreate the table.
+  await d1db.exec(`
+    CREATE TABLE masjid_themes_new (
+      masjid_id TEXT PRIMARY KEY,
+      layout_preset TEXT NOT NULL DEFAULT 'modern_minimal',
+      primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
+      accent_color TEXT NOT NULL DEFAULT '#10b981',
+      font_heading TEXT NOT NULL DEFAULT 'Inter',
+      font_body TEXT NOT NULL DEFAULT 'Roboto',
+      time_format TEXT NOT NULL DEFAULT '24h',
+      label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
+      label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
+      label_jumuah TEXT NOT NULL DEFAULT 'Jumu''ah',
+      label_speech TEXT NOT NULL DEFAULT 'Speech',
+      label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
+      label_fajr TEXT NOT NULL DEFAULT 'Fajr',
+      label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
+      label_asr TEXT NOT NULL DEFAULT 'Asr',
+      label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
+      label_isha TEXT NOT NULL DEFAULT 'Isha',
+      style_system TEXT NOT NULL DEFAULT 'sakeenah',
+      style_options TEXT NOT NULL DEFAULT '{}',
+      FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
+    );
+    INSERT INTO masjid_themes_new
+      (masjid_id, layout_preset, primary_color, accent_color, font_heading, font_body,
+       time_format, label_adhaan, label_iqaamah, label_jumuah, label_speech,
+       label_sunrise, label_fajr, label_dhuhr, label_asr, label_maghrib, label_isha,
+       style_system, style_options)
+    SELECT masjid_id, layout_preset, primary_color, accent_color, font_heading, font_body,
+           time_format, label_adhaan, label_iqaamah, label_jumuah, label_speech,
+           label_sunrise, label_fajr, label_dhuhr, label_asr, label_maghrib, label_isha,
+           style_system, style_options
+    FROM masjid_themes;
+    DROP TABLE masjid_themes;
+    ALTER TABLE masjid_themes_new RENAME TO masjid_themes;
+  `);
+  console.log('[migration] D1: masjid_themes recreated successfully');
 }
 
 /** Await this in hooks.server.ts before any route runs to ensure columns exist. */
