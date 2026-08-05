@@ -11,7 +11,6 @@
     findNearestIqaamahChanges,
     getHadithOfTheDay,
     getHijriPartsCached,
-    hadithTagsForContext,
     parseStyleOptions,
     resolveStyleOptions,
     resolveStyleSystem,
@@ -207,15 +206,7 @@
   // TV hadith frame, context-seeded by Friday / Ramadan / current prayer.
   let hadith = $derived.by(() => {
     if (!mishkaat) return null;
-    const currentPrayer = currentPrayerIndex >= 0 ? prayerNames[currentPrayerIndex] : null;
-    return getHadithOfTheDay(
-      now,
-      hadithTagsForContext({
-        dayOfWeek: now.getDay(),
-        ramadan: ceremony?.modifiers.ramadan ?? false,
-        currentPrayer,
-      }),
-    );
+    return getHadithOfTheDay(now);
   });
 
   // Jumu'ah pinning — mirrors the soul-column rule: pinned Thursday–Friday.

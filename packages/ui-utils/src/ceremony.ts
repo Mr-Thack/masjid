@@ -117,26 +117,29 @@ export function computeCeremony(input: CeremonyInput): CeremonyResult {
     const { adhaan, iqaamah } = input.prayers[prayer];
     const adhaanS = adhaan * 60;
     const iqaamahS = iqaamah * 60;
+    const adhaanEnd = adhaanS + ADHAAN_MOMENT_SECONDS;
 
     const windows: Array<Omit<StateCandidate, 'prayer'>> = [
       { state: 'adhaan', start: adhaanS, endsAtSeconds: null },
-      { state: 'iqaamah-countdown', start: adhaanS + ADHAAN_MOMENT_SECONDS, endsAtSeconds: iqaamahS },
-      { state: 'prayer-in-progress', start: iqaamahS, endsAtSeconds: null },
     ];
+    const ends: number[] = [adhaanEnd];
+
+    if (adhaanEnd < iqaamahS) {
+      windows.push({ state: 'iqaamah-countdown', start: adhaanEnd, endsAtSeconds: iqaamahS });
+      ends.push(iqaamahS);
+    }
+
+    windows.push({ state: 'prayer-in-progress', start: iqaamahS, endsAtSeconds: null });
+    ends.push(iqaamahS + PRAYER_DURATION_MINUTES * 60);
+
     if (input.quietHours.enabled) {
       windows.push({
         state: 'quiet',
         start: iqaamahS + PRAYER_DURATION_MINUTES * 60,
         endsAtSeconds: null,
       });
+      ends.push(iqaamahS + (PRAYER_DURATION_MINUTES + input.quietHours.quietMinutes) * 60);
     }
-
-    const ends = [
-      adhaanS + ADHAAN_MOMENT_SECONDS,
-      iqaamahS,
-      iqaamahS + PRAYER_DURATION_MINUTES * 60,
-      iqaamahS + (PRAYER_DURATION_MINUTES + input.quietHours.quietMinutes) * 60,
-    ];
 
     windows.forEach((window, i) => {
       if (inWindowSeconds(input.nowSeconds, window.start, ends[i]!)) {
