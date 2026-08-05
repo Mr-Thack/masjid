@@ -158,6 +158,14 @@ export async function visitPage(browser, cfg, url, opts = {}) {
     // on <html> via $effect() when the component tree first mounts.
     await page.waitForSelector('html[data-hydrated="true"]', { timeout: 30000 }).catch(() => {});
 
+    // Wait for page content to render. data-hydrated fires when the shell
+    // mounts, but page data (from load functions) may still be in flight.
+    // When <main> has children, the route component has rendered.
+    await page.waitForFunction(
+      () => document.querySelector('main')?.children.length > 0,
+      { timeout: 30000 },
+    ).catch(() => {});
+
     if (opts.expectSelector) {
       try {
         await page.waitForSelector(opts.expectSelector, { state: 'visible', timeout: 30000 });
