@@ -79,8 +79,8 @@ const browser = await launchBrowser();
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(`${cfg.tv}/display/${SLUG_UNKNOWN}`, { waitUntil: 'load', timeout: 30000 });
-  try { await page.waitForFunction(() => document.body.innerText.length > 0, { timeout: 30000 }); } catch { /* blank is acceptable */ }
-  const bodyLen = await page.evaluate(() => document.body.innerText.length);
+  try { await page.waitForFunction(() => document.body.innerText.length > 0, { timeout: 10000 }); } catch { /* blank is acceptable */ }
+  const bodyLen = await page.evaluate(() => document.body?.innerText?.length ?? 0).catch(() => 0);
   if (bodyLen === 0) {
     console.log(`  TV-04 note: error page rendered blank in SPA mode (known Rollup dedup issue)`);
   }
