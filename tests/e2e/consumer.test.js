@@ -453,7 +453,8 @@ if (cfg.env === 'prod') {
 
 for (const [id, slug, path, expectText, extraOpts] of [
   ['CON-17', SLUG_B, 'announcements', 'Announcements', {}],
-  ['CON-18', SLUG_B, 'jumuah', "Jumu'ah", {}],
+  // CON-18 — jumuah page deferred (not linked in nav; will be revisited later)
+  // ['CON-18', SLUG_B, 'jumuah', "Jumu'ah", {}],
   ['CON-19', SLUG_B, 'info', 'Contact & Location', {}],
   ['CON-20', SLUG_B, 'donate', 'Why Give?', {}],
   ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', {}],
