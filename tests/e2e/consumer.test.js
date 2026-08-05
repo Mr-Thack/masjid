@@ -119,7 +119,7 @@ for (const [id, slug, name, prayers] of [
   const context = await browser.newContext();
   const page = await context.newPage();
   const nonEmbed = collectPage(page, cfg);
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
   const nonEmbedNavCount = await page.locator('nav').count();
   t.assert(nonEmbedNavCount >= 1, `CON-13a non-embed has ${nonEmbedNavCount} nav element(s) (expected >= 1)`);
@@ -129,7 +129,7 @@ for (const [id, slug, name, prayers] of [
   const context2 = await browser.newContext();
   const page2 = await context2.newPage();
   const embed = collectPage(page2, cfg);
-  await page2.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'load', timeout: 30000 });
+  await page2.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'networkidle', timeout: 30000 });
   await page2.waitForTimeout(2000);
   const embedNavCount = await page2.locator('nav').count();
   t.assert(embedNavCount === 0, `CON-13b embed has 0 nav elements (got ${embedNavCount})`);
@@ -143,7 +143,7 @@ for (const [id, slug, name, prayers] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForFunction((t) => document.body.innerText.includes(t), 'Fajr', { timeout: 15000 });
   await page.waitForTimeout(1500);
 
@@ -172,7 +172,7 @@ for (const [id, slug, name, prayers] of [
     const page = await context.newPage();
     const b = collectPage(page, cfg);
 
-    await page.goto(`${cfg.consumer}/${slug}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${slug}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(2000);
 
     const styleSystem = await page.evaluate(() => document.documentElement.dataset.styleSystem);
@@ -204,7 +204,7 @@ if (cfg.env === 'prod') {
     try {
       const context = await browser.newContext();
       const page = await context.newPage();
-      await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+      await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForTimeout(3000);
       const workers = context.serviceWorkers();
       t.assert(workers.length >= 1, `CON-16.1 at least one SW registered (got ${workers.length})`);
@@ -227,7 +227,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     t.assert(workers.length >= 1, `CON-16.2 SW registered (got ${workers.length})`);
@@ -267,7 +267,7 @@ if (cfg.env === 'prod') {
     // Navigate directly to /sw-kill — SW registration should be skipped
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/sw-kill`, { waitUntil: 'load', timeout: 15000 });
+    await page.goto(`${cfg.consumer}/sw-kill`, { waitUntil: 'networkidle', timeout: 15000 });
     await page.waitForTimeout(2000);
     const workers = context.serviceWorkers();
     t.assert(workers.length === 0, `CON-16.3 no SW registered on /sw-kill (got ${workers.length})`);
@@ -279,7 +279,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/sw-kill`, { waitUntil: 'load', timeout: 15000 });
+    await page.goto(`${cfg.consumer}/sw-kill`, { waitUntil: 'networkidle', timeout: 15000 });
     await page.waitForTimeout(2000);
     const workers = context.serviceWorkers();
     t.assert(workers.length === 0, `CON-16.4 no SW registered when landing on /sw-kill (got ${workers.length})`);
@@ -292,7 +292,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     if (workers.length >= 1) {
@@ -318,7 +318,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     if (workers.length >= 1) {
@@ -340,7 +340,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     t.assert(workers.length >= 1, `CON-16.7 SW registered (got ${workers.length})`);
@@ -379,7 +379,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     if (workers.length >= 1) {
@@ -401,7 +401,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     if (workers.length >= 1) {
@@ -431,7 +431,7 @@ if (cfg.env === 'prod') {
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     const workers = context.serviceWorkers();
     t.assert(workers.length >= 1, `CON-16.10 SW registered (got ${workers.length})`);
@@ -477,7 +477,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const context = await browser.newContext();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
-  await page.goto(`${cfg.consumer}/${SLUG_A}?embed=1`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}?embed=1`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
   const navCount = await page.locator('nav').count();
   t.assert(navCount === 0, `CON-23 home?embed=1 hides chrome (nav count: ${navCount})`);
@@ -490,7 +490,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const context = await browser.newContext();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
-  await page.goto(`${cfg.consumer}/${SLUG_A}/prayer?embed=1`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/prayer?embed=1`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
   const navCount = await page.locator('nav').count();
   t.assert(navCount === 0, `CON-24 prayer?embed=1 hides chrome (nav count: ${navCount})`);
@@ -504,7 +504,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForFunction((t) => document.body.innerText.includes(t), 'Fajr', { timeout: 15000 });
   await page.waitForTimeout(1000);
 
@@ -556,7 +556,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const b = collectPage(page, cfg);
 
   for (let i = 0; i < 3; i++) {
-    await page.goto(`${cfg.consumer}/${SLUG_A}/maktab`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}/maktab`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(1200);
     await page.waitForFunction(
       (t) => document.body.innerText.includes(t), 'Maktab Enrollment', { timeout: 10000 },
@@ -585,7 +585,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(1500);
 
   // Click "Enroll Now" if visible, otherwise go directly
@@ -595,16 +595,16 @@ for (const [id, slug, path, expectText, extraOpts] of [
     await enrollLink.first().click();
   } else {
     // Enrollment might be closed — navigate directly
-    await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   }
   await page.waitForTimeout(1500);
 
   // Back to maktab
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(1000);
 
   // Back to enroll
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(1500);
 
   t.assert(b.pageErrors.length === 0, `CON-31 maktab↔enroll nav loop no page errors — ${JSON.stringify(b.pageErrors)}`);
@@ -618,7 +618,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Type into every text/email/tel field — exercise input bindings
@@ -683,7 +683,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Click "Add Child" up to 3 more times
@@ -723,7 +723,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Type into the card holder name field — this triggers the 500ms-debounced
@@ -746,16 +746,16 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const b = collectPage(page, cfg);
 
   // Non-embed first
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
   const nonEmbedErrorsBefore = b.pageErrors.length;
 
   // Switch to embed
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Switch back to non-embed
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   t.assert(b.pageErrors.length === nonEmbedErrorsBefore, `CON-35 embed toggle no accumulated errors (before: ${nonEmbedErrorsBefore}, now: ${b.pageErrors.length})`);
@@ -768,7 +768,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Type long strings, special chars into parent name fields
@@ -807,7 +807,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
 
   const hasCardContainer = await page.locator('#card-container').count();
@@ -839,7 +839,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Scroll to bottom, then top, then middle — exercise any lazy-render paths
@@ -872,7 +872,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/announcements`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/announcements`, { waitUntil: 'networkidle', timeout: 30000 });
   const found = await page.waitForFunction(
     (t) => document.body.innerText.includes(t), 'Announcements', { timeout: 15000 },
   ).then(() => true).catch(() => false);
@@ -899,7 +899,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/donate`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/donate`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Find donate CTA link — typically has "Support This Masjid" text
@@ -919,7 +919,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForFunction((t) => document.body.innerText.includes(t), 'Fajr', { timeout: 15000 });
   await page.waitForTimeout(1000);
 
@@ -938,7 +938,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForFunction((t) => document.body.innerText.includes(t), 'Fajr', { timeout: 15000 });
   await page.waitForTimeout(1000);
 
@@ -958,7 +958,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   const b = collectPage(page, cfg);
 
   // Navigate to prayer page cold — loading spinner may flash
-  await page.goto(`${cfg.consumer}/${SLUG_A}/prayer`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/prayer`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(5000); // staging API can be slower
   // Verify the final state has actual content (no permanent spinner)
   const hasContent = await page.evaluate(() => {
@@ -980,7 +980,7 @@ if (!cfg.writes) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
 
   // --- Fill parent info ---
@@ -1095,7 +1095,7 @@ if (!cfg.writes) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   // Click submit with empty fields — should trigger client-side validation
@@ -1130,7 +1130,7 @@ if (!cfg.writes) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.consumer}/${SLUG_B}/maktab/enroll`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.consumer}/${SLUG_B}/maktab/enroll`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
 
   // Check if the enrollment form is present (term exists & enrollment is open)

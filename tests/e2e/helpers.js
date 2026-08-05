@@ -149,7 +149,7 @@ export async function visitPage(browser, cfg, url, opts = {}) {
 
   const target = bust(url, cfg);
   try {
-    await page.goto(target, { waitUntil: 'load', timeout: opts.timeoutMs ?? 30000 });
+    await page.goto(target, { waitUntil: 'networkidle', timeout: opts.timeoutMs ?? 30000 });
 
     if (opts.expectSelector) {
       try {

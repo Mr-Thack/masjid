@@ -33,7 +33,7 @@ if (!cfg.adminEmail) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
 
-    await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(1500);
     await page.fill('input[type="email"]', cfg.adminEmail);
     await page.fill('input[type="password"]', 'definitely-wrong-password');
@@ -74,12 +74,12 @@ if (!cfg.adminEmail) {
       } catch { /* ignore */ }
     });
 
-    await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(1000);
+await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(2000);
     await page.fill('input[type="email"]', cfg.adminEmail);
     await page.fill('input[type="password"]', cfg.adminPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/admin/**', { timeout: 15000 });
+    await page.waitForURL('**/admin/**', { timeout: 30000 });
     await page.waitForTimeout(2000);
 
     const onDashboard = page.url().includes(`/admin/${SLUG_A}`);
@@ -118,7 +118,7 @@ if (!cfg.adminEmail) {
     for (const [path, heading] of rows) {
       const pe = b.pageErrors.length;
       const fr = b.failedRequests.length;
-      await page.goto(`${cfg.admin}/admin/${SLUG_A}${path}`, { waitUntil: 'load', timeout: 30000 });
+      await page.goto(`${cfg.admin}/admin/${SLUG_A}${path}`, { waitUntil: 'networkidle', timeout: 30000 });
       const found = await page.waitForFunction(
         (h) => document.body.innerText.includes(h), heading, { timeout: 15000 },
       ).then(() => true).catch(() => false);
@@ -133,7 +133,7 @@ if (!cfg.adminEmail) {
     {
       const pe = b.pageErrors.length;
       const fr = b.failedRequests.length;
-      await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'load', timeout: 30000 });
+      await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'networkidle', timeout: 30000 });
       const found = await page.waitForFunction(
         (h) => document.body.innerText.includes(h), 'AI Assistant', { timeout: 15000 },
       ).then(() => true).catch(() => false);
@@ -146,7 +146,7 @@ if (!cfg.adminEmail) {
 
     // ADM-07 — theme settings form is populated
     {
-      await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/theme`, { waitUntil: 'load', timeout: 30000 });
+      await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/theme`, { waitUntil: 'networkidle', timeout: 30000 });
       await page.waitForTimeout(2000);
       const inputValue = await page.locator('input').first().inputValue().catch(() => '');
       const anyNonEmpty = await page.evaluate(() =>
@@ -168,7 +168,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
 
   // Should redirect to /login (the admin layout checks auth and goto('/login'))
@@ -193,7 +193,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -202,7 +202,7 @@ if (!cfg.adminEmail) {
   await page.waitForTimeout(2000);
 
   // Navigate to SLUG_B dashboard — must not crash
-  await page.goto(`${cfg.admin}/admin/${SLUG_B}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_B}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
   const hasContent = await page.waitForFunction(
     (t) => document.body.innerText.includes(t), 'Announcements', { timeout: 15000 },
@@ -220,7 +220,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -233,7 +233,7 @@ if (!cfg.adminEmail) {
   await page.waitForTimeout(500);
 
   // Try to navigate to admin — should redirect to /login
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
   const redirected = page.url().includes('/login');
   t.assert(redirected, `ADM-10 after logout, /admin/* redirects to /login (url: ${page.url()})`);
@@ -249,7 +249,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -272,7 +272,7 @@ if (!cfg.adminEmail) {
     // Back to dashboard
   ];
   for (const p of paths) {
-    await page.goto(`${cfg.admin}/admin/${SLUG_A}${p}`, { waitUntil: 'load', timeout: 15000 });
+    await page.goto(`${cfg.admin}/admin/${SLUG_A}${p}`, { waitUntil: 'networkidle', timeout: 15000 });
     await page.waitForTimeout(600);
   }
 
@@ -301,7 +301,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -309,7 +309,7 @@ if (!cfg.adminEmail) {
   await page.waitForURL('**/admin/**', { timeout: 15000 });
   await page.waitForTimeout(2000);
 
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
 
   // ChatInput should have a textarea
@@ -337,7 +337,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -363,7 +363,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -371,7 +371,7 @@ if (!cfg.adminEmail) {
   await page.waitForURL('**/admin/**', { timeout: 15000 });
   await page.waitForTimeout(2000);
 
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(3000);
 
   const hasPrompt = await page.waitForFunction(
@@ -399,7 +399,7 @@ if (!cfg.writes || !cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -408,7 +408,7 @@ if (!cfg.writes || !cfg.adminEmail) {
   await page.waitForTimeout(2000);
 
   async function gotoWithRetry(url) {
-    await page.goto(url, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(2000);
   }
 
@@ -722,7 +722,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -730,7 +730,7 @@ if (!cfg.adminEmail) {
   await page.waitForURL('**/admin/**', { timeout: 15000 });
   await page.waitForTimeout(2000);
 
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/account`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/account`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   const passFieldCount = await page.locator('input[type="password"], input[type="text"][name*="password"], input[name*="Password"]').count();
@@ -749,7 +749,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -757,7 +757,7 @@ if (!cfg.adminEmail) {
   await page.waitForURL('**/admin/**', { timeout: 15000 });
   await page.waitForTimeout(2000);
 
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   const bodyText = await page.evaluate(() => document.body.innerText);
@@ -776,7 +776,7 @@ if (!cfg.adminEmail) {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(500);
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
@@ -784,7 +784,7 @@ if (!cfg.adminEmail) {
   await page.waitForURL('**/admin/**', { timeout: 15000 });
   await page.waitForTimeout(2000);
 
-  await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/domain`, { waitUntil: 'load', timeout: 30000 });
+  await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/domain`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForTimeout(2000);
 
   const hasInput = await page.locator('input[placeholder*="prayer"]').count();
