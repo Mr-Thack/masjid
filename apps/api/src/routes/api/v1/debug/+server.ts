@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { getDb } from '$lib/server/db';
-import { masjids, admins, masjidThemes } from '$lib/server/db/schema';
+import { masjids, admins } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import type { RequestHandler } from './$types';
@@ -13,16 +13,6 @@ export const GET: RequestHandler = async ({ platform }) => {
     const all = await db.select().from(masjids).all();
     results.drizzle = 'ok';
     results.masjid_count = all.length;
-
-    // Debug: raw theme data for Al-Noor
-    try {
-      const theme = await db.select().from(masjidThemes)
-        .innerJoin(masjids, eq(masjidThemes.masjidId, masjids.id))
-        .where(eq(masjids.slug, 'masjid-al-noor')).get();
-      results.theme_alnoor = theme?.masjid_themes ?? null;
-    } catch (e) {
-      results.theme_error = String(e);
-    }
 
     const admin = await db.select().from(admins).where(eq(admins.email, 'admin@masjid-alnoor.org')).get();
     if (admin) {

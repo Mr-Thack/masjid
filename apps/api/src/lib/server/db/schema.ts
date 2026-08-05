@@ -50,6 +50,11 @@ export const masjidThemes = sqliteTable('masjid_themes', {
   fontHeading: text('font_heading').notNull().default('Inter'),
   fontBody: text('font_body').notNull().default('Roboto'),
 
+  // style_system/style_options were added via ALTER TABLE right after font_body
+  // in COLUMN_MIGRATIONS — must stay in this position to match D1 table order.
+  styleSystem: text('style_system').notNull().default('sakeenah'),
+  styleOptions: text('style_options').notNull().default('{}'),
+
   timeFormat: text('time_format').notNull().default('24h'),
   labelAdhaan: text('label_adhaan').notNull().default('Adhaan'),
   labelIqaamah: text('label_iqaamah').notNull().default('Iqaamah'),
@@ -61,9 +66,6 @@ export const masjidThemes = sqliteTable('masjid_themes', {
   labelAsr: text('label_asr').notNull().default('Asr'),
   labelMaghrib: text('label_maghrib').notNull().default('Maghrib'),
   labelIsha: text('label_isha').notNull().default('Isha'),
-
-  styleSystem: text('style_system').notNull().default('sakeenah'),
-  styleOptions: text('style_options').notNull().default('{}'),
 });
 
 export const prayerRules = sqliteTable('prayer_rules', {

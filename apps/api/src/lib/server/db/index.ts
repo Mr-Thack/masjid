@@ -144,6 +144,8 @@ function ensureTables(sqlite: Database.Database) {
       accent_color TEXT NOT NULL DEFAULT '#10b981',
       font_heading TEXT NOT NULL DEFAULT 'Inter',
       font_body TEXT NOT NULL DEFAULT 'Roboto',
+      style_system TEXT NOT NULL DEFAULT 'sakeenah',
+      style_options TEXT NOT NULL DEFAULT '{}',
       time_format TEXT NOT NULL DEFAULT '24h',
       label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
       label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
@@ -154,9 +156,7 @@ function ensureTables(sqlite: Database.Database) {
       label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
       label_asr TEXT NOT NULL DEFAULT 'Asr',
       label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
-      label_isha TEXT NOT NULL DEFAULT 'Isha',
-      style_system TEXT NOT NULL DEFAULT 'sakeenah',
-      style_options TEXT NOT NULL DEFAULT '{}'
+      label_isha TEXT NOT NULL DEFAULT 'Isha'
     );
 
     CREATE TABLE IF NOT EXISTS prayer_rules (
@@ -392,27 +392,20 @@ let d1MigrationPromise: Promise<void> | null = null;
 function ensureD1Columns(d1db: D1Database) {
   if (d1MigrationPromise) return;
   d1MigrationPromise = (async () => {
-    // First: fix column ORDER for masjid_themes — style_system/style_options
-    // were originally added via ALTER TABLE ADD COLUMN (end of table) in
-    // migrated databases, but CREATE TABLE in the original schema.sql had
-    // them right after masjid_id.  The canonical order is now at the end
-    // (after label_isha), matching the Drizzle schema.  Tables with them at
-    // position 2-3 need to be recreated.
+    // Fix column ORDER for masjid_themes — style_system/style_options must
+    // be at position 6-7 (after font_body).  sqlite_master.sql doesn't
+    // reflect ALTER TABLE so we query the live column list instead.
     try {
-      const tableSql = await d1db
-        .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='masjid_themes'")
-        .first<{ sql: string }>();
-      if (tableSql?.sql) {
-        const s = tableSql.sql;
-        const stylePos = s.indexOf('style_system');
-        const layoutPos = s.indexOf('layout_preset');
-        // style_system before layout_preset means the table was created from
-        // the old schema.sql order — needs recreation to match canonical order.
-        if (stylePos !== -1 && layoutPos !== -1 && stylePos < layoutPos) {
-          await fixMasjidThemesColumnOrder(d1db);
-        }
+      const cols = await d1db
+        .prepare("SELECT name FROM pragma_table_info('masjid_themes') ORDER BY cid")
+        .all<{ name: string }>();
+      const names = cols.results.map((c) => c.name);
+      const styleIdx = names.indexOf('style_system');
+      // style_system belongs at position 6 (after font_body, before time_format)
+      if (styleIdx !== -1 && styleIdx !== 6) {
+        await fixMasjidThemesColumnOrder(d1db);
       }
-    } catch { /* sqlite_master may not be available; skip check */ }
+    } catch { /* pragma_table_info may not be available; skip check */ }
 
     for (const [table, column, def] of COLUMN_MIGRATIONS) {
       try {

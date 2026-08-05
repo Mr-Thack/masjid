@@ -63,6 +63,11 @@ CREATE TABLE masjid_themes (
     font_heading TEXT NOT NULL DEFAULT 'Inter',
     font_body TEXT NOT NULL DEFAULT 'Roboto',
 
+    -- Style system: 'sakeenah' (minimal) | 'mishkaat' (flagship)
+    style_system TEXT NOT NULL DEFAULT 'sakeenah',
+    -- JSON theme options interpreted per style system (metal, motif, arch, ...)
+    style_options TEXT NOT NULL DEFAULT '{}',
+
     -- Display settings (per-masjid customization)
     time_format TEXT NOT NULL DEFAULT '24h',          -- '12h' | '24h'
     label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
@@ -75,11 +80,6 @@ CREATE TABLE masjid_themes (
     label_asr TEXT NOT NULL DEFAULT 'Asr',
     label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
     label_isha TEXT NOT NULL DEFAULT 'Isha',
-
-    -- Style system: 'sakeenah' (minimal) | 'mishkaat' (flagship)
-    style_system TEXT NOT NULL DEFAULT 'sakeenah',
-    -- JSON theme options interpreted per style system (metal, motif, arch, ...)
-    style_options TEXT NOT NULL DEFAULT '{}',
 
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
 );
