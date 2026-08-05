@@ -1,6 +1,6 @@
 # AGENTS.md
 
-## Current state (2026-07-29)
+## Current state (2026-08-05)
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 470 tests)
 - **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
@@ -14,6 +14,10 @@ The project is a fully implemented monorepo with:
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
+- **Branching model (2026-08-05)**: `master` = dev (commit freely), `staging` = test gate (auto-deploy + E2E on push), production = manual `workflow_dispatch` only. Merge master → staging to test; trigger `Deploy to Cloudflare` workflow manually when staging is green. Never push to master expecting a production deploy — it won't happen.
+- **Build ID (2026-08-05)**: every frontend app injects `<meta name="build-id" content="<git-hash>">` via `hooks.server.ts` `transformPageChunk`. The API `/status` endpoint also returns `build_id`. Check from any device: View Source or `curl /api/v1/status | jq .build_id`.
+- **E2E hydration signal (2026-08-05)**: each root layout sets `document.documentElement.dataset.hydrated="true"` in `$effect()`. The `visitPage()` helper waits for `html[data-hydrated]` before checking `expectText`/`expectSelector`. Tests use `waitUntil: 'load'` (never `networkidle` — breaks on Square SDK/polling pages). All `waitForFunction`/`waitForURL` timeouts are 30s.
+- **D1 column-order fix (2026-08-05)**: `fetchThemeRow()` in `apps/api/src/lib/server/db/index.ts` bypasses Drizzle's position-based `.raw()` mapping by using raw D1 binding (`.all()` → named objects) in production, falling back to Drizzle locally. The Drizzle schema column order now matches `schema.sql` migration order. Do NOT insert new columns in the middle of `masjidThemes` — always append them (D1's `ALTER TABLE ADD COLUMN` puts them at the end).
 
 ## First-time setup (fresh clone or worktree)
 
@@ -484,9 +488,11 @@ arrived via a stray direct commit. Don't let that happen again.
    consumer 5175, admin 5176) — only ONE agent may run dev servers at a
    time. Other agents use `npm run test*` (no servers needed).
 6. **Only the main tree deploys.** Feature agents never run wrangler or
-   otherwise deploy. Deploys happen from master after merge + CI.
+    otherwise deploy. Deploys follow the branching model: merge to staging
+    (auto-deploy + E2E), then manually trigger `Deploy to Cloudflare` from
+    the Actions tab when staging is green.
 7. **Keep branches short-lived** and rebase onto master before merging
-   (`git rebase master`) so conflicts surface in the branch, not on master.
+    (`git rebase master`) so conflicts surface in the branch, not on master.
 - Production status: `curl https://mapi.mr-thack.workers.dev/api/v1/status`
 - Term `billing_months` column exists on `mkt_terms` — set it to charge fewer months than the term length (e.g. 8 for a 9-month Ramadan term)
 
@@ -862,3 +868,49 @@ own; affected users hard-refresh (Ctrl+Shift+R sends `no-cache`, forcing
 revalidation). The NEW deployment's `no-store` SPA responses can never be
 poisoned this way. Lesson: always verify deploys with `?cb=N` before
 concluding content is wrong, and never ship cacheable HTML for SPA routes.
+
+### 31. D1 Drizzle column position mismatch scrambles query results (2026-08-05)
+
+**Pitfall**: D1's Drizzle driver calls `.raw()` (returns arrays), and
+`mapResultRow()` maps by **position**, not column name. When D1 table
+columns are in a different order than the Drizzle schema (because
+`ALTER TABLE ADD COLUMN` appends new columns to the end), every SELECT
+silently returns scrambled data — each value shifted to the wrong field.
+
+**How we fixed it**: `fetchThemeRow()` in `apps/api/src/lib/server/db/index.ts`
+bypasses Drizzle entirely for `masjid_themes` queries. In production (Worker
+runtime), it uses the raw D1 binding: `platform.env.DB.prepare(...).all()`
+returns named objects. Locally falls back to Drizzle. The same fix was
+applied to all 3 theme-consuming endpoints (public masjid, board, admin
+profile). Also aligned Drizzle schema column order with `schema.sql` / D1
+migration order.
+
+**Key rule**: Never insert columns in the middle of a Drizzle schema table.
+Always append them at the end (D1 can only do `ALTER TABLE ADD COLUMN` at
+the end anyway). Keep Drizzle schema column order identical to `CREATE TABLE`
+order in `schema.sql`.
+
+### 32. `waitUntil: 'load'` fires before SPA hydration in static SvelteKit apps (2026-08-05)
+
+**Pitfall**: `page.goto(url, { waitUntil: 'load' })` fires when the HTML shell
+and scripts load. SvelteKit SPAs then asynchronously boot the router, run load
+functions, and render components — a gap of 1-15s on slow CI runners. Using
+`networkidle` as workaround fails for pages with persistent connections (Square
+SDK, polling APIs).
+
+**How we fixed it**: Each root layout sets
+`document.documentElement.dataset.hydrated = 'true'` via `$effect()`, which
+fires when SvelteKit first mounts. The `visitPage()` helper waits for
+`html[data-hydrated="true"]` before checking `expectText`/`expectSelector`.
+All `waitForFunction`/`waitForURL`/`waitForSelector` timeouts doubled to 30s.
+`settleMs` increased to 3s.
+
+### 33. `networkidle` fails for pages with persistent connections (2026-08-05)
+
+**Pitfall**: `waitUntil: 'networkidle'` waits for 0 connections for 500ms.
+Pages with Square Web Payments SDK or continuous API polling (e.g. unknown
+slug TV display retrying 404) never reach idle state → 30s timeout.
+
+**How we fixed it**: Never use `networkidle` by default. Stick with `'load'`
++ the `data-hydrated` signal. For pages that need `networkidle`, use the
+`waitUntil` option on `visitPage`.
