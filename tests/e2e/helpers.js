@@ -136,6 +136,8 @@ function bust(url, cfg) {
 //                                       and are moved to warnings
 //   settleMs       number             — extra settle time (default 1500)
 //   timeoutMs      number             — navigation timeout (default 30000)
+//   waitUntil      string             — page.goto waitUntil (default 'networkidle' for SPAs;
+//                                       use 'load' for pages that keep polling e.g. unknown slug)
 //
 // Result: { pageErrors, consoleErrors, failedRequests, apiOrigins, warnings,
 //           missing, ok, badApiOrigins }
@@ -149,7 +151,7 @@ export async function visitPage(browser, cfg, url, opts = {}) {
 
   const target = bust(url, cfg);
   try {
-    await page.goto(target, { waitUntil: 'networkidle', timeout: opts.timeoutMs ?? 30000 });
+    await page.goto(target, { waitUntil: opts.waitUntil ?? 'networkidle', timeout: opts.timeoutMs ?? 30000 });
 
     if (opts.expectSelector) {
       try {

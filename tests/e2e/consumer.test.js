@@ -51,6 +51,7 @@ for (const [id, slug, name, prayers] of [
     r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_UNKNOWN}`, {
       allowFailures: [/definitely-not-a-masjid/, /Failed to fetch page payload/],
       timeoutMs: 45000,
+      waitUntil: 'load',
     });
     if (r.ok) break;
     if (attempt < 3) {

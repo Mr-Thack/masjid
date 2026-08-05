@@ -69,6 +69,7 @@ const browser = await launchBrowser();
 {
   const r = await visitPage(browser, cfg, `${cfg.tv}/display/${SLUG_UNKNOWN}`, {
     allowFailures: [/definitely-not-a-masjid/],
+    waitUntil: 'load',
   });
   t.assert(r.pageErrors.length === 0, `TV-04 unknown slug no crash — ${explain(r)}`);
   // In SPA mode, the +error.svelte chunk can be deduplicated by Rollup
