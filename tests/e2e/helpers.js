@@ -154,13 +154,9 @@ export async function visitPage(browser, cfg, url, opts = {}) {
   try {
     await page.goto(target, { waitUntil: opts.waitUntil ?? 'load', timeout: opts.timeoutMs ?? 30000 });
 
-    // Wait for SPA hydration: SvelteKit renders content into the DOM after load.
-    // On slow CI runners this can take several seconds. We wait for any
-    // substantial body text to appear.
-    await page.waitForFunction(
-      () => document.body.innerText.trim().length > 80,
-      { timeout: 30000 },
-    ).catch(() => { /* page might be an error state with minimal text */ });
+    // Wait for SvelteKit to hydrate: the root layout sets data-hydrated="true"
+    // on <html> via $effect() when the component tree first mounts.
+    await page.waitForSelector('html[data-hydrated="true"]', { timeout: 30000 }).catch(() => {});
 
     if (opts.expectSelector) {
       try {
