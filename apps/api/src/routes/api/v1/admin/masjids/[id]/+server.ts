@@ -6,7 +6,7 @@ import {
 } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { masjids, masjidThemes } from '$lib/server/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
@@ -31,11 +31,23 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       return ErrorJsonResponse('NOT_FOUND', 'Masjid not found');
     }
 
-    const theme = await db
-      .select()
-      .from(masjidThemes)
-      .where(eq(masjidThemes.masjidId, params.id))
-      .get();
+    // Use raw SQL to avoid Drizzle column-position mismatch on D1
+    const themeRows = await db.all(sql`
+      SELECT style_system, style_options, layout_preset, primary_color,
+             accent_color, font_heading, font_body, time_format,
+             label_adhaan, label_iqaamah, label_jumuah, label_speech,
+             label_sunrise, label_fajr, label_dhuhr, label_asr,
+             label_maghrib, label_isha
+      FROM masjid_themes WHERE masjid_id = ${params.id}
+    `) as Array<{
+      style_system: string; style_options: string; layout_preset: string;
+      primary_color: string; accent_color: string; font_heading: string;
+      font_body: string; time_format: string; label_adhaan: string;
+      label_iqaamah: string; label_jumuah: string; label_speech: string;
+      label_sunrise: string; label_fajr: string; label_dhuhr: string;
+      label_asr: string; label_maghrib: string; label_isha: string;
+    }>;
+    const theme = themeRows[0] ?? null;
 
     return JsonResponse({
       id: masjid.id,
@@ -73,24 +85,24 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       created_at: masjid.createdAt,
       theme: theme
         ? {
-            style_system: theme.styleSystem,
-            style_options: parseStyleOptionsJson(theme.styleOptions),
-            layout_preset: theme.layoutPreset,
-            primary_color: theme.primaryColor,
-            accent_color: theme.accentColor,
-            font_heading: theme.fontHeading,
-            font_body: theme.fontBody,
-            time_format: theme.timeFormat,
-            label_adhaan: theme.labelAdhaan,
-            label_iqaamah: theme.labelIqaamah,
-            label_jumuah: theme.labelJumuah,
-            label_speech: theme.labelSpeech,
-            label_sunrise: theme.labelSunrise,
-            label_fajr: theme.labelFajr,
-            label_dhuhr: theme.labelDhuhr,
-            label_asr: theme.labelAsr,
-            label_maghrib: theme.labelMaghrib,
-            label_isha: theme.labelIsha,
+            style_system: theme.style_system,
+            style_options: parseStyleOptionsJson(theme.style_options),
+            layout_preset: theme.layout_preset,
+            primary_color: theme.primary_color,
+            accent_color: theme.accent_color,
+            font_heading: theme.font_heading,
+            font_body: theme.font_body,
+            time_format: theme.time_format,
+            label_adhaan: theme.label_adhaan,
+            label_iqaamah: theme.label_iqaamah,
+            label_jumuah: theme.label_jumuah,
+            label_speech: theme.label_speech,
+            label_sunrise: theme.label_sunrise,
+            label_fajr: theme.label_fajr,
+            label_dhuhr: theme.label_dhuhr,
+            label_asr: theme.label_asr,
+            label_maghrib: theme.label_maghrib,
+            label_isha: theme.label_isha,
           }
         : null,
     });
@@ -205,7 +217,22 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     console.log('PUT fetching updated masjid');
     const updated = await db.select().from(masjids).where(eq(masjids.id, params.id)).get();
     console.log('PUT updated masjid OK, building response');
-    const updatedTheme = await db.select().from(masjidThemes).where(eq(masjidThemes.masjidId, params.id)).get();
+    const updatedThemeRows = await db.all(sql`
+      SELECT style_system, style_options, layout_preset, primary_color,
+             accent_color, font_heading, font_body, time_format,
+             label_adhaan, label_iqaamah, label_jumuah, label_speech,
+             label_sunrise, label_fajr, label_dhuhr, label_asr,
+             label_maghrib, label_isha
+      FROM masjid_themes WHERE masjid_id = ${params.id}
+    `) as Array<{
+      style_system: string; style_options: string; layout_preset: string;
+      primary_color: string; accent_color: string; font_heading: string;
+      font_body: string; time_format: string; label_adhaan: string;
+      label_iqaamah: string; label_jumuah: string; label_speech: string;
+      label_sunrise: string; label_fajr: string; label_dhuhr: string;
+      label_asr: string; label_maghrib: string; label_isha: string;
+    }>;
+    const updatedTheme = updatedThemeRows[0] ?? null;
 
     return JsonResponse({
       id: updated?.id,
@@ -235,24 +262,24 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       created_at: updated?.createdAt,
       theme: updatedTheme
         ? {
-            style_system: updatedTheme.styleSystem,
-            style_options: parseStyleOptionsJson(updatedTheme.styleOptions),
-            layout_preset: updatedTheme.layoutPreset,
-            primary_color: updatedTheme.primaryColor,
-            accent_color: updatedTheme.accentColor,
-            font_heading: updatedTheme.fontHeading,
-            font_body: updatedTheme.fontBody,
-            time_format: updatedTheme.timeFormat,
-            label_adhaan: updatedTheme.labelAdhaan,
-            label_iqaamah: updatedTheme.labelIqaamah,
-            label_jumuah: updatedTheme.labelJumuah,
-            label_speech: updatedTheme.labelSpeech,
-            label_sunrise: updatedTheme.labelSunrise,
-            label_fajr: updatedTheme.labelFajr,
-            label_dhuhr: updatedTheme.labelDhuhr,
-            label_asr: updatedTheme.labelAsr,
-            label_maghrib: updatedTheme.labelMaghrib,
-            label_isha: updatedTheme.labelIsha,
+            style_system: updatedTheme.style_system,
+            style_options: parseStyleOptionsJson(updatedTheme.style_options),
+            layout_preset: updatedTheme.layout_preset,
+            primary_color: updatedTheme.primary_color,
+            accent_color: updatedTheme.accent_color,
+            font_heading: updatedTheme.font_heading,
+            font_body: updatedTheme.font_body,
+            time_format: updatedTheme.time_format,
+            label_adhaan: updatedTheme.label_adhaan,
+            label_iqaamah: updatedTheme.label_iqaamah,
+            label_jumuah: updatedTheme.label_jumuah,
+            label_speech: updatedTheme.label_speech,
+            label_sunrise: updatedTheme.label_sunrise,
+            label_fajr: updatedTheme.label_fajr,
+            label_dhuhr: updatedTheme.label_dhuhr,
+            label_asr: updatedTheme.label_asr,
+            label_maghrib: updatedTheme.label_maghrib,
+            label_isha: updatedTheme.label_isha,
           }
         : null,
     });

@@ -1,7 +1,7 @@
 import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { masjids, masjidThemes, jumuahSessions, announcements } from '$lib/server/db/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
@@ -13,11 +13,23 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     const masjid = await db.select().from(masjids).where(eq(masjids.slug, params.slug)).get();
     if (!masjid) return ErrorJsonResponse('NOT_FOUND', 'Masjid not found');
 
-    const theme = await db
-      .select()
-      .from(masjidThemes)
-      .where(eq(masjidThemes.masjidId, masjid.id))
-      .get();
+    // Use raw SQL to avoid Drizzle column-position mismatch on D1
+    const themeRows = await db.all(sql`
+      SELECT style_system, style_options, layout_preset, primary_color,
+             accent_color, font_heading, font_body, time_format,
+             label_adhaan, label_iqaamah, label_jumuah, label_speech,
+             label_sunrise, label_fajr, label_dhuhr, label_asr,
+             label_maghrib, label_isha
+      FROM masjid_themes WHERE masjid_id = ${masjid.id}
+    `) as Array<{
+      style_system: string; style_options: string; layout_preset: string;
+      primary_color: string; accent_color: string; font_heading: string;
+      font_body: string; time_format: string; label_adhaan: string;
+      label_iqaamah: string; label_jumuah: string; label_speech: string;
+      label_sunrise: string; label_fajr: string; label_dhuhr: string;
+      label_asr: string; label_maghrib: string; label_isha: string;
+    }>;
+    const theme = themeRows[0] ?? null;
 
     const sessions = await db
       .select()
@@ -101,24 +113,24 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         external_donation_url: masjid.externalDonationUrl,
       },
       theme: {
-        style_system: theme?.styleSystem ?? 'sakeenah',
-        style_options: parseStyleOptionsJson(theme?.styleOptions),
-        primary_color: theme?.primaryColor ?? '#1e3a8a',
-        accent_color: theme?.accentColor ?? '#10b981',
-        font_heading: theme?.fontHeading ?? 'Inter',
-        font_body: theme?.fontBody ?? 'Inter',
-        layout_preset: theme?.layoutPreset ?? 'modern_minimal',
-        time_format: theme?.timeFormat ?? '24h',
-        label_adhaan: theme?.labelAdhaan ?? 'Adhaan',
-        label_iqaamah: theme?.labelIqaamah ?? 'Iqaamah',
-        label_jumuah: theme?.labelJumuah ?? "Jumu'ah",
-        label_speech: theme?.labelSpeech ?? 'Speech',
-        label_sunrise: theme?.labelSunrise ?? 'Sunrise',
-        label_fajr: theme?.labelFajr ?? 'Fajr',
-        label_dhuhr: theme?.labelDhuhr ?? 'Dhuhr',
-        label_asr: theme?.labelAsr ?? 'Asr',
-        label_maghrib: theme?.labelMaghrib ?? 'Maghrib',
-        label_isha: theme?.labelIsha ?? 'Isha',
+        style_system: theme?.style_system ?? 'sakeenah',
+        style_options: parseStyleOptionsJson(theme?.style_options),
+        primary_color: theme?.primary_color ?? '#1e3a8a',
+        accent_color: theme?.accent_color ?? '#10b981',
+        font_heading: theme?.font_heading ?? 'Inter',
+        font_body: theme?.font_body ?? 'Inter',
+        layout_preset: theme?.layout_preset ?? 'modern_minimal',
+        time_format: theme?.time_format ?? '24h',
+        label_adhaan: theme?.label_adhaan ?? 'Adhaan',
+        label_iqaamah: theme?.label_iqaamah ?? 'Iqaamah',
+        label_jumuah: theme?.label_jumuah ?? "Jumu'ah",
+        label_speech: theme?.label_speech ?? 'Speech',
+        label_sunrise: theme?.label_sunrise ?? 'Sunrise',
+        label_fajr: theme?.label_fajr ?? 'Fajr',
+        label_dhuhr: theme?.label_dhuhr ?? 'Dhuhr',
+        label_asr: theme?.label_asr ?? 'Asr',
+        label_maghrib: theme?.label_maghrib ?? 'Maghrib',
+        label_isha: theme?.label_isha ?? 'Isha',
       },
       today: {
         date: today.toISOString().split('T')[0],
