@@ -58,4 +58,29 @@ describe('load', () => {
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/masjids/my-masjid');
   });
+
+  it('throws a 404 SvelteKit error when the masjid is not found', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+    });
+
+    await expect(
+      load({
+        params: { masjid_slug: 'nonexistent' },
+        fetch: mockFetch,
+      } as Parameters<typeof load>[0]),
+    ).rejects.toHaveProperty('status', 404);
+  });
+
+  it('throws the original error for non-404 failures', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+    await expect(
+      load({
+        params: { masjid_slug: 'test' },
+        fetch: mockFetch,
+      } as Parameters<typeof load>[0]),
+    ).rejects.toThrow('Network error');
+  });
 });
