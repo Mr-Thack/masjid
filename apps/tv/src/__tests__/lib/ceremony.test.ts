@@ -129,6 +129,53 @@ describe('computeCeremony — overlapping windows resolve to the latest event', 
   });
 });
 
+describe('computeCeremony — right_after_adhaan (0-offset prayers)', () => {
+  it('skips the iqaamah-countdown window when adhaan === iqaamah', () => {
+    // Maghrib at 20:40 adhaan == 20:40 iqaamah (right_after_adhaan).
+    // The iqaamah-countdown window [adhaan+30, adhaan] is zero-duration —
+    // never trapped.  The state flows: adhaan → prayer-in-progress.
+    const zeroOffset = {
+      ...prayers,
+      maghrib: { adhaan: 1240, iqaamah: 1240 },
+    };
+    const r = computeCeremony(inputAt(20 * 3600 + 40 * 60 + 10, { prayers: zeroOffset }));
+    expect(r.state).toBe('adhaan');
+    expect(r.prayer).toBe('maghrib');
+  });
+
+  it('transitions to prayer-in-progress right after the adhaan moment', () => {
+    const zeroOffset = {
+      ...prayers,
+      maghrib: { adhaan: 1240, iqaamah: 1240 },
+    };
+    // 35s after adhaan — past the 30s adhaan window, but still before
+    // iqaamah+15min prayer-in-progress end.
+    const r = computeCeremony(inputAt(20 * 3600 + 40 * 60 + 35, { prayers: zeroOffset }));
+    expect(r.state).toBe('prayer-in-progress');
+    expect(r.prayer).toBe('maghrib');
+  });
+
+  it('does NOT enter iqaamah-countdown at any point during the day', () => {
+    const zeroOffset = {
+      ...prayers,
+      maghrib: { adhaan: 1240, iqaamah: 1240 },
+    };
+    // Mid-morning — before the fix this was trapped in a bogus
+    // iqaamah-countdown wrapping around the clock.
+    expect(computeCeremony(inputAt(10 * 3600, { prayers: zeroOffset })).state)
+      .not.toBe('iqaamah-countdown');
+    // Afternoon
+    expect(computeCeremony(inputAt(15 * 3600, { prayers: zeroOffset })).state)
+      .not.toBe('iqaamah-countdown');
+    // Evening, before Maghrib
+    expect(computeCeremony(inputAt(19 * 3600, { prayers: zeroOffset })).state)
+      .not.toBe('iqaamah-countdown');
+    // After Maghrib (night)
+    expect(computeCeremony(inputAt(22 * 3600, { prayers: zeroOffset })).state)
+      .not.toBe('iqaamah-countdown');
+  });
+});
+
 describe('computeCeremony — night calm (§7.6.5)', () => {
   it('calms after Isha + ~90 minutes', () => {
     // Isha iqaamah 21:45 + 90 min = 23:15.

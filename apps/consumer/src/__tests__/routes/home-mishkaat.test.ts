@@ -110,13 +110,13 @@ describe('homepage — Mishkaat (§7.11)', () => {
     expect(document.querySelector('.c-hadith-source')?.textContent).toMatch(/\w/);
   });
 
-  it('seeds the Friday hadith from the Jumu\u2019ah occasion pool', () => {
+  it('picks the hadith deterministically by date from the full collection', () => {
     vi.setSystemTime(new Date('2026-07-31T10:00:00')); // Friday 10:00
     render(HomePage);
 
-    // dayOfYear(2026-07-31) = 212; the jumu'ah pool has 2 entries; 212 % 2 = 0
+    // dayOfYear(2026-07-31) = 212; 212 % 24 = 20
     expect(
-      screen.getByText('The best day on which the sun rises is Friday.'),
+      screen.getByText('When Ramadan begins, the gates of Paradise are opened, the gates of the Fire are closed, and the devils are chained.'),
     ).toBeInTheDocument();
   });
 
