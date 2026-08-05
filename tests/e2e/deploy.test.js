@@ -139,22 +139,55 @@ console.log('\n  DEP-04 service worker headers');
   );
 }
 
-// DEP-05 — API URL baked into the bundle
+// DEP-05 — API URL baked into the bundle. The api.ts module is in a
+// lazy-loaded chunk, so it won't appear in the root page HTML. We walk
+// the JS dependency chain: start from all chunks referenced in the root
+// and masjid page HTML, download each one, extract any import("…") or
+// from"…" references, and follow those recursively until we find the
+// API host or exhaust the set of known chunk URLs.
 console.log('\n  DEP-05 API URL in bundle');
 {
-  const r = await getResponse(`${cfg.consumer}/`);
-  const chunkMatches = [...r.text.matchAll(/_app\/immutable\/[^"']+\.js/g)];
   const apiHost = new URL(cfg.api).host;
+
+  // Collect all unique chunk paths from page HTML
+  function chunkPaths(html) {
+    const paths = new Set();
+    for (const m of html.matchAll(/_app\/immutable\/[^"')<> ]+\.js/g)) {
+      paths.add(m[0]);
+    }
+    return paths;
+  }
+
+  const rootHtml = (await getResponse(`${cfg.consumer}/`)).text;
+  const masjidHtml = (await getResponse(`${cfg.consumer}/${SLUG_A}`)).text;
+  const seen = new Set();
+  const queue = [rootHtml, masjidHtml].flatMap((h) => [...chunkPaths(h)]);
+  for (const p of queue) seen.add(p);
+
   let found = false;
 
-  for (const match of chunkMatches) {
-    const chunkUrl = `${cfg.consumer}/${match[0]}`;
-    const cr = await getResponse(chunkUrl);
+  for (let i = 0; i < queue.length && !found; i++) {
+    const chunkPath = queue[i];
+    const cr = await getResponse(`${cfg.consumer}/${chunkPath}`);
+
     if (cr.text.includes(apiHost)) {
       found = true;
+      console.log(`  DEP-05 found API host in ${chunkPath}`);
       break;
     }
+
+    // Follow dynamic imports and static chunk references
+    const refs = [
+      ...cr.text.matchAll(/_app\/immutable\/[^"')<> ]+\.js/g),
+    ].map((m) => m[0]);
+    for (const ref of refs) {
+      if (!seen.has(ref)) {
+        seen.add(ref);
+        queue.push(ref);
+      }
+    }
   }
+
   t.assert(found, `DEP-05 at least one JS chunk contains API host "${apiHost}"`);
 }
 
