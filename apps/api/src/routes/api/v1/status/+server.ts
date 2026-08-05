@@ -1,9 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
+declare const __BUILD_ID__: string;
+declare const __BUILD_TIME__: string;
+
 export const GET: RequestHandler = async ({ platform }) => {
   const status: Record<string, unknown> = {
     worker: 'alive',
+    build_id: __BUILD_ID__,
+    build_time: __BUILD_TIME__,
     timestamp: new Date().toISOString(),
     env: {
       has_jwt_secret: !!(platform?.env?.JWT_SECRET),

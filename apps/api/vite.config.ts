@@ -1,5 +1,9 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
+import { execSync } from 'child_process';
+
+const BUILD_ID = execSync('git rev-parse --short HEAD').toString().trim();
+const BUILD_TIME = new Date().toISOString();
 
 function stubNativeModules(): Plugin {
   let isBuild = false;
@@ -21,6 +25,10 @@ function stubNativeModules(): Plugin {
 }
 
 export default defineConfig({
+  define: {
+    '__BUILD_ID__': JSON.stringify(BUILD_ID),
+    '__BUILD_TIME__': JSON.stringify(BUILD_TIME),
+  },
   plugins: [stubNativeModules(), sveltekit()],
   server: {
     port: 5173,
