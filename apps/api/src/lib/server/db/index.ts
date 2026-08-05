@@ -1,9 +1,11 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
+import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as schema from './schema';
+import { masjidThemes } from './schema';
 
 const PROJECT_ROOT = typeof import.meta.dirname !== 'undefined'
   ? path.resolve(import.meta.dirname, '../../../../../..')
@@ -464,6 +466,47 @@ async function fixMasjidThemesColumnOrder(d1db: D1Database) {
 export async function waitForD1Migrations(d1?: unknown) {
   if (d1) ensureD1Columns(d1 as D1Database);
   if (d1MigrationPromise) await d1MigrationPromise;
+}
+
+/**
+ * Fetch a single masjid_themes row — always returns correct data.
+ *
+ * On D1 (production): uses the raw D1 binding to get named-object results,
+ * avoiding Drizzle's positional column mapping (which fails when the D1
+ * table column order differs from the Drizzle schema order).
+ *
+ * On local SQLite: falls back to Drizzle ORM (works fine locally).
+ */
+export async function fetchThemeRow(
+  db: ReturnType<typeof drizzleSqlite>,
+  masjidId: string,
+  d1Binding?: unknown,
+): Promise<Record<string, unknown> | null> {
+  const isWorker = typeof caches !== 'undefined' && typeof caches.default !== 'undefined';
+  if (isWorker && d1Binding != null && typeof (d1Binding as Record<string, unknown>).prepare === 'function') {
+    const stmt = (d1Binding as D1Database).prepare(
+      'SELECT style_system, style_options, layout_preset, primary_color, ' +
+      'accent_color, font_heading, font_body, time_format, ' +
+      'label_adhaan, label_iqaamah, label_jumuah, label_speech, ' +
+      'label_sunrise, label_fajr, label_dhuhr, label_asr, ' +
+      'label_maghrib, label_isha ' +
+      'FROM masjid_themes WHERE masjid_id = ?1'
+    );
+    const result = await stmt.bind(masjidId).all();
+    return (result.results[0] as Record<string, unknown>) ?? null;
+  }
+  // Local dev fallback — Drizzle works fine with better-sqlite3
+  const t = await db.select().from(masjidThemes).where(eq(masjidThemes.masjidId, masjidId)).get();
+  if (!t) return null;
+  const keys = ['style_system', 'style_options', 'layout_preset', 'primary_color', 'accent_color',
+    'font_heading', 'font_body', 'time_format', 'label_adhaan', 'label_iqaamah',
+    'label_jumuah', 'label_speech', 'label_sunrise', 'label_fajr', 'label_dhuhr',
+    'label_asr', 'label_maghrib', 'label_isha'] as const;
+  return Object.fromEntries(keys.map(k => {
+    // Map snake_case column name to Drizzle camelCase property
+    const camel = k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    return [k, (t as Record<string, unknown>)[camel]];
+  })) as Record<string, unknown>;
 }
 
 export type Db = ReturnType<typeof getDb>;

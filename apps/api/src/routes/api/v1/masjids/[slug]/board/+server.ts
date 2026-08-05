@@ -1,7 +1,7 @@
 import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
-import { getDb } from '$lib/server/db';
-import { masjids, masjidThemes, jumuahSessions, announcements } from '$lib/server/db/schema';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { getDb, fetchThemeRow } from '$lib/server/db';
+import { masjids, jumuahSessions, announcements } from '$lib/server/db/schema';
+import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
@@ -13,23 +13,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     const masjid = await db.select().from(masjids).where(eq(masjids.slug, params.slug)).get();
     if (!masjid) return ErrorJsonResponse('NOT_FOUND', 'Masjid not found');
 
-    // Use raw SQL to avoid Drizzle column-position mismatch on D1
-    const themeRows = await db.all(sql`
-      SELECT style_system, style_options, layout_preset, primary_color,
-             accent_color, font_heading, font_body, time_format,
-             label_adhaan, label_iqaamah, label_jumuah, label_speech,
-             label_sunrise, label_fajr, label_dhuhr, label_asr,
-             label_maghrib, label_isha
-      FROM masjid_themes WHERE masjid_id = ${masjid.id}
-    `) as Array<{
-      style_system: string; style_options: string; layout_preset: string;
-      primary_color: string; accent_color: string; font_heading: string;
-      font_body: string; time_format: string; label_adhaan: string;
-      label_iqaamah: string; label_jumuah: string; label_speech: string;
-      label_sunrise: string; label_fajr: string; label_dhuhr: string;
-      label_asr: string; label_maghrib: string; label_isha: string;
-    }>;
-    const theme = themeRows[0] ?? null;
+    const theme = await fetchThemeRow(db, masjid.id, platform?.env?.DB);
 
     const sessions = await db
       .select()

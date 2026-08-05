@@ -4,9 +4,9 @@ import {
   ErrorJsonResponse,
   JsonResponse,
 } from '@masjid/schemas';
-import { getDb } from '$lib/server/db';
+import { getDb, fetchThemeRow } from '$lib/server/db';
 import { masjids, masjidThemes } from '$lib/server/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
@@ -31,23 +31,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       return ErrorJsonResponse('NOT_FOUND', 'Masjid not found');
     }
 
-    // Use raw SQL to avoid Drizzle column-position mismatch on D1
-    const themeRows = await db.all(sql`
-      SELECT style_system, style_options, layout_preset, primary_color,
-             accent_color, font_heading, font_body, time_format,
-             label_adhaan, label_iqaamah, label_jumuah, label_speech,
-             label_sunrise, label_fajr, label_dhuhr, label_asr,
-             label_maghrib, label_isha
-      FROM masjid_themes WHERE masjid_id = ${params.id}
-    `) as Array<{
-      style_system: string; style_options: string; layout_preset: string;
-      primary_color: string; accent_color: string; font_heading: string;
-      font_body: string; time_format: string; label_adhaan: string;
-      label_iqaamah: string; label_jumuah: string; label_speech: string;
-      label_sunrise: string; label_fajr: string; label_dhuhr: string;
-      label_asr: string; label_maghrib: string; label_isha: string;
-    }>;
-    const theme = themeRows[0] ?? null;
+    const theme = await fetchThemeRow(db, params.id, platform?.env?.DB);
 
     return JsonResponse({
       id: masjid.id,
@@ -217,22 +201,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     console.log('PUT fetching updated masjid');
     const updated = await db.select().from(masjids).where(eq(masjids.id, params.id)).get();
     console.log('PUT updated masjid OK, building response');
-    const updatedThemeRows = await db.all(sql`
-      SELECT style_system, style_options, layout_preset, primary_color,
-             accent_color, font_heading, font_body, time_format,
-             label_adhaan, label_iqaamah, label_jumuah, label_speech,
-             label_sunrise, label_fajr, label_dhuhr, label_asr,
-             label_maghrib, label_isha
-      FROM masjid_themes WHERE masjid_id = ${params.id}
-    `) as Array<{
-      style_system: string; style_options: string; layout_preset: string;
-      primary_color: string; accent_color: string; font_heading: string;
-      font_body: string; time_format: string; label_adhaan: string;
-      label_iqaamah: string; label_jumuah: string; label_speech: string;
-      label_sunrise: string; label_fajr: string; label_dhuhr: string;
-      label_asr: string; label_maghrib: string; label_isha: string;
-    }>;
-    const updatedTheme = updatedThemeRows[0] ?? null;
+    const updatedTheme = await fetchThemeRow(db, params.id, platform?.env?.DB);
 
     return JsonResponse({
       id: updated?.id,
