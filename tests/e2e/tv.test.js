@@ -51,7 +51,7 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
@@ -78,8 +78,8 @@ const browser = await launchBrowser();
   // but the hard requirement is "no crash".
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto(`${cfg.tv}/display/${SLUG_UNKNOWN}`, { waitUntil: 'networkidle', timeout: 30000 });
-  try { await page.waitForFunction(() => document.body.innerText.length > 0, { timeout: 15000 }); } catch { /* blank is acceptable */ }
+  await page.goto(`${cfg.tv}/display/${SLUG_UNKNOWN}`, { waitUntil: 'load', timeout: 30000 });
+  try { await page.waitForFunction(() => document.body.innerText.length > 0, { timeout: 30000 }); } catch { /* blank is acceptable */ }
   const bodyLen = await page.evaluate(() => document.body.innerText.length);
   if (bodyLen === 0) {
     console.log(`  TV-04 note: error page rendered blank in SPA mode (known Rollup dedup issue)`);
@@ -93,17 +93,17 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
   const afterFirst = b.pageErrors.length;
 
   // Navigate away and back
-  await page.goto(`${cfg.tv}/display/${SLUG_B}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_B}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
@@ -130,7 +130,7 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
@@ -147,7 +147,7 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
@@ -165,7 +165,7 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
@@ -186,7 +186,7 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_B}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_B}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 
@@ -204,7 +204,7 @@ const browser = await launchBrowser();
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(`${cfg.tv}/display/${SLUG_A}`, { waitUntil: 'load', timeout: 30000 });
   await page.waitForSelector('.prayer-grid', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(2000);
 

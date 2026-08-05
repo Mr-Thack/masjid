@@ -134,10 +134,11 @@ function bust(url, cfg) {
 //   allowFailures  RegExp[]           — console errors / failed requests matching
 //                                       these are EXPECTED (e.g. a deliberate 404)
 //                                       and are moved to warnings
-//   settleMs       number             — extra settle time (default 1500)
+//   settleMs       number             — extra settle time (default 3000)
 //   timeoutMs      number             — navigation timeout (default 30000)
-//   waitUntil      string             — page.goto waitUntil (default 'networkidle' for SPAs;
-//                                       use 'load' for pages that keep polling e.g. unknown slug)
+//   waitUntil      string             — page.goto waitUntil (default 'load')
+//                                       use 'networkidle' for pages without persistent
+//                                       third-party connections (Square SDK etc.)
 //
 // Result: { pageErrors, consoleErrors, failedRequests, apiOrigins, warnings,
 //           missing, ok, badApiOrigins }
@@ -151,11 +152,19 @@ export async function visitPage(browser, cfg, url, opts = {}) {
 
   const target = bust(url, cfg);
   try {
-    await page.goto(target, { waitUntil: opts.waitUntil ?? 'networkidle', timeout: opts.timeoutMs ?? 30000 });
+    await page.goto(target, { waitUntil: opts.waitUntil ?? 'load', timeout: opts.timeoutMs ?? 30000 });
+
+    // Wait for SPA hydration: SvelteKit renders content into the DOM after load.
+    // On slow CI runners this can take several seconds. We wait for any
+    // substantial body text to appear.
+    await page.waitForFunction(
+      () => document.body.innerText.trim().length > 80,
+      { timeout: 30000 },
+    ).catch(() => { /* page might be an error state with minimal text */ });
 
     if (opts.expectSelector) {
       try {
-        await page.waitForSelector(opts.expectSelector, { state: 'visible', timeout: 15000 });
+        await page.waitForSelector(opts.expectSelector, { state: 'visible', timeout: 30000 });
       } catch {
         buckets.missing.push(`selector not visible: ${opts.expectSelector}`);
       }
@@ -164,7 +173,7 @@ export async function visitPage(browser, cfg, url, opts = {}) {
     const texts = Array.isArray(opts.expectText) ? opts.expectText : opts.expectText ? [opts.expectText] : [];
     for (const text of texts) {
       try {
-        await page.waitForFunction((t) => document.body.innerText.includes(t), text, { timeout: 15000 });
+        await page.waitForFunction((t) => document.body.innerText.includes(t), text, { timeout: 30000 });
       } catch {
         buckets.missing.push(`text not found: "${text}"`);
       }
@@ -178,14 +187,14 @@ export async function visitPage(browser, cfg, url, opts = {}) {
     for (const text of textsCI) {
       try {
         await page.waitForFunction((t) => document.body.innerText.toLowerCase().includes(t.toLowerCase()), text, {
-          timeout: 15000,
+          timeout: 30000,
         });
       } catch {
         buckets.missing.push(`text not found (CI): "${text}"`);
       }
     }
 
-    await page.waitForTimeout(opts.settleMs ?? 1500);
+    await page.waitForTimeout(opts.settleMs ?? 3000);
   } catch (err) {
     buckets.pageErrors.push(`navigation: ${err.message}`);
   }
