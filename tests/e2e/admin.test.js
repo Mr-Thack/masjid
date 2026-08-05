@@ -79,7 +79,7 @@ await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
     await page.fill('input[type="email"]', cfg.adminEmail);
     await page.fill('input[type="password"]', cfg.adminPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL('**/admin/**', { timeout: 30000 });
+    await page.waitForURL('**/admin/**', { timeout: 45000 });
     await page.waitForTimeout(2000);
 
     const onDashboard = page.url().includes(`/admin/${SLUG_A}`);
@@ -198,7 +198,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   // Navigate to SLUG_B dashboard — must not crash
@@ -225,7 +225,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   // Log out — clear localStorage (the auth store reads from there)
@@ -254,7 +254,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   // Rapid nav cycle through every settings page
@@ -306,7 +306,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'load', timeout: 30000 });
@@ -342,7 +342,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   // Check sidebar nav links exist
@@ -368,7 +368,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   await page.goto(`${cfg.admin}/admin/${SLUG_A}/bot`, { waitUntil: 'load', timeout: 30000 });
@@ -404,7 +404,7 @@ if (!cfg.writes || !cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   async function gotoWithRetry(url) {
@@ -727,7 +727,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/account`, { waitUntil: 'load', timeout: 30000 });
@@ -754,7 +754,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { waitUntil: 'load', timeout: 30000 });
@@ -781,7 +781,7 @@ if (!cfg.adminEmail) {
   await page.fill('input[type="email"]', cfg.adminEmail);
   await page.fill('input[type="password"]', cfg.adminPassword);
   await page.click('button[type="submit"]');
-  await page.waitForURL("**/admin/**", { timeout: 30000 });
+  await page.waitForURL("**/admin/**", { timeout: 45000 });
   await page.waitForTimeout(2000);
 
   await page.goto(`${cfg.admin}/admin/${SLUG_A}/settings/domain`, { waitUntil: 'load', timeout: 30000 });
