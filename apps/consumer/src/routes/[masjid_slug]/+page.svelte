@@ -24,6 +24,7 @@
   let prayerTimes = $derived(data.prayer_times);
   let jumuah = $derived(data.jumuah);
   let pinnedAnnouncement = $derived(data.pinned_announcement);
+  let homepagePost = $derived(data.homepage_post);
   let theme = $derived(data.theme);
 
   let now = $state(new Date());
@@ -439,6 +440,19 @@
           <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
           <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
             {@html pinnedAnnouncement.compiled_html}
+          </div>
+        </div>
+      </section>
+    {/if}
+
+    {#if homepagePost}
+      <section>
+        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
+          {homepagePost.title}
+        </h2>
+        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
+          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+            {@html homepagePost.compiled_html}
           </div>
         </div>
       </section>

@@ -86,6 +86,24 @@ export const api = {
   pinAnnouncement: (masjidId: string, slug: string) =>
     request('PUT', `/api/v1/admin/masjids/${masjidId}/announcements/${slug}/pin`),
 
+  getPosts: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/posts`),
+
+  createPost: (masjidId: string, data: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/posts`, data),
+
+  updatePost: (masjidId: string, slug: string, data: Record<string, unknown>) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/posts/${slug}`, data),
+
+  deletePost: (masjidId: string, slug: string) =>
+    request('DELETE', `/api/v1/admin/masjids/${masjidId}/posts/${slug}`),
+
+  pinPostHomepage: (masjidId: string, slug: string) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/posts/${slug}/homepage`),
+
+  pinPostInfo: (masjidId: string, slug: string) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/posts/${slug}/info`),
+
   getDomains: (masjidId: string) =>
     request('GET', `/api/v1/admin/masjids/${masjidId}/domains`),
 

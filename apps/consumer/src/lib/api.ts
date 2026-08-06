@@ -24,6 +24,20 @@ export interface JumuahSession {
   speech_time: string | null;
 }
 
+export interface Post {
+  id: string;
+  masjid_id: string;
+  title: string;
+  slug: string;
+  content_markdown?: string;
+  compiled_html: string | null;
+  show_on_homepage: boolean;
+  show_on_info: boolean;
+  is_hidden: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PagePayload {
   masjid: {
     slug: string;
@@ -72,6 +86,18 @@ export interface PagePayload {
     compiled_html: string;
   } | null;
   recent_announcements: Announcement[];
+  homepage_post: {
+    title: string;
+    slug: string;
+    compiled_html: string | null;
+    created_at: string;
+  } | null;
+  info_post: {
+    title: string;
+    slug: string;
+    compiled_html: string | null;
+    created_at: string;
+  } | null;
 }
 
 export interface MaktabInfo {
@@ -175,5 +201,24 @@ export async function verifyAssistanceCode(
     body: JSON.stringify({ card_holder_name }),
   });
   if (!res.ok) return { needs_payment: true };
+  return res.json();
+}
+
+export async function fetchPosts(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<{ masjid_slug: string; masjid_name: string; posts: Post[] }> {
+  const res = await customFetch(`${BASE}/${slug}/posts`);
+  if (!res.ok) throw new Error(`Failed to fetch posts: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchPost(
+  slug: string,
+  postSlug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<Post & { masjid_slug: string; masjid_name: string }> {
+  const res = await customFetch(`${BASE}/${slug}/posts/${postSlug}`);
+  if (!res.ok) throw new Error(`Failed to fetch post: ${res.status}`);
   return res.json();
 }

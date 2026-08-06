@@ -215,6 +215,24 @@ function ensureTables(sqlite: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_pages_lookup ON masjid_pages(masjid_id, slug);
 
+    CREATE TABLE IF NOT EXISTS posts (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      slug TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content_markdown TEXT NOT NULL,
+      compiled_html TEXT,
+      show_on_homepage INTEGER NOT NULL DEFAULT 0,
+      show_on_info INTEGER NOT NULL DEFAULT 0,
+      is_hidden INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(masjid_id, slug)
+    );
+    CREATE INDEX IF NOT EXISTS idx_posts_masjid ON posts(masjid_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_posts_homepage ON posts(masjid_id, show_on_homepage);
+    CREATE INDEX IF NOT EXISTS idx_posts_info ON posts(masjid_id, show_on_info);
+
     CREATE TABLE IF NOT EXISTS mkt_registrations (
       id TEXT PRIMARY KEY,
       masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,

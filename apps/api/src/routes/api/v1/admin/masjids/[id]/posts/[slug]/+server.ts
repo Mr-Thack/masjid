@@ -1,14 +1,13 @@
 import {
-  UpdateAnnouncementSchema,
+  UpdatePostSchema,
   ErrorJsonResponse,
   JsonResponse,
 } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
-import { announcements, masjids as masjidsTable } from '$lib/server/db/schema';
+import { posts, masjids as masjidsTable } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { invalidatePageCache } from '$lib/server/prayer/cache';
 import { compileMarkdown } from '$lib/server/markdown';
-
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ params, request, locals, platform }) => {
@@ -20,22 +19,22 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
   }
 
   try {
-    const body = UpdateAnnouncementSchema.parse(await request.json());
+    const body = UpdatePostSchema.parse(await request.json());
     const db = getDb(platform?.env?.DB);
 
     const existing = await db
       .select()
-      .from(announcements)
+      .from(posts)
       .where(
         and(
-          eq(announcements.masjidId, params.id),
-          eq(announcements.slug, params.slug),
+          eq(posts.masjidId, params.id),
+          eq(posts.slug, params.slug),
         ),
       )
       .get();
 
     if (!existing) {
-      return ErrorJsonResponse('NOT_FOUND', 'Announcement not found');
+      return ErrorJsonResponse('NOT_FOUND', 'Post not found');
     }
 
     const now = new Date().toISOString();
@@ -46,19 +45,14 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       updateData.contentMarkdown = body.content_markdown;
       updateData.compiledHtml = compileMarkdown(body.content_markdown);
     }
-    if (body.status !== undefined) {
-      updateData.status = body.status;
-      if (body.status === 'published' && existing.status !== 'published') {
-        updateData.publishedAt = now;
-      }
-    }
-    if (body.is_pinned !== undefined) updateData.isPinned = body.is_pinned;
-    if (body.expires_at !== undefined) updateData.expiresAt = body.expires_at;
+    if (body.show_on_homepage !== undefined) updateData.showOnHomepage = body.show_on_homepage;
+    if (body.show_on_info !== undefined) updateData.showOnInfo = body.show_on_info;
+    if (body.is_hidden !== undefined) updateData.isHidden = body.is_hidden;
 
     await db
-      .update(announcements)
+      .update(posts)
       .set(updateData)
-      .where(and(eq(announcements.masjidId, params.id), eq(announcements.slug, params.slug)));
+      .where(and(eq(posts.masjidId, params.id), eq(posts.slug, params.slug)));
 
     const masjid = await db
       .select({ slug: masjidsTable.slug })
@@ -70,8 +64,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 
     const updated = await db
       .select()
-      .from(announcements)
-      .where(and(eq(announcements.masjidId, params.id), eq(announcements.slug, params.slug)))
+      .from(posts)
+      .where(and(eq(posts.masjidId, params.id), eq(posts.slug, params.slug)))
       .get();
 
     return JsonResponse({
@@ -81,10 +75,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       slug: updated?.slug,
       content_markdown: updated?.contentMarkdown,
       compiled_html: updated?.compiledHtml,
-      is_pinned: updated?.isPinned,
-      status: updated?.status,
-      published_at: updated?.publishedAt,
-      expires_at: updated?.expiresAt,
+      show_on_homepage: updated?.showOnHomepage,
+      show_on_info: updated?.showOnInfo,
+      is_hidden: updated?.isHidden,
       created_at: updated?.createdAt,
       updated_at: updated?.updatedAt,
     });
@@ -92,7 +85,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (e instanceof Error && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
     }
-    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to update announcement');
+    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to update post');
   }
 };
 
@@ -109,23 +102,22 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 
     const existing = await db
       .select()
-      .from(announcements)
+      .from(posts)
       .where(
         and(
-          eq(announcements.masjidId, params.id),
-          eq(announcements.slug, params.slug),
+          eq(posts.masjidId, params.id),
+          eq(posts.slug, params.slug),
         ),
       )
       .get();
 
     if (!existing) {
-      return ErrorJsonResponse('NOT_FOUND', 'Announcement not found');
+      return ErrorJsonResponse('NOT_FOUND', 'Post not found');
     }
 
     await db
-      .update(announcements)
-      .set({ status: 'archived', updatedAt: new Date().toISOString() })
-      .where(and(eq(announcements.masjidId, params.id), eq(announcements.slug, params.slug)));
+      .delete(posts)
+      .where(and(eq(posts.masjidId, params.id), eq(posts.slug, params.slug)));
 
     const masjid = await db
       .select({ slug: masjidsTable.slug })
@@ -137,6 +129,6 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
 
     return JsonResponse({ success: true });
   } catch {
-    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to archive announcement');
+    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to delete post');
   }
 };

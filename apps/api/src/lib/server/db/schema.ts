@@ -272,3 +272,22 @@ export const announcementAttachments = sqliteTable('announcement_attachments', {
   assetId: text('asset_id').notNull().references(() => masjidAssets.id, { onDelete: 'cascade' }),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const posts = sqliteTable('posts', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
+  slug: text('slug').notNull(),
+  title: text('title').notNull(),
+  contentMarkdown: text('content_markdown').notNull(),
+  compiledHtml: text('compiled_html'),
+  showOnHomepage: integer('show_on_homepage', { mode: 'boolean' }).notNull().default(false),
+  showOnInfo: integer('show_on_info', { mode: 'boolean' }).notNull().default(false),
+  isHidden: integer('is_hidden', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  masjidIdx: index('idx_posts_masjid').on(table.masjidId, table.createdAt),
+  homepageIdx: index('idx_posts_homepage').on(table.masjidId, table.showOnHomepage),
+  infoIdx: index('idx_posts_info').on(table.masjidId, table.showOnInfo),
+  uniqueSlug: uniqueIndex('uq_posts_slug').on(table.masjidId, table.slug),
+}));

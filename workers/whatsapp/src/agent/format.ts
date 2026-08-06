@@ -8,6 +8,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   PRAYER_RULES: 'Prayer Rules',
   JUMUAH: "Jumu'ah",
   ANNOUNCEMENTS: 'Announcements',
+  POSTS: 'Posts',
 };
 
 function truncate(s: string, max: number): string {
@@ -63,6 +64,21 @@ function formatMutationAsWhatsApp(m: MutationData, index: number): string {
       }
       if (m.action === 'DELETE') {
         return `${index}. *${action} ${domain}* (archived)`;
+      }
+      return `${index}. *${action} ${domain}* (updated)`;
+    }
+    case 'POSTS': {
+      if (m.action === 'CREATE') {
+        return `${index}. *${action} ${domain}*\n  Title: ${truncate(m.payload.title as string || '?', 40)}`;
+      }
+      if (m.action === 'PIN_HOMEPAGE') {
+        return `${index}. *Toggle homepage pin* for post`;
+      }
+      if (m.action === 'PIN_INFO') {
+        return `${index}. *Toggle info pin* for post`;
+      }
+      if (m.action === 'DELETE') {
+        return `${index}. *${action} ${domain}* (deleted)`;
       }
       return `${index}. *${action} ${domain}* (updated)`;
     }

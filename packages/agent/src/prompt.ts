@@ -40,6 +40,13 @@ Friday prayer sessions with label, time (HH:MM 24h), khateeb, location.
 
 ### ANNOUNCEMENTS
 News/updates with title, markdown content, status (draft/published/archived), pin flag.
+
+### POSTS
+Rich informational content (permanent, not time-sensitive).
+- Unlike announcements, posts support full markdown with images, headings, and long-form text.
+- Posts can be pinned to the homepage (one at a time) and/or the Info page (one at a time).
+- Use is_hidden: true to hide a post without deleting it.
+- When creating/updating an announcement with very long content, suggest using a Post instead.
 `;
 
 const EXAMPLES = `
@@ -66,6 +73,15 @@ User: "Change the timezone to London"
 
 User: "Add a Jumu'ah session at 1:15 PM with Khateeb Imam Abdullah"
 → call jumuah_create({label:"Main Jumu'ah", time:"13:15", khateeb:"Imam Abdullah"})
+
+User: "Create a post about our food pantry, pin it to the info page"
+→ call posts_create({title:"Food Pantry", content_markdown:"Our food pantry provides meals to those in need every Saturday...", show_on_info:true})
+
+User: "Update the services post to include counseling hours"
+→ call posts_update({slug:"services", content_markdown:"We offer counseling..."})
+
+User: "Pin the about post to the homepage"
+→ call posts_pin_homepage({slug:"about"})
 
 User: "Use Karachi calculation method and change labels to Azaan and Iqamah"
 → call prayer_config_update({calculation_method: 7}) AND call theme_update({label_adhaan:"Azaan", label_iqaamah:"Iqamah"})

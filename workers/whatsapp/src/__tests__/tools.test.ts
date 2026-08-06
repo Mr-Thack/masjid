@@ -50,7 +50,7 @@ describe('getToolDefinitions', () => {
   it('returns all tools', async () => {
     const { getToolDefinitions } = await import('../agent/tools');
     const tools = getToolDefinitions();
-    expect(tools).toHaveLength(23);
+    expect(tools).toHaveLength(29);
   });
 
   it('all tools have name, description, parameters, handler', async () => {
