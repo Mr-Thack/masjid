@@ -19,23 +19,31 @@ import { targets } from './targets.js';
 const cfg = targets();
 const t = createReporter(`Worker/API runtime [${cfg.env}] → ${cfg.api}`);
 
+// Bounded fetch: a hung worker becomes a FAIL line (status 0), never a hung
+// CI job or an uncaught exception.
 async function req(method, path, { body, token } = {}) {
-  const resp = await fetch(`${cfg.api}${path}`, {
-    method,
-    headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await resp.text();
-  let json = null;
   try {
-    json = JSON.parse(text);
-  } catch {
-    /* stays null — HTML or empty body */
+    const resp = await fetch(`${cfg.api}${path}`, {
+      method,
+      headers: {
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(15000),
+    });
+    const text = await resp.text();
+    let json = null;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      /* stays null — HTML or empty body */
+    }
+    return { status: resp.status, json, isJson: json !== null, text: text.slice(0, 300) };
+  } catch (err) {
+    const msg = String(err?.message ?? err);
+    return { status: 0, json: null, isJson: false, text: msg.slice(0, 300) };
   }
-  return { status: resp.status, json, isJson: json !== null, text: text.slice(0, 300) };
 }
 
 // WRK-01 — runtime health: the worker module initialized (no workerd-only
