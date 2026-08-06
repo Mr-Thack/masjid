@@ -19,6 +19,12 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   pinAnnouncement,
+  getPosts,
+  createPost,
+  updatePost,
+  deletePost,
+  pinPostHomepage,
+  pinPostInfo,
   dryRunPrayerTimes,
   rollbackRestore,
 } from './api-client';
@@ -57,6 +63,13 @@ function describeMutation(domain: string, action: string, args: Record<string, u
       if (action === 'DELETE') return `Delete announcement`;
       if (action === 'PIN') return `Pin/unpin announcement`;
       return 'Announcement change';
+    case 'POSTS':
+      if (action === 'CREATE') return `Create post "${args.title || 'untitled'}"`;
+      if (action === 'UPDATE') return `Update post`;
+      if (action === 'DELETE') return `Delete post ${args.slug || ''}`;
+      if (action === 'PIN_HOMEPAGE') return 'Toggle homepage pin for post';
+      if (action === 'PIN_INFO') return 'Toggle info pin for post';
+      return 'Post change';
     default:
       return `${domain} ${action}: ${truncate(args)}`;
   }
@@ -450,7 +463,11 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
         const slug = (data as Record<string, unknown>).slug as string || NOWHERE;
         const summary = describeMutation('ANNOUNCEMENTS', 'CREATE', args);
         await storeMutation(ctx.branchId, 'ANNOUNCEMENTS', 'CREATE', `announcement:${slug}`, args, ctx.db);
-        return { success: true, data, mutationSummary: summary };
+        let warning = '';
+        if (typeof args.content_markdown === 'string' && args.content_markdown.length > 500) {
+          warning = ` Note: This announcement is quite long (${args.content_markdown.length} characters). A Post might be better suited for detailed, permanent content.`;
+        }
+        return { success: true, data, mutationSummary: summary + warning };
       },
     },
     {
@@ -473,7 +490,11 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
         const data = await updateAnnouncement(slug as string, body as Record<string, unknown>, ctx);
         const summary = describeMutation('ANNOUNCEMENTS', 'UPDATE', args);
         await storeMutation(ctx.branchId, 'ANNOUNCEMENTS', 'UPDATE', `announcement:${slug}`, args, ctx.db);
-        return { success: true, data, mutationSummary: summary };
+        let warning = '';
+        if (typeof args.content_markdown === 'string' && args.content_markdown.length > 500) {
+          warning = ` Note: This announcement is quite long (${args.content_markdown.length} characters). A Post might be better suited for detailed, permanent content.`;
+        }
+        return { success: true, data, mutationSummary: summary + warning };
       },
     },
     {
@@ -507,6 +528,115 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
         const data = await pinAnnouncement(args.slug as string, ctx);
         const summary = describeMutation('ANNOUNCEMENTS', 'PIN', args);
         await storeMutation(ctx.branchId, 'ANNOUNCEMENTS', 'PIN', `announcement:${args.slug}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'posts_list',
+      description: 'List all posts for the masjid (including hidden).',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const data = await getPosts(ctx);
+        return { success: true, data };
+      },
+    },
+    {
+      name: 'posts_create',
+      description: `Create a new post. Posts are rich, permanent content that can be pinned to the homepage or Info page. Use markdown for formatting (supports **bold**, *italic*, headings, links, images via ![alt](url)).`,
+      parameters: {
+        type: 'object',
+        properties: {
+          title: stringProp('Post title'),
+          content_markdown: stringProp('Content in markdown format (supports **bold**, *italic*, headings, links, images)'),
+          show_on_homepage: { type: 'boolean', description: 'Pin to homepage (default false). Only one post can be homepage-pinned at a time.', default: false },
+          show_on_info: { type: 'boolean', description: 'Pin to Info page (default false). Only one post can be info-pinned at a time.', default: false },
+          is_hidden: { type: 'boolean', description: 'Hide post without deleting (default false)' },
+        },
+        required: ['title', 'content_markdown'],
+      },
+      handler: async (args, ctx) => {
+        const data = await createPost(args as Record<string, unknown>, ctx);
+        const slug = (data as Record<string, unknown>).slug as string || NOWHERE;
+        const summary = describeMutation('POSTS', 'CREATE', args);
+        await storeMutation(ctx.branchId, 'POSTS', 'CREATE', `post:${slug}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'posts_update',
+      description: 'Update an existing post by slug. Send only fields to change. Re-compiles HTML if content_markdown changes.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: stringProp('Slug of the post to update'),
+          title: stringProp('New title (optional)'),
+          content_markdown: stringProp('New markdown content (optional)'),
+          show_on_homepage: { type: 'boolean', description: 'Homepage pin status (optional)' },
+          show_on_info: { type: 'boolean', description: 'Info pin status (optional)' },
+          is_hidden: { type: 'boolean', description: 'Hidden status (optional)' },
+        },
+        required: ['slug'],
+      },
+      handler: async (args, ctx) => {
+        const { slug, ...body } = args;
+        const data = await updatePost(slug as string, body as Record<string, unknown>, ctx);
+        const summary = describeMutation('POSTS', 'UPDATE', args);
+        await storeMutation(ctx.branchId, 'POSTS', 'UPDATE', `post:${slug}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'posts_delete',
+      description: 'Permanently delete a post by slug. This is irreversible.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: stringProp('Slug of the post to delete'),
+        },
+        required: ['slug'],
+      },
+      handler: async (args, ctx) => {
+        await deletePost(args.slug as string, ctx);
+        const summary = describeMutation('POSTS', 'DELETE', args);
+        await storeMutation(ctx.branchId, 'POSTS', 'DELETE', `post:${args.slug}`, {}, ctx.db);
+        return { success: true, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'posts_pin_homepage',
+      description: 'Toggle the homepage pin status of a post. If pinning, any other homepage-pinned post is unpinned first. Only one post can be pinned to the homepage at a time.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: stringProp('Slug of the post to pin/unpin'),
+        },
+        required: ['slug'],
+      },
+      handler: async (args, ctx) => {
+        const data = await pinPostHomepage(args.slug as string, ctx);
+        const summary = describeMutation('POSTS', 'PIN_HOMEPAGE', args);
+        await storeMutation(ctx.branchId, 'POSTS', 'PIN_HOMEPAGE', `post:${args.slug}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'posts_pin_info',
+      description: 'Toggle the Info page pin status of a post. If pinning, any other info-pinned post is unpinned first. Only one post can be pinned to the Info page at a time.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: stringProp('Slug of the post to pin/unpin on Info page'),
+        },
+        required: ['slug'],
+      },
+      handler: async (args, ctx) => {
+        const data = await pinPostInfo(args.slug as string, ctx);
+        const summary = describeMutation('POSTS', 'PIN_INFO', args);
+        await storeMutation(ctx.branchId, 'POSTS', 'PIN_INFO', `post:${args.slug}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
       },
     },

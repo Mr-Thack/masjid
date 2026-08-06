@@ -199,3 +199,49 @@ export async function rollbackRestore(
   const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/rollback`, { snapshot_id: snapshotId }, config);
   return res.json() as Promise<Record<string, unknown>>;
 }
+
+export async function getPosts(config: ApiClientConfig): Promise<Record<string, unknown>> {
+  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/posts`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function createPost(
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/posts`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function updatePost(
+  slug: string,
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function deletePost(
+  slug: string,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function pinPostHomepage(
+  slug: string,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/homepage`, {}, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function pinPostInfo(
+  slug: string,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/info`, {}, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}

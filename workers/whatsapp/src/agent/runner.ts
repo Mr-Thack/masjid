@@ -183,6 +183,13 @@ function formatMutationAsWhatsApp(m: MutationData, index: number): string {
       if (m.action === 'DELETE') return `${index}. *${action} ${domain}* (archived)`;
       return `${index}. *${action} ${domain}* (updated)`;
     }
+    case 'POSTS': {
+      if (m.action === 'CREATE') return `${index}. ${bullet}\n  Title: ${truncate(m.payload.title as string || '?', 40)}`;
+      if (m.action === 'PIN_HOMEPAGE') return `${index}. *Toggle homepage pin* for post`;
+      if (m.action === 'PIN_INFO') return `${index}. *Toggle info pin* for post`;
+      if (m.action === 'DELETE') return `${index}. *${action} ${domain}* (deleted)`;
+      return `${index}. *${action} ${domain}* (updated)`;
+    }
     default:
       return `${index}. *${action} ${m.domain}*`;
   }
@@ -195,6 +202,7 @@ function domainLabel(domain: string): string {
     PRAYER_RULES: 'Prayer Rules',
     JUMUAH: "Jumu'ah",
     ANNOUNCEMENTS: 'Announcements',
+    POSTS: 'Posts',
   };
   return labels[domain] || domain;
 }

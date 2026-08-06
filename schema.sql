@@ -347,3 +347,24 @@ CREATE TABLE announcement_attachments (
     FOREIGN KEY(announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
     FOREIGN KEY(asset_id) REFERENCES masjid_assets(id) ON DELETE CASCADE
 );
+
+-- ============================================================
+-- Table 15: Posts (Informational Content)
+-- ============================================================
+CREATE TABLE posts (
+    id TEXT PRIMARY KEY,
+    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content_markdown TEXT NOT NULL,
+    compiled_html TEXT,
+    show_on_homepage INTEGER NOT NULL DEFAULT 0,
+    show_on_info INTEGER NOT NULL DEFAULT 0,
+    is_hidden INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(masjid_id, slug)
+);
+CREATE INDEX idx_posts_masjid ON posts(masjid_id, created_at);
+CREATE INDEX idx_posts_homepage ON posts(masjid_id, show_on_homepage) WHERE show_on_homepage = 1;
+CREATE INDEX idx_posts_info ON posts(masjid_id, show_on_info) WHERE show_on_info = 1;

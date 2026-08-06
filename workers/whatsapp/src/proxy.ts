@@ -21,6 +21,12 @@ import {
   updateAnnouncement as coreUpdateAnnouncement,
   deleteAnnouncement as coreDeleteAnnouncement,
   pinAnnouncement as corePinAnnouncement,
+  getPosts as coreGetPosts,
+  createPost as coreCreatePost,
+  updatePost as coreUpdatePost,
+  deletePost as coreDeletePost,
+  pinPostHomepage as corePinPostHomepage,
+  pinPostInfo as corePinPostInfo,
   dryRunPrayerTimes as coreDryRunPrayerTimes,
   rollbackRestore as coreRollbackRestore,
   type ApiClientConfig,
@@ -105,6 +111,24 @@ export function deleteAnnouncement(slug: string, env: Env, adminId: string, masj
 }
 export function pinAnnouncement(slug: string, env: Env, adminId: string, masjidId: string) {
   return corePinAnnouncement(slug, config(env, adminId, masjidId));
+}
+export function getPosts(env: Env, adminId: string, masjidId: string) {
+  return coreGetPosts(config(env, adminId, masjidId));
+}
+export function createPost(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreCreatePost(body, config(env, adminId, masjidId));
+}
+export function updatePost(slug: string, body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
+  return coreUpdatePost(slug, body, config(env, adminId, masjidId));
+}
+export function deletePost(slug: string, env: Env, adminId: string, masjidId: string) {
+  return coreDeletePost(slug, config(env, adminId, masjidId));
+}
+export function pinPostHomepage(slug: string, env: Env, adminId: string, masjidId: string) {
+  return corePinPostHomepage(slug, config(env, adminId, masjidId));
+}
+export function pinPostInfo(slug: string, env: Env, adminId: string, masjidId: string) {
+  return corePinPostInfo(slug, config(env, adminId, masjidId));
 }
 export function dryRunPrayerTimes(body: Record<string, unknown>, env: Env, adminId: string, masjidId: string) {
   return coreDryRunPrayerTimes(body, config(env, adminId, masjidId));

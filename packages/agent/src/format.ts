@@ -61,6 +61,15 @@ function buildMutationSummary(domain: string, action: string, payload: Record<st
       if (action === 'DELETE') return 'Archived';
       return 'Updated';
     }
+    case 'POSTS': {
+      if (action === 'CREATE') {
+        return truncate(payload.title as string || '?', 40);
+      }
+      if (action === 'PIN_HOMEPAGE') return 'Toggle homepage pin';
+      if (action === 'PIN_INFO') return 'Toggle info pin';
+      if (action === 'DELETE') return 'Deleted';
+      return 'Updated';
+    }
     default:
       return `${action}`;
   }

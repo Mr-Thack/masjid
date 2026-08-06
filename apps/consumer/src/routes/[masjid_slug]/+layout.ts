@@ -12,6 +12,8 @@ export const load: LayoutLoad = async ({ params, fetch }) => {
       jumuah: payload.jumuah,
       pinned_announcement: payload.pinned_announcement,
       recent_announcements: payload.recent_announcements,
+      homepage_post: payload.homepage_post,
+      info_post: payload.info_post,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : '';

@@ -2,7 +2,7 @@
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { Loader, Plus, Trash2, Pin, PinOff } from 'lucide-svelte';
+  import { Loader, Plus, Trash2, Pin, PinOff, Info } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 
@@ -155,6 +155,12 @@
           <label>Content (Markdown) *</label>
           <textarea class="w-full text-sm font-mono" bind:value={newAnn.content_markdown} required rows={5}></textarea>
         </div>
+        {#if (newAnn.title.length + newAnn.content_markdown.length) > 300}
+          <div class="flex items-center gap-2 p-3 rounded-lg text-sm" style="background: var(--color-accent)/10; color: var(--color-accent); border: 1px solid var(--color-accent)/20;">
+            <Info size={16} />
+            <span>This looks lengthy — consider creating a Post instead. Posts support rich, permanent content and can be pinned to the homepage or Info page.</span>
+          </div>
+        {/if}
         <div class="grid grid-cols-2 gap-3">
           <div class="form-group">
             <label>Status</label>
@@ -231,6 +237,12 @@
             <label>Content (Markdown)</label>
             <textarea class="w-full text-sm font-mono" bind:value={editForm.content_markdown} rows={5}></textarea>
           </div>
+          {#if (editForm.title as string)?.length && ((editForm.title as string).length + ((editForm.content_markdown as string)?.length ?? 0) > 300)}
+            <div class="flex items-center gap-2 p-3 rounded-lg text-sm" style="background: var(--color-accent)/10; color: var(--color-accent); border: 1px solid var(--color-accent)/20;">
+              <Info size={16} />
+              <span>This looks lengthy — consider creating a Post instead. Posts support rich, permanent content and can be pinned to the homepage or Info page.</span>
+            </div>
+          {/if}
           <div class="grid grid-cols-2 gap-3">
             <div class="form-group">
               <label>Status</label>

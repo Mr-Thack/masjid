@@ -26,6 +26,7 @@ import {
   getPrayerRulesList,
   getJumuahSessions,
   getAnnouncements,
+  getPosts,
 } from './proxy';
 
 export default {
@@ -168,13 +169,14 @@ async function handleConfirm(
 
   let fullState: Record<string, unknown> | undefined;
   try {
-    const [masjid, prayerRules, jumuah, announcements] = await Promise.all([
+    const [masjid, prayerRules, jumuah, announcements, posts] = await Promise.all([
       getMasjidProfile(env, adminId, masjidId),
       getPrayerRulesList(env, adminId, masjidId),
       getJumuahSessions(env, adminId, masjidId),
       getAnnouncements(env, adminId, masjidId),
+      getPosts(env, adminId, masjidId),
     ]);
-    fullState = { masjid, prayer_rules: prayerRules, jumuah, announcements };
+    fullState = { masjid, prayer_rules: prayerRules, jumuah, announcements, posts };
   } catch {
     /* fall through — mergeBranch will store mutations-based state */
   }

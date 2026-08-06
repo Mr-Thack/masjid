@@ -10,6 +10,7 @@
   let error = $state<string | null>(null);
   let profile = $state<Record<string, unknown> | null>(null);
   let announcements = $state<unknown[]>([]);
+  let posts = $state<unknown[]>([]);
   let jumuahSessions = $state<unknown[]>([]);
   let rules = $state<unknown[]>([]);
   let domains = $state<{ domain: unknown | null }>({ domain: null });
@@ -37,6 +38,12 @@
       rules = r.rules || [];
       domains = d;
       prayerConfig = pc;
+      try {
+        const ps = await api.getPosts(masjidId);
+        posts = ps.posts || [];
+      } catch {
+        posts = [];
+      }
       try {
         const b = await api.getBranches(masjidId);
         branches = b.branches || [];
@@ -66,10 +73,14 @@
     <h1 class="text-2xl font-heading font-bold">{profile?.name || 'Dashboard'}</h1>
 
     <!-- Stats -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
       <div class="bg-surface border border-border rounded-xl p-4">
         <p class="text-3xl font-bold text-text">{activeAnnouncements.length}</p>
         <p class="text-sm text-text-muted mt-1">Announcements</p>
+      </div>
+      <div class="bg-surface border border-border rounded-xl p-4">
+        <p class="text-3xl font-bold text-text">{posts.length}</p>
+        <p class="text-sm text-text-muted mt-1">Posts</p>
       </div>
       <div class="bg-surface border border-border rounded-xl p-4">
         <p class="text-3xl font-bold text-text">{jumuahSessions.length}</p>

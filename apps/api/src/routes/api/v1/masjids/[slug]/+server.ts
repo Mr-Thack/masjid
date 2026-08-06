@@ -4,6 +4,7 @@ import {
   masjids,
   jumuahSessions,
   announcements,
+  posts,
 } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
@@ -54,6 +55,32 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       )
       .orderBy(desc(announcements.publishedAt))
       .limit(20);
+
+    const homepagePost = await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.masjidId, masjid.id),
+          eq(posts.showOnHomepage, true),
+          eq(posts.isHidden, false),
+        ),
+      )
+      .limit(1)
+      .get();
+
+    const infoPost = await db
+      .select()
+      .from(posts)
+      .where(
+        and(
+          eq(posts.masjidId, masjid.id),
+          eq(posts.showOnInfo, true),
+          eq(posts.isHidden, false),
+        ),
+      )
+      .limit(1)
+      .get();
 
     const today = new Date();
     const times = await computeIqaamah(
@@ -157,6 +184,22 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         published_at: a.publishedAt,
         expires_at: a.expiresAt,
       })),
+      homepage_post: homepagePost
+        ? {
+            title: homepagePost.title,
+            slug: homepagePost.slug,
+            compiled_html: homepagePost.compiledHtml,
+            created_at: homepagePost.createdAt,
+          }
+        : null,
+      info_post: infoPost
+        ? {
+            title: infoPost.title,
+            slug: infoPost.slug,
+            compiled_html: infoPost.compiledHtml,
+            created_at: infoPost.createdAt,
+          }
+        : null,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
