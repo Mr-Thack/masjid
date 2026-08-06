@@ -12,6 +12,7 @@ export type MotifName = 'honeycomb' | 'eight-point-star' | 'girih' | 'arabesque'
 export type NumeralsOption = 'western' | 'arabic-indic';
 export type DensityOption = 'standard' | 'large-print';
 export type EmblemOption = 'engraved' | 'medallion';
+export type ThemeMode = 'dark' | 'light';
 
 export interface QuietHoursOptions {
   enabled?: boolean;
@@ -30,6 +31,7 @@ export interface MishkaatStyleOptions {
   numerals?: NumeralsOption;
   density?: DensityOption;
   ambient?: boolean;
+  themeMode?: ThemeMode;
   quietHours?: QuietHoursOptions;
   /** Enabled frame list for the soul column; undefined/null = all frames. */
   frames?: string[];
@@ -45,6 +47,7 @@ export interface ResolvedMishkaatOptions {
   numerals: NumeralsOption;
   density: DensityOption;
   ambient: boolean;
+  themeMode: ThemeMode;
   quietHours: Required<QuietHoursOptions>;
   /** null = every frame enabled (default). */
   frames: string[] | null;
@@ -59,6 +62,7 @@ export const MISHKAAT_OPTION_DEFAULTS: ResolvedMishkaatOptions = {
   numerals: 'western',
   density: 'standard',
   ambient: true,
+  themeMode: 'dark',
   quietHours: {
     enabled: true,
     quietMinutes: 25,
@@ -118,6 +122,9 @@ export function parseStyleOptions(
   if (typeof input.emblem === 'string' && (EMBLEMS as readonly string[]).includes(input.emblem)) {
     out.emblem = input.emblem as EmblemOption;
   }
+  if (typeof input.themeMode === 'string' && (input.themeMode === 'dark' || input.themeMode === 'light')) {
+    out.themeMode = input.themeMode as ThemeMode;
+  }
   if (typeof input.donateAppeal === 'string') {
     const appeal = input.donateAppeal.trim();
     if (appeal.length >= 1 && appeal.length <= 80) out.donateAppeal = appeal;
@@ -153,6 +160,7 @@ export function resolveStyleOptions(
     numerals: input?.numerals ?? defaults.numerals,
     density: input?.density ?? defaults.density,
     ambient: input?.ambient ?? defaults.ambient,
+    themeMode: input?.themeMode === 'light' ? 'light' : input?.themeMode === 'dark' ? 'dark' : defaults.themeMode,
     quietHours: {
       enabled: input?.quietHours?.enabled ?? defaults.quietHours.enabled,
       quietMinutes: input?.quietHours?.quietMinutes ?? defaults.quietHours.quietMinutes,

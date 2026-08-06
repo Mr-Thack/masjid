@@ -41,4 +41,19 @@ export const presetTokens: Record<string, Record<string, string>> = {
     '--shadow-card': '0 4px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 var(--glass-shine)',
     '--shadow-card-hover': '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(243, 233, 210, 0.08)',
   },
+  // Mishkaat light variant: warm cream base, dark brown text, softened
+  // gold hairline ornament. Same metal palette supplies accent/primary colors.
+  'mishkaat-light': {
+    '--color-bg': '#f9f5ed',
+    '--color-surface': 'rgba(255, 252, 245, 0.85)',
+    '--color-text': '#3d2e1a',
+    '--color-text-muted': '#6b5a3e',
+    '--color-text-dim': '#9c8b6e',
+    '--color-border': 'rgba(156, 124, 30, 0.18)',
+    '--color-border-hover': 'rgba(156, 124, 30, 0.35)',
+    '--color-current-highlight': 'rgba(156, 124, 30, 0.12)',
+    '--glass-shine': 'rgba(255, 255, 255, 0.6)',
+    '--shadow-card': '0 4px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 var(--glass-shine)',
+    '--shadow-card-hover': '0 8px 28px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
+  },
 };

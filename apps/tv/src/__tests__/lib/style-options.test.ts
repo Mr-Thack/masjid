@@ -116,6 +116,9 @@ describe('parseStyleOptions', () => {
     for (const emblem of ['engraved', 'medallion']) {
       expect(parseStyleOptions({ emblem }).emblem).toBe(emblem);
     }
+    for (const themeMode of ['dark', 'light']) {
+      expect(parseStyleOptions({ themeMode }).themeMode).toBe(themeMode);
+    }
   });
 });
 
@@ -126,7 +129,7 @@ describe('resolveStyleOptions', () => {
     expect(resolveStyleOptions(undefined)).toEqual(MISHKAAT_OPTION_DEFAULTS);
   });
 
-  it('has gold metal, eight-point-star motif, arch, western numerals, standard density, ambient, medallion by default', () => {
+  it('has gold metal, eight-point-star motif, arch, western numerals, standard density, ambient, medallion, dark mode by default', () => {
     const resolved = resolveStyleOptions({});
     expect(resolved.metal).toBe('gold');
     expect(resolved.motif).toBe('eight-point-star');
@@ -134,9 +137,17 @@ describe('resolveStyleOptions', () => {
     expect(resolved.numerals).toBe('western');
     expect(resolved.density).toBe('standard');
     expect(resolved.ambient).toBe(true);
+    expect(resolved.themeMode).toBe('dark');
     expect(resolved.emblem).toBe('medallion');
     expect(resolved.frames).toBeNull();
     expect(resolved.donateAppeal).toBe('Every contribution makes a difference');
+  });
+
+  it('has correct defaults for themeMode', () => {
+    expect(resolveStyleOptions({}).themeMode).toBe('dark');
+    expect(resolveStyleOptions({ themeMode: 'light' }).themeMode).toBe('light');
+    // Invalid value falls back to default
+    expect(resolveStyleOptions({ themeMode: 'auto' as never }).themeMode).toBe('dark');
   });
 
   it('enables quiet hours with documented defaults (§7.6: ~90 min after Isha, wake before Fajr)', () => {
