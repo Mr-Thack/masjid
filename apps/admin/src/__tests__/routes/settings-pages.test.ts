@@ -53,6 +53,7 @@ vi.mock('$lib/api', () => ({
     deletePrayerRule: vi.fn().mockResolvedValue({ success: true }),
     reorderPrayerRules: vi.fn().mockResolvedValue({ success: true }),
     dryRunPrayerTimes: vi.fn().mockResolvedValue({}),
+    getPrayerHealth: vi.fn().mockResolvedValue({ healthy: true, failingDates: [] }),
     getJumuah: vi.fn().mockResolvedValue({ sessions: [] }),
     createJumuah: (...args: unknown[]) => mockCreateJumuah(...args),
     updateJumuah: (...args: unknown[]) => mockUpdateJumuah(...args),

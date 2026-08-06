@@ -2,9 +2,10 @@
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { Loader, Plus, Trash2, ChevronUp, ChevronDown, X, Play, Copy, Eye, EyeOff, ToggleLeft, ToggleRight } from 'lucide-svelte';
+  import { Plus, Trash2, Play, Copy, Eye, EyeOff, ToggleLeft, ToggleRight, TriangleAlert } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import RuleForm from '$lib/components/RuleForm.svelte';
 
   let { data }: { data: { masjidSlug: string } } = $props();
 
@@ -19,6 +20,7 @@
   let showAddPrayer = $state<string | null>(null);
   let showPipeline = $state<Record<string, boolean>>({});
   let togglingRuleIds = $state<Set<string>>(new Set());
+  let prayerHealth = $state<{ healthy: boolean; failingDates: string[] } | null>(null);
 
   function defaultNewRule(prayer: string) {
     return {
@@ -35,7 +37,6 @@
   let editRule = $state<any>({});
 
   const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-  const actionTypes = ['add_minutes', 'round_up', 'round_down', 'round_nearest', 'set_fixed_time', 'right_after_adhaan'];
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -66,11 +67,12 @@
   });
 
   let dryRunDate = $state('');
-  let dryRunResult = $state<Record<string, unknown> | null>(null);
+  let dryRunResult = $state<any>(null);
+  let dryRunError = $state<string | null>(null);
   let showDryRun = $state(false);
   let runningDryRun = $state(false);
 
-  $effect(() => { loadRules(); loadPreview(); });
+  $effect(() => { loadRules(); loadPreview(); loadHealth(); });
 
   async function loadRules() {
     try {
@@ -90,6 +92,14 @@
       // preview is non-critical — silently ignore
     } finally {
       previewLoading = false;
+    }
+  }
+
+  async function loadHealth() {
+    try {
+      prayerHealth = await api.getPrayerHealth(auth.admin!.masjid_id);
+    } catch {
+      prayerHealth = null;
     }
   }
 
@@ -121,14 +131,19 @@
     try {
       const group = rules.filter((r: any) => r.prayer_name === newRule.prayer_name);
       const maxOrder = group.length > 0 ? Math.max(...group.map((r: any) => r.execution_order)) : -1;
-      await api.createPrayerRule(auth.admin!.masjid_id, {
+      const res = await api.createPrayerRule(auth.admin!.masjid_id, {
         ...newRule,
         execution_order: maxOrder + 1,
       });
       showAddPrayer = null;
-      toast.success('Rule added');
+      if (res.warning) {
+        toast.warning(res.warning, { duration: 8000 });
+      } else {
+        toast.success('Rule added');
+      }
       await loadRules();
       await loadPreview();
+      await loadHealth();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed');
     } finally {
@@ -151,7 +166,7 @@
     e.preventDefault();
     saving = true;
     try {
-      await api.updatePrayerRule(auth.admin!.masjid_id, editingId!, {
+      const res = await api.updatePrayerRule(auth.admin!.masjid_id, editingId!, {
         prayer_name: editRule.prayer_name,
         rule_name: editRule.rule_name,
         conditions_json: editRule.conditions_json,
@@ -159,9 +174,14 @@
         enabled: editRule.enabled,
       });
       editingId = null;
-      toast.success('Rule updated');
+      if (res.warning) {
+        toast.warning(res.warning, { duration: 8000 });
+      } else {
+        toast.success('Rule updated');
+      }
       await loadRules();
       await loadPreview();
+      await loadHealth();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed');
     } finally {
@@ -172,11 +192,16 @@
   async function deleteRule() {
     if (!confirmDeleteId) return;
     try {
-      await api.deletePrayerRule(auth.admin!.masjid_id, confirmDeleteId);
-      toast.success('Rule deleted');
+      const res = await api.deletePrayerRule(auth.admin!.masjid_id, confirmDeleteId);
       confirmDeleteId = null;
+      if (res.warning) {
+        toast.warning(res.warning, { duration: 8000 });
+      } else {
+        toast.success('Rule deleted');
+      }
       await loadRules();
       await loadPreview();
+      await loadHealth();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed');
     }
@@ -190,6 +215,7 @@
       rule.enabled = newEnabled;
       toast.success(newEnabled ? 'Rule enabled' : 'Rule disabled');
       await loadPreview();
+      await loadHealth();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed');
     } finally {
@@ -223,82 +249,40 @@
 
   async function runDryRun() {
     runningDryRun = true;
+    dryRunResult = null;
+    dryRunError = null;
     try {
       const result = await api.dryRunPrayerTimes(auth.admin!.masjid_id, {
         date: dryRunDate || undefined,
       });
       dryRunResult = result;
-      toast.success('Dry run complete');
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed');
+      dryRunError = e instanceof Error ? e.message : 'Failed';
+      try {
+        const fallback = await api.getPrayerRulesPreview(auth.admin!.masjid_id, dryRunDate || undefined);
+        dryRunResult = { ...fallback, _error: dryRunError };
+      } catch {
+        // fallback also failed
+      }
     } finally {
       runningDryRun = false;
     }
   }
 
-  function addCondition(target: any) {
-    target.conditions_json = [...target.conditions_json, { type: 'always' }];
-  }
-
-  function removeCondition(target: any, index: number) {
-    if (target.conditions_json.length <= 1) return;
-    target.conditions_json = target.conditions_json.filter((_: any, i: number) => i !== index);
-  }
-
-  function setConditionType(target: any, index: number, type: string) {
-    const conds = [...target.conditions_json];
-    conds[index] = buildEmptyCondition(type);
-    target.conditions_json = conds;
-  }
-
-  function buildEmptyCondition(type: string): any {
-    switch (type) {
-      case 'always': return { type: 'always' };
-      case 'day_of_week': return { type: 'day_of_week', days: [] };
-      case 'month': return { type: 'month', months: [] };
-      case 'hijri_month': return { type: 'hijri_month', months: [] };
-      case 'date_range': return { type: 'date_range', start: '', end: '' };
-      default: return { type: 'always' };
-    }
-  }
-
-  function setActionType(target: any, type: string) {
-    switch (type) {
-      case 'add_minutes':
-        target.action_json = { type: 'add_minutes', minutes: 10 };
-        break;
-      case 'round_up':
-      case 'round_down':
-      case 'round_nearest':
-        target.action_json = { type, increment: 5 };
-        break;
-      case 'set_fixed_time':
-        target.action_json = { type: 'set_fixed_time', time: '' };
-        break;
-      case 'right_after_adhaan':
-        target.action_json = { type: 'right_after_adhaan' };
-        break;
-    }
-  }
-
-  function toggleCondItem(arr: number[], item: number): number[] {
-    if (arr.includes(item)) return arr.filter(x => x !== item);
-    return [...arr, item];
-  }
-
-  function setCondItem(target: any, condIndex: number, field: string, item: number) {
-    const conds = [...target.conditions_json];
-    const arr = (conds[condIndex][field] as number[]) || [];
-    conds[condIndex] = { ...conds[condIndex], [field]: toggleCondItem(arr, item) };
-    target.conditions_json = conds;
-  }
-
   function conditionSummary(c: any): string {
+    if (!c) return '?';
     if (c.type === 'always') return 'Always';
     if (c.type === 'day_of_week') return `Days: ${(c.days || []).map((d: number) => dayNames[d]).join(', ') || 'none'}`;
     if (c.type === 'month') return `Months: ${(c.months || []).map((m: number) => monthNames[m - 1]).join(', ') || 'none'}`;
     if (c.type === 'hijri_month') return `Hijri: ${(c.months || []).join(', ') || 'none'}`;
     if (c.type === 'date_range') return `${c.start || '?'} – ${c.end || '?'}`;
+    if (c.type === 'time_of_day') return `${c.operator === 'before' ? 'Before' : 'After'} ${c.threshold || '?'}`;
+    if (c.type === 'hijri_day_range') return `Hijri month ${c.month || '?'} days ${c.start_day || '?'}–${c.end_day || '?'}`;
+    if (c.type === 'month_day_range') {
+      const sm = monthNames[(c.start_month || 1) - 1];
+      const em = monthNames[(c.end_month || 1) - 1];
+      return `${sm} ${c.start_day || '?'} – ${em} ${c.end_day || '?'}`;
+    }
     return c.type;
   }
 
@@ -310,11 +294,36 @@
     if (a.type === 'round_nearest') return `Round nearest ${a.increment}m`;
     if (a.type === 'set_fixed_time') return `Set ${a.time}`;
     if (a.type === 'right_after_adhaan') return 'Right after Adhaan';
+    if (a.type === 'set_offset_from_prayer') return `${a.prayer} ${a.from} ${a.minutes > 0 ? '+' : ''}${a.minutes}m`;
+    if (a.type === 'cap_min') return `Min ${a.time}`;
+    if (a.type === 'cap_max') return `Max ${a.time}`;
     return a.type;
   }
 
   function chainEntryForRule(ruleId: string): any | null {
     return chainMap[ruleId] ?? null;
+  }
+
+  function existingRulesForPrayer(prayer: string): any[] {
+    const group = groupedRules[prayer] as any[];
+    return group.map((r: any) => ({
+      conditions_json: r.conditions_json,
+      action_json: r.action_json,
+      enabled: r.enabled,
+      execution_order: r.execution_order,
+    }));
+  }
+
+  function existingRulesExcluding(prayer: string, excludeId: string): any[] {
+    const group = groupedRules[prayer] as any[];
+    return group
+      .filter((r: any) => r.id !== excludeId)
+      .map((r: any) => ({
+        conditions_json: r.conditions_json,
+        action_json: r.action_json,
+        enabled: r.enabled,
+        execution_order: r.execution_order,
+      }));
   }
 </script>
 
@@ -325,6 +334,25 @@
       <p class="text-text-muted text-sm mt-1">Define iqaamah adjustment rules per prayer</p>
     </div>
   </div>
+
+  {#if prayerHealth && !prayerHealth.healthy}
+    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
+      <div class="flex items-start gap-3">
+        <TriangleAlert size={20} class="text-amber-400 mt-0.5 shrink-0" />
+        <div>
+          <p class="text-amber-400 text-sm font-medium">
+            {prayerHealth.failingDates.length} day{prayerHealth.failingDates.length > 1 ? 's' : ''} failing in the next 30 days
+          </p>
+          <p class="text-amber-400/70 text-xs mt-1">
+            {prayerHealth.failingDates.join(', ')}
+          </p>
+          <p class="text-amber-400/60 text-xs mt-1">
+            The TV and consumer displays will show --:-- for prayer times on those dates. Check your rules below.
+          </p>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   {#if loading}
     <SkeletonForm fields={4} />
@@ -347,126 +375,19 @@
         </div>
 
         {#if showAddPrayer === prayer}
-          <form onsubmit={addRule} class="border border-accent rounded-lg p-4 mb-4 space-y-3 bg-bg/50">
-            <div class="flex items-center gap-2">
-              <h3 class="font-heading font-semibold text-sm text-accent">New {prayer} Rule</h3>
-            </div>
-
-            <div>
-              <label>Rule Name</label>
-              <input type="text" class="w-full text-sm" bind:value={newRule.rule_name} placeholder="e.g. Weekday delay" />
-            </div>
-
-            <div>
-              <label>Action</label>
-              <select class="w-full text-sm" value={newRule.action_json.type} onchange={(e: any) => setActionType(newRule, e.target.value)}>
-                {#each actionTypes as a}
-                  <option value={a}>{a.replace(/_/g, ' ')}</option>
-                {/each}
-              </select>
-            </div>
-
-            {#if newRule.action_json.type === 'add_minutes'}
-              <div>
-                <label>Minutes</label>
-                <input type="number" class="w-48 text-sm" bind:value={newRule.action_json.minutes} min="1" />
-              </div>
-            {:else if newRule.action_json.type === 'set_fixed_time'}
-              <div>
-                <label>Fixed Time (HH:MM)</label>
-                <input type="text" class="w-32 text-sm" bind:value={newRule.action_json.time} placeholder="13:30" />
-              </div>
-            {:else if ['round_up', 'round_down', 'round_nearest'].includes(newRule.action_json.type)}
-              <div>
-                <label>Increment</label>
-                <select class="w-32 text-sm" value={newRule.action_json.increment} onchange={(e: any) => newRule.action_json.increment = Number(e.target.value)}>
-                  <option value={1}>1m</option>
-                  <option value={5}>5m</option>
-                  <option value={10}>10m</option>
-                  <option value={15}>15m</option>
-                  <option value={20}>20m</option>
-                  <option value={30}>30m</option>
-                  <option value={60}>60m</option>
-                </select>
-              </div>
-            {/if}
-
-            <fieldset class="border border-border rounded-lg p-3">
-              <legend class="text-sm font-medium text-text-muted px-1">Conditions</legend>
-              <div class="space-y-3">
-                {#each newRule.conditions_json as cond, ci (ci)}
-                  <div class="flex gap-2 items-start">
-                    <select class="text-sm w-36" value={cond.type} onchange={(e: any) => setConditionType(newRule, ci, e.target.value)}>
-                      <option value="always">Always</option>
-                      <option value="day_of_week">Day of week</option>
-                      <option value="month">Month</option>
-                      <option value="hijri_month">Hijri month</option>
-                      <option value="date_range">Date range</option>
-                    </select>
-
-                    <div class="flex-1">
-                      {#if cond.type === 'always'}
-                        <p class="text-xs text-text-muted py-1.5">Always applies</p>
-                      {:else if cond.type === 'day_of_week'}
-                        <div class="flex flex-wrap gap-1">
-                          {#each dayNames as day, di}
-                            <label class="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border cursor-pointer hover:bg-surface {(cond.days || []).includes(di) ? 'bg-accent/20 border-accent' : ''}">
-                              <input type="checkbox" class="sr-only"
-                                checked={(cond.days || []).includes(di)}
-                                onchange={() => setCondItem(newRule, ci, 'days', di)} />
-                              {day}
-                            </label>
-                          {/each}
-                        </div>
-                      {:else if cond.type === 'month'}
-                        <div class="flex flex-wrap gap-1">
-                          {#each monthNames as month, mi}
-                            <label class="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border cursor-pointer hover:bg-surface {(cond.months || []).includes(mi + 1) ? 'bg-accent/20 border-accent' : ''}">
-                              <input type="checkbox" class="sr-only"
-                                checked={(cond.months || []).includes(mi + 1)}
-                                onchange={() => setCondItem(newRule, ci, 'months', mi + 1)} />
-                              {month}
-                            </label>
-                          {/each}
-                        </div>
-                      {:else if cond.type === 'hijri_month'}
-                        <div class="flex flex-wrap gap-1">
-                          {#each Array(12) as _, i (i)}
-                            {@const m = i + 1}
-                            <label class="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border cursor-pointer hover:bg-surface {(cond.months || []).includes(m) ? 'bg-accent/20 border-accent' : ''}">
-                              <input type="checkbox" class="sr-only"
-                                checked={(cond.months || []).includes(m)}
-                                onchange={() => setCondItem(newRule, ci, 'months', m)} />
-                              {m}
-                            </label>
-                          {/each}
-                        </div>
-                      {:else if cond.type === 'date_range'}
-                        <div class="flex items-center gap-2">
-                          <input type="date" class="text-xs w-36" bind:value={cond.start} />
-                          <span class="text-xs text-text-muted">to</span>
-                          <input type="date" class="text-xs w-36" bind:value={cond.end} />
-                        </div>
-                      {/if}
-                    </div>
-
-                    <button type="button" class="p-1 text-text-muted hover:text-red-400" disabled={newRule.conditions_json.length <= 1}
-                      title="Remove condition" onclick={() => removeCondition(newRule, ci)}>
-                      <X size={14} />
-                    </button>
-                  </div>
-                {/each}
-              </div>
-              <button type="button" class="text-xs text-accent hover:underline mt-2" onclick={() => addCondition(newRule)}>
-                + Add Condition
-              </button>
-            </fieldset>
-
-            <div class="flex gap-2">
-              <button type="submit" class="btn-primary text-sm" disabled={saving}>Add</button>
-              <button type="button" class="btn-secondary text-sm" onclick={() => showAddPrayer = null}>Cancel</button>
-            </div>
-          </form>
+          <div class="mb-4">
+            <RuleForm
+              mode="add"
+              bind:rule={newRule}
+              {prayer}
+              adhaanTime={chain?.adhaan ?? ''}
+              existingRules={existingRulesForPrayer(prayer)}
+              onSave={addRule}
+              onCancel={() => showAddPrayer = null}
+              {saving}
+              submitLabel="Add"
+            />
+          </div>
         {/if}
 
         {#if group.length === 0}
@@ -494,17 +415,17 @@
                     <td class="p-3">
                       <div class="flex items-center gap-1">
                         <button
-    type="button"
-    class="px-1 py-0.5 text-text-muted hover:text-text disabled:opacity-30 text-lg leading-none"
-    disabled={gi === 0}
-    data-prayer={rule.prayer_name} data-index={gi} data-dir={-1}
-    onclick={handleReorder}>▲</button>
-<button
-    type="button"
-    class="px-1 py-0.5 text-text-muted hover:text-text disabled:opacity-30 text-lg leading-none"
-    disabled={gi === group.length - 1}
-    data-prayer={rule.prayer_name} data-index={gi} data-dir={1}
-    onclick={handleReorder}>▼</button>
+                          type="button"
+                          class="px-1 py-0.5 text-text-muted hover:text-text disabled:opacity-30 text-lg leading-none"
+                          disabled={gi === 0}
+                          data-prayer={rule.prayer_name} data-index={gi} data-dir={-1}
+                          onclick={handleReorder}>&#9650;</button>
+                        <button
+                          type="button"
+                          class="px-1 py-0.5 text-text-muted hover:text-text disabled:opacity-30 text-lg leading-none"
+                          disabled={gi === group.length - 1}
+                          data-prayer={rule.prayer_name} data-index={gi} data-dir={1}
+                          onclick={handleReorder}>&#9660;</button>
                         <span class="ml-1 text-text-muted text-xs font-mono">{gi + 1}</span>
                       </div>
                     </td>
@@ -533,7 +454,7 @@
                     <td class="p-3 text-center text-xs text-text-muted">
                       {#if entry}
                         {#if entry.matched}
-                          <span class="text-green-500 font-medium">HIT<br/>{entry.input_time} → {entry.output_time}</span>
+                          <span class="text-green-500 font-medium">HIT<br/>{entry.input_time} &rarr; {entry.output_time}</span>
                         {:else}
                           <span class="text-text-dim" title={entry.enabled ? 'Conditions not met' : 'Rule disabled'}>
                             {entry.enabled ? '—' : 'OFF'}
@@ -562,18 +483,16 @@
             </table>
           </div>
 
-          <!-- Final adhaan → iqaamah summary row -->
           {#if chain}
             <div class="mt-3 flex items-center gap-2 text-xs text-text-muted px-1">
               <span class="font-medium">Adhaan:</span>
               <span class="font-mono bg-bg px-2 py-0.5 rounded">{chain.adhaan}</span>
-              <span class="mx-1">→</span>
+              <span class="mx-1">&rarr;</span>
               <span class="font-medium">Iqaamah:</span>
               <span class="font-mono bg-bg px-2 py-0.5 rounded text-accent">{chain.iqaamah}</span>
             </div>
           {/if}
 
-          <!-- Pipeline visualization toggle -->
           {#if group.length > 0}
             <button
               class="mt-3 text-xs text-accent hover:underline flex items-center gap-1"
@@ -597,9 +516,9 @@
                   <div class="flex-1">
                     <span class="font-medium">{cr.rule_name || '(unnamed)'}</span>
                     {#if cr.matched}
-                      <span class="ml-1 text-green-500">✓</span>
+                      <span class="ml-1 text-green-500">&check;</span>
                       <span class="mx-1 text-text-dim">— {actionSummary(cr.action_json)} —</span>
-                      <span class="font-mono">{cr.input_time} → <span class="text-accent">{cr.output_time}</span></span>
+                      <span class="font-mono">{cr.input_time} &rarr; <span class="text-accent">{cr.output_time}</span></span>
                     {:else}
                       <span class="ml-1 text-text-dim">— skipped {!cr.enabled ? '(disabled)' : '(not matched)'}</span>
                     {/if}
@@ -614,161 +533,107 @@
         {/if}
 
         {#if editingId && editRule.prayer_name === prayer}
-          <form onsubmit={saveEdit} class="border border-accent rounded-lg p-4 mt-4 space-y-3 bg-bg/50">
-            <div class="flex items-center gap-2">
-              <h3 class="font-heading font-semibold text-sm text-accent">Edit Rule</h3>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label>Prayer</label>
-                <select class="w-full text-sm" bind:value={editRule.prayer_name}>
-                  {#each prayers as p}
-                    <option value={p}>{p}</option>
-                  {/each}
-                </select>
-              </div>
-              <div>
-                <label>Rule Name</label>
-                <input type="text" class="w-full text-sm" bind:value={editRule.rule_name} />
-              </div>
-            </div>
-
-            <div>
-              <label>Action</label>
-              <select class="w-full text-sm" value={editRule.action_json?.type} onchange={(e: any) => setActionType(editRule, e.target.value)}>
-                {#each actionTypes as a}
-                  <option value={a}>{a.replace(/_/g, ' ')}</option>
-                {/each}
-              </select>
-            </div>
-
-            {#if editRule.action_json?.type === 'add_minutes'}
-              <div>
-                <label>Minutes</label>
-                <input type="number" class="w-48 text-sm" bind:value={editRule.action_json.minutes} min="1" />
-              </div>
-            {:else if editRule.action_json?.type === 'set_fixed_time'}
-              <div>
-                <label>Fixed Time (HH:MM)</label>
-                <input type="text" class="w-32 text-sm" bind:value={editRule.action_json.time} placeholder="13:30" />
-              </div>
-            {:else if editRule.action_json?.type && ['round_up', 'round_down', 'round_nearest'].includes(editRule.action_json.type)}
-              <div>
-                <label>Increment</label>
-                <select class="w-32 text-sm" value={editRule.action_json.increment} onchange={(e: any) => editRule.action_json.increment = Number(e.target.value)}>
-                  <option value={1}>1m</option>
-                  <option value={5}>5m</option>
-                  <option value={10}>10m</option>
-                  <option value={15}>15m</option>
-                  <option value={20}>20m</option>
-                  <option value={30}>30m</option>
-                  <option value={60}>60m</option>
-                </select>
-              </div>
-            {/if}
-
-            <fieldset class="border border-border rounded-lg p-3">
-              <legend class="text-sm font-medium text-text-muted px-1">Conditions</legend>
-              <div class="space-y-3">
-                {#each editRule.conditions_json as cond, ci (ci)}
-                  <div class="flex gap-2 items-start">
-                    <select class="text-sm w-36" value={cond.type} onchange={(e: any) => setConditionType(editRule, ci, e.target.value)}>
-                      <option value="always">Always</option>
-                      <option value="day_of_week">Day of week</option>
-                      <option value="month">Month</option>
-                      <option value="hijri_month">Hijri month</option>
-                      <option value="date_range">Date range</option>
-                    </select>
-
-                    <div class="flex-1">
-                      {#if cond.type === 'always'}
-                        <p class="text-xs text-text-muted py-1.5">Always applies</p>
-                      {:else if cond.type === 'day_of_week'}
-                        <div class="flex flex-wrap gap-1">
-                          {#each dayNames as day, di}
-                            <label class="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border cursor-pointer hover:bg-surface {(cond.days || []).includes(di) ? 'bg-accent/20 border-accent' : ''}">
-                              <input type="checkbox" class="sr-only"
-                                checked={(cond.days || []).includes(di)}
-                                onchange={() => setCondItem(editRule, ci, 'days', di)} />
-                              {day}
-                            </label>
-                          {/each}
-                        </div>
-                      {:else if cond.type === 'month'}
-                        <div class="flex flex-wrap gap-1">
-                          {#each monthNames as month, mi}
-                            <label class="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border cursor-pointer hover:bg-surface {(cond.months || []).includes(mi + 1) ? 'bg-accent/20 border-accent' : ''}">
-                              <input type="checkbox" class="sr-only"
-                                checked={(cond.months || []).includes(mi + 1)}
-                                onchange={() => setCondItem(editRule, ci, 'months', mi + 1)} />
-                              {month}
-                            </label>
-                          {/each}
-                        </div>
-                      {:else if cond.type === 'hijri_month'}
-                        <div class="flex flex-wrap gap-1">
-                          {#each Array(12) as _, i (i)}
-                            {@const m = i + 1}
-                            <label class="text-xs flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-border cursor-pointer hover:bg-surface {(cond.months || []).includes(m) ? 'bg-accent/20 border-accent' : ''}">
-                              <input type="checkbox" class="sr-only"
-                                checked={(cond.months || []).includes(m)}
-                                onchange={() => setCondItem(editRule, ci, 'months', m)} />
-                              {m}
-                            </label>
-                          {/each}
-                        </div>
-                      {:else if cond.type === 'date_range'}
-                        <div class="flex items-center gap-2">
-                          <input type="date" class="text-xs w-36" bind:value={cond.start} />
-                          <span class="text-xs text-text-muted">to</span>
-                          <input type="date" class="text-xs w-36" bind:value={cond.end} />
-                        </div>
-                      {/if}
-                    </div>
-
-                    <button type="button" class="p-1 text-text-muted hover:text-red-400" disabled={editRule.conditions_json.length <= 1}
-                      title="Remove condition" onclick={() => removeCondition(editRule, ci)}>
-                      <X size={14} />
-                    </button>
-                  </div>
-                {/each}
-              </div>
-              <button type="button" class="text-xs text-accent hover:underline mt-2" onclick={() => addCondition(editRule)}>
-                + Add Condition
-              </button>
-            </fieldset>
-
-            <div class="flex gap-2">
-              <button type="submit" class="btn-primary text-sm" disabled={saving}>Save</button>
-              <button type="button" class="btn-secondary text-sm" onclick={() => editingId = null}>Cancel</button>
-            </div>
-          </form>
+          <div class="mt-4">
+            <RuleForm
+              mode="edit"
+              bind:rule={editRule}
+              {prayer}
+              adhaanTime={chain?.adhaan ?? ''}
+              existingRules={existingRulesExcluding(prayer, editingId!)}
+              onSave={saveEdit}
+              onCancel={() => editingId = null}
+              {saving}
+              submitLabel="Save"
+            />
+          </div>
         {/if}
       </div>
     {/each}
 
     {#if !error}
       <div class="bg-surface border border-border rounded-xl p-5 mt-6">
-        <button class="flex items-center gap-2 text-text-muted hover:text-text text-sm" onclick={() => showDryRun = !showDryRun}>
+        <button class="flex items-center gap-2 text-text-muted hover:text-text text-sm font-medium" onclick={() => showDryRun = !showDryRun}>
           <Play size={16} />
           Dry-Run Simulator
+          <span class="text-xs text-text-dim">— test any date</span>
         </button>
         {#if showDryRun}
           <div class="mt-4 space-y-3">
             <div class="flex gap-3 items-end">
               <div class="form-group flex-1">
-                <label>Date (optional, defaults to today)</label>
-                <input type="date" class="w-full text-sm" bind:value={dryRunDate} />
+                <label for="dryrun-date">Date (optional, defaults to today)</label>
+                <input id="dryrun-date" type="date" class="w-full text-sm" bind:value={dryRunDate} />
               </div>
               <button class="btn-primary text-sm" disabled={runningDryRun} onclick={runDryRun}>
                 {runningDryRun ? 'Running...' : 'Run'}
               </button>
             </div>
-            {#if dryRunResult}
-              <div class="bg-bg rounded-lg p-4 font-mono text-xs text-text-muted whitespace-pre overflow-x-auto">
-                {JSON.stringify(dryRunResult, null, 2)}
+
+            {#if dryRunError && !dryRunResult}
+              <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+                <p class="text-red-400 text-sm font-medium">Computation failed</p>
+                <p class="text-red-400/70 text-xs mt-1 font-mono">{dryRunError}</p>
+                <p class="text-red-400/60 text-xs mt-2">
+                  This usually means your prayer config (coordinates, timezone, calculation method) produces
+                  times that cannot be ordered correctly, or a rule's action creates an invalid result.
+                  Check the pipeline above for today's values, then try adjusting your settings.
+                </p>
               </div>
+            {/if}
+
+            {#if dryRunResult}
+              {#if dryRunResult._error}
+                <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-3">
+                  <p class="text-amber-400 text-xs font-medium">Error: {dryRunResult._error}</p>
+                  <p class="text-amber-400/60 text-xs mt-1">Showing partial computation below</p>
+                </div>
+              {/if}
+
+              {#if dryRunResult.chains}
+                <div class="space-y-4">
+                  <div class="text-xs text-text-muted">
+                    Date: <span class="font-mono text-text">{dryRunResult.date}</span>
+                    {#if dryRunResult.hijri}
+                      &middot; Hijri: <span class="font-mono text-text">{dryRunResult.hijri.month}/{dryRunResult.hijri.day}/{dryRunResult.hijri.year}</span>
+                    {/if}
+                    &middot; Sunrise: <span class="font-mono text-text">{dryRunResult.sunrise}</span>
+                  </div>
+                  {#each prayers as prayer}
+                    {@const chain = dryRunResult.chains[prayer]}
+                    {#if chain}
+                      <div class="rounded-lg border border-border bg-bg/50 p-4 font-mono text-xs">
+                        <div class="flex items-center gap-2 mb-2">
+                          <span class="font-heading font-semibold text-sm capitalize">{prayer}</span>
+                          <span class="text-text-muted">Adhaan:</span>
+                          <span class="font-mono">{chain.adhaan}</span>
+                          <span class="mx-1">&rarr;</span>
+                          <span class="text-text-muted">Iqaamah:</span>
+                          <span class="font-mono text-accent font-bold">{chain.iqaamah}</span>
+                        </div>
+                        {#each chain.rules as cr, cri (cr.id)}
+                          <div class="flex items-start gap-2 py-1.5 border-t border-border/50 first:border-t-0 {!cr.matched ? 'opacity-50' : ''}">
+                            <span class="text-text-dim font-mono w-6 text-right">{cr.order + 1}</span>
+                            <div class="flex-1">
+                              <span class="font-medium">{cr.rule_name || '(unnamed)'}</span>
+                              {#if cr.matched}
+                                <span class="ml-1 text-green-500">&check;</span>
+                                <span class="mx-1 text-text-dim">— {actionSummary(cr.action_json)} —</span>
+                                <span class="font-mono">{cr.input_time} &rarr; <span class="text-accent">{cr.output_time}</span></span>
+                              {:else}
+                                <span class="ml-1 text-text-dim">— skipped {!cr.enabled ? '(disabled)' : '(not matched)'}</span>
+                              {/if}
+                            </div>
+                          </div>
+                        {/each}
+                      </div>
+                    {/if}
+                  {/each}
+                </div>
+              {:else}
+                <div class="bg-bg rounded-lg p-4 font-mono text-xs text-text-muted whitespace-pre overflow-x-auto">
+                  {JSON.stringify(dryRunResult, null, 2)}
+                </div>
+              {/if}
             {/if}
           </div>
         {/if}

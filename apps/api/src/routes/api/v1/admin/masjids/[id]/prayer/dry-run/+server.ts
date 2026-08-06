@@ -3,7 +3,8 @@ import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { masjids, prayerRules } from '$lib/server/db/schema';
 import { eq, asc, and } from 'drizzle-orm';
-import { computeIqaamah, applyAction, allConditionsMatch } from '$lib/server/prayer/engine';
+import { applyAction, allConditionsMatch } from '$lib/server/prayer/engine';
+import { computeIqaamah, type ComputedTimes, type PrayerName, type PrayerTimeResult } from '$lib/server/prayer/engine';
 import { computeHijriDate } from '$lib/server/prayer/hijri';
 import { calculateAdhaan } from '$lib/server/prayer/adhaan';
 import type { Condition, Action } from '@masjid/schemas';
@@ -33,6 +34,25 @@ const DryRunSchema = z.object({
   timezone: z.string().optional(),
   rule_overrides: z.array(RuleOverrideSchema).optional(),
 });
+
+interface RuleChainEntry {
+  id: string;
+  order: number;
+  rule_name: string;
+  conditions_json: Condition[];
+  action_json: Action;
+  enabled: boolean;
+  matched: boolean;
+  input_time: string;
+  output_time: string;
+}
+
+interface PrayerChain {
+  adhaan: string;
+  iqaamah: string;
+  right_after_adhaan: boolean;
+  rules: RuleChainEntry[];
+}
 
 export const POST: RequestHandler = async ({ params, request, locals, platform }) => {
   if (!locals.admin) {
@@ -93,15 +113,39 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
     };
 
     const date = body.date ? new Date(body.date + 'T12:00:00Z') : new Date();
+    const dateStr = date.toISOString().slice(0, 10);
+    const hijriDate = computeHijriDate(date);
+    const adhaan = calculateAdhaan(config, date);
 
-    if (body.rule_overrides && body.rule_overrides.length > 0) {
-      const overrides = body.rule_overrides;
-      const computed = await computeTimesWithOverrides(config, date, overrides, db);
-      return JsonResponse({ date: date.toISOString().slice(0, 10), ...computed });
+    try {
+      const chains = await computeDryRunChains(config, date, hijriDate, adhaan, db, body.rule_overrides);
+
+      return JsonResponse({
+        date: dateStr,
+        hijri: hijriDate,
+        sunrise: adhaan.sunrise,
+        ...(adhaan.asr_secondary ? { asr_secondary: adhaan.asr_secondary } : {}),
+        chains,
+      });
+    } catch (chainError: unknown) {
+      const errorMessage = chainError instanceof Error ? chainError.message : 'Unknown error';
+      let partialChains: Record<string, PrayerChain | null> = {};
+
+      try {
+        partialChains = await computeDryRunChainsGraceful(config, date, hijriDate, adhaan, db, body.rule_overrides);
+      } catch {
+        // even graceful computation failed
+      }
+
+      return JsonResponse({
+        date: dateStr,
+        hijri: hijriDate,
+        sunrise: adhaan.sunrise,
+        ...(adhaan.asr_secondary ? { asr_secondary: adhaan.asr_secondary } : {}),
+        chains: partialChains,
+        _error: errorMessage,
+      });
     }
-
-    const computed = await computeIqaamah(config, date, db);
-    return JsonResponse({ date: date.toISOString().slice(0, 10), ...computed });
   } catch (e: unknown) {
     if (e instanceof Error && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
@@ -113,32 +157,32 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
   }
 };
 
-async function computeTimesWithOverrides(
+async function computeDryRunChains(
   config: { id: string; calculation_method: number; fajr_angle: number | null; isha_angle: number | null; adjust_fajr: number; adjust_sunrise: number; adjust_dhuhr: number; adjust_asr: number; adjust_maghrib: number; adjust_isha: number; latitude: number; longitude: number; timezone: string; asr_madhab: string; high_latitude_rule: string; show_dual_asr: boolean },
   date: Date,
-  overrides: z.infer<typeof RuleOverrideSchema>[],
+  hijriDate: ReturnType<typeof computeHijriDate>,
+  adhaan: ReturnType<typeof calculateAdhaan>,
   db: ReturnType<typeof getDb>,
-): Promise<Record<string, unknown>> {
-  const adhaan = calculateAdhaan(config, date);
-  const hijriDate = computeHijriDate(date);
-  const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
-  const result: Record<string, { adhaan: string; iqaamah: string; right_after_adhaan?: boolean }> = {};
-  const resultObj: Record<string, unknown> = { sunrise: adhaan.sunrise };
+  ruleOverrides?: z.infer<typeof RuleOverrideSchema>[],
+): Promise<Record<string, PrayerChain | null>> {
+  const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as PrayerName[];
+  const chains: Record<string, PrayerChain | null> = {};
+  const computedTimes = { sunrise: adhaan.sunrise } as ComputedTimes;
 
   for (const prayer of prayers) {
     const adhaanTime = adhaan[prayer];
     let iqaamahTime = adhaanTime;
     let rightAfterAdhaan = false;
 
-    const dbRules = await db
+    const rules = await db
       .select()
       .from(prayerRules)
       .where(and(eq(prayerRules.masjidId, config.id), eq(prayerRules.prayerName, prayer)))
       .orderBy(asc(prayerRules.executionOrder));
 
-    const allRules: { executionOrder: number; conditions: Condition[]; action: Action }[] = [];
+    const allRules: { id: string; executionOrder: number; ruleName: string; conditions: Condition[]; action: Action; enabled: boolean }[] = [];
 
-    for (const rule of dbRules) {
+    for (const rule of rules) {
       let conditions: Condition[];
       let action: Action;
       try {
@@ -147,33 +191,191 @@ async function computeTimesWithOverrides(
       } catch {
         continue;
       }
-      allRules.push({ executionOrder: rule.executionOrder, conditions, action });
+      allRules.push({
+        id: rule.id,
+        executionOrder: rule.executionOrder,
+        ruleName: rule.ruleName,
+        conditions,
+        action,
+        enabled: rule.enabled !== false,
+      });
     }
 
-    for (const override of overrides.filter(o => o.prayer_name === prayer)) {
-      allRules.push({
-        executionOrder: override.execution_order,
-        conditions: override.conditions_json as Condition[],
-        action: override.action_json as Action,
-      });
+    if (ruleOverrides) {
+      for (const override of ruleOverrides.filter(o => o.prayer_name === prayer)) {
+        allRules.push({
+          id: `override-${override.execution_order}`,
+          executionOrder: override.execution_order,
+          ruleName: `Override ${override.execution_order}`,
+          conditions: override.conditions_json as Condition[],
+          action: override.action_json as Action,
+          enabled: true,
+        });
+      }
     }
 
     allRules.sort((a, b) => a.executionOrder - b.executionOrder);
 
+    const ruleEntries: RuleChainEntry[] = [];
     let currentTime = adhaanTime;
+
     for (const rule of allRules) {
-      if (allConditionsMatch(rule.conditions, date, hijriDate)) {
-        currentTime = applyAction(rule.action, currentTime);
-        if (rule.action.type === 'right_after_adhaan') {
-          rightAfterAdhaan = true;
-        }
+      const matched = rule.enabled && allConditionsMatch(rule.conditions, date, hijriDate, currentTime);
+      const nextTime = matched ? applyAction(rule.action, currentTime, computedTimes) : currentTime;
+
+      if (matched && rule.action.type === 'right_after_adhaan') {
+        rightAfterAdhaan = true;
+      }
+
+      ruleEntries.push({
+        id: rule.id,
+        order: rule.executionOrder,
+        rule_name: rule.ruleName,
+        conditions_json: rule.conditions,
+        action_json: rule.action,
+        enabled: rule.enabled,
+        matched,
+        input_time: currentTime,
+        output_time: nextTime,
+      });
+
+      if (matched) {
+        currentTime = nextTime;
       }
     }
-    iqaamahTime = currentTime;
 
-    result[prayer] = { adhaan: adhaanTime, iqaamah: iqaamahTime, right_after_adhaan: rightAfterAdhaan };
-    resultObj[prayer] = { adhaan: adhaanTime, iqaamah: iqaamahTime };
+    iqaamahTime = currentTime;
+    chains[prayer] = {
+      adhaan: adhaanTime,
+      iqaamah: iqaamahTime,
+      right_after_adhaan: rightAfterAdhaan,
+      rules: ruleEntries,
+    };
+
+    const result: PrayerTimeResult = { adhaan: adhaanTime, iqaamah: iqaamahTime, right_after_adhaan: rightAfterAdhaan };
+    computedTimes[prayer] = result;
   }
 
-  return resultObj;
+  return chains;
+}
+
+async function computeDryRunChainsGraceful(
+  config: { id: string; calculation_method: number; fajr_angle: number | null; isha_angle: number | null; adjust_fajr: number; adjust_sunrise: number; adjust_dhuhr: number; adjust_asr: number; adjust_maghrib: number; adjust_isha: number; latitude: number; longitude: number; timezone: string; asr_madhab: string; high_latitude_rule: string; show_dual_asr: boolean },
+  date: Date,
+  hijriDate: ReturnType<typeof computeHijriDate>,
+  adhaan: ReturnType<typeof calculateAdhaan>,
+  db: ReturnType<typeof getDb>,
+  ruleOverrides?: z.infer<typeof RuleOverrideSchema>[],
+): Promise<Record<string, PrayerChain | null>> {
+  const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as PrayerName[];
+  const chains: Record<string, PrayerChain | null> = {};
+  const computedTimes = { sunrise: adhaan.sunrise } as ComputedTimes;
+
+  for (const prayer of prayers) {
+    try {
+      const adhaanTime = adhaan[prayer];
+      let iqaamahTime = adhaanTime;
+      let rightAfterAdhaan = false;
+
+      const rules = await db
+        .select()
+        .from(prayerRules)
+        .where(and(eq(prayerRules.masjidId, config.id), eq(prayerRules.prayerName, prayer)))
+        .orderBy(asc(prayerRules.executionOrder));
+
+      const allRules: { id: string; executionOrder: number; ruleName: string; conditions: Condition[]; action: Action; enabled: boolean }[] = [];
+
+      for (const rule of rules) {
+        let conditions: Condition[];
+        let action: Action;
+        try {
+          conditions = JSON.parse(rule.conditionsJson);
+          action = JSON.parse(rule.actionJson);
+        } catch {
+          continue;
+        }
+        allRules.push({
+          id: rule.id,
+          executionOrder: rule.executionOrder,
+          ruleName: rule.ruleName,
+          conditions,
+          action,
+          enabled: rule.enabled !== false,
+        });
+      }
+
+      if (ruleOverrides) {
+        for (const override of ruleOverrides.filter(o => o.prayer_name === prayer)) {
+          allRules.push({
+            id: `override-${override.execution_order}`,
+            executionOrder: override.execution_order,
+            ruleName: `Override ${override.execution_order}`,
+            conditions: override.conditions_json as Condition[],
+            action: override.action_json as Action,
+            enabled: true,
+          });
+        }
+      }
+
+      allRules.sort((a, b) => a.executionOrder - b.executionOrder);
+
+      const ruleEntries: RuleChainEntry[] = [];
+      let currentTime = adhaanTime;
+
+      for (const rule of allRules) {
+        try {
+          const matched = rule.enabled && allConditionsMatch(rule.conditions, date, hijriDate, currentTime);
+          const nextTime = matched ? applyAction(rule.action, currentTime, computedTimes) : currentTime;
+
+          if (matched && rule.action.type === 'right_after_adhaan') {
+            rightAfterAdhaan = true;
+          }
+
+          ruleEntries.push({
+            id: rule.id,
+            order: rule.executionOrder,
+            rule_name: rule.ruleName,
+            conditions_json: rule.conditions,
+            action_json: rule.action,
+            enabled: rule.enabled,
+            matched,
+            input_time: currentTime,
+            output_time: nextTime,
+          });
+
+          if (matched) {
+            currentTime = nextTime;
+          }
+        } catch {
+          ruleEntries.push({
+            id: rule.id,
+            order: rule.executionOrder,
+            rule_name: rule.ruleName,
+            conditions_json: rule.conditions,
+            action_json: rule.action,
+            enabled: rule.enabled,
+            matched: true,
+            input_time: currentTime,
+            output_time: 'ERROR',
+          });
+          break;
+        }
+      }
+
+      iqaamahTime = currentTime;
+      chains[prayer] = {
+        adhaan: adhaanTime,
+        iqaamah: iqaamahTime,
+        right_after_adhaan: rightAfterAdhaan,
+        rules: ruleEntries,
+      };
+
+      const result: PrayerTimeResult = { adhaan: adhaanTime, iqaamah: iqaamahTime, right_after_adhaan: rightAfterAdhaan };
+      computedTimes[prayer] = result;
+    } catch {
+      chains[prayer] = null;
+    }
+  }
+
+  return chains;
 }
