@@ -68,7 +68,7 @@ npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 
 npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
 npm run test:consumer    # Consumer frontend, 83 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
-npm run test:sw          # Service worker integration, 26 tests (Playwright, requires running dev servers)
+npm run test:sw          # Service worker removal tests, 12 (Playwright, requires running dev servers)
 npm run test:agent       # Agent package tests (pending: ~175 expected)
 npm run test:admin       # Admin app tests, 115 tests (jsdom + testing-library)
 npm run test:tooling     # Tooling tests (merge-pages, build integrity — 13 tests)
@@ -133,28 +133,33 @@ masjid/
 - **Admin routes**: Moved under `admin/masjids/[id]/...` to avoid route conflict with public `masjids/[slug]`.
 - **Board endpoint**: `GET /api/v1/masjids/{slug}/board` returns today + 7 upcoming days of prayer times, theme, jumuah, and announcements in a single request. The TV frontend uses this instead of 8 separate API calls.
 
-## Consumer service worker (`static/sw.js`)
+## Consumer service worker — REMOVED (2026-08)
 
-Hardened after the July 2026 hydration bug (see `docs/consumer-service-worker.md`).
+The consumer app **no longer registers a service worker** (caching had already
+been disabled; push was never wired up; a root-scope SW controls all 3 apps on
+the unified origin — too much blast radius for zero benefit). PWA
+installability is unaffected (manifest + HTTPS suffice). Full story + re-add
+checklist: `docs/consumer-service-worker.md`.
 
-### Key hardening features
-- **Versioned cache**: `CACHE_NAME = 'masjid-consumer-__BUILD_HASH__'` replaced at build time via Vite plugin (dev) or `scripts/sw-hash.js` postbuild script
-- **Scheme guard**: Early return for non-`http:`/`https:` URLs (prevents `chrome-extension://` crash)
-- **Method guard**: Only intercepts `GET` requests
-- **Navigation guard**: Skips `navigate` mode requests (prevents index.html caching)
-- **Origin guard**: Only caches same-origin assets (no third-party CDN pollution)
-- **Opaque guard**: Skips opaque responses (status 0, can't be cached)
-- **Cache limit**: Trims to MAX_CACHE_ENTRIES (100) to prevent unbounded growth
-- **`/sw-kill` self-destruct**: `fetch('/sw-kill')` unregisters SW and clears all caches
-- **Error surfacing**: Cache failures are `postMessage`d to controlled clients
-- **Health check**: Page can send `{ type: 'health-check' }` to get cache stats
-- **Update detection**: `app.html` listens for new SW version via `updatefound` event
-- **SW bypass on kill path**: `app.html` skips registration when URL contains `/sw-kill`
+What remains, **permanently**:
 
-### Build pipeline
-- **Dev**: Vite plugin middleware intercepts `/sw.js`, replaces `__BUILD_HASH__` with random string
-- **Build**: `closeBundle` hook replaces hash in `build/sw.js`, then `postbuild` script (`scripts/sw-hash.js`) does it again as a safety net
-- **Integration tests**: `apps/consumer/tests/sw-integration.test.js` (Playwright, 26 tests)
+- **Suicide worker** (`apps/consumer/static/sw.js`): purges all CacheStorage
+  caches and unregisters itself on activate; no fetch handler. Served
+  `no-store`, so old installs self-heal on their next visit. Never delete it.
+- **`/sw-kill` recovery hatch**: served by the **gateway worker** before SPA
+  routing (one canonical URL for all 3 apps — app-shell kill scripts were
+  unreachable in prod since `/sw-kill` always routed to the consumer shell).
+  Unregisters all SWs, purges caches, redirects to `/`. Permanent
+  infrastructure.
+
+Caching is HTTP-only now, configured in ONE place (`tooling/merge-pages.js` →
+`.merged/_headers` + gateway code): `/_app/immutable/*` immutable; SPA
+fallbacks + `/sw.js` + direct `/__*_spa.html` hits no-store; unversioned root
+statics (`/manifest.json`, `/icon-*.png`) `max-age=3600`; **asset-like misses
+get a real 404 + no-store from the gateway** (serving SPA HTML for a missing
+chunk made browsers parse markup as JS). Per-app `static/_headers` files are
+non-canonical (consumer/TV keep security headers only; admin's was deleted —
+its `/*.js`/`/*.json` immutable patterns were a standalone-deploy footgun).
 
 ### Theme & display settings (extensible, per-masjid)
 - **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV. Also hosts the shared Mishkaat modules: `components/Rosette.svelte` + `components/StarBand.svelte` (subpath exports `@masjid/ui-utils/components/*`), `arch.ts` (canonical mihrab geometry), `ceremony.ts` (`computeCeremony`, `getAmbientPhase`, Hijri helpers — TV re-exports via `$lib/ceremony`), `hadith.ts` (collection + `hadithTagsForContext`).
@@ -403,7 +408,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 - **All LLM calls go through the API server** — the project's single API key is used server-side
 - **Tailwind v4** CSS-first config in `app.css`
 - **svelte-sonner** for toast notifications, **lucide-svelte** for icons
-- **No service worker** — browser cache is sufficient. There is no `navigator.serviceWorker.register()` call and no `static/sw.js`; the admin app does not currently need offline support or push notifications. A stale SW-like poisoning risk from the catch-all `Cache-Control` header in `static/_headers` was fixed (see `docs/admin-cache-poisoning.md`), and a page-level `/sw-kill` cleanup route is included in `app.html` for recovery.
+- **No service worker** — browser cache is sufficient. There is no `navigator.serviceWorker.register()` call and no `static/sw.js`; the admin app does not currently need offline support or push notifications. A stale SW-like poisoning risk from the catch-all `Cache-Control` header in `static/_headers` was fixed (see `docs/admin-cache-poisoning.md`); the admin `_headers` file was later deleted (2026-08) because canonical headers live in `tooling/merge-pages.js`. Recovery uses the origin-wide `/sw-kill` gateway route.
 
 ## Maktab Registration (`apps/api`)
 
@@ -914,3 +919,26 @@ slug TV display retrying 404) never reach idle state → 30s timeout.
 **How we fixed it**: Never use `networkidle` by default. Stick with `'load'`
 + the `data-hydrated` signal. For pages that need `networkidle`, use the
 `waitUntil` option on `visitPage`.
+
+### 34. Gateway asset-miss 404 + canonical `/sw-kill` (2026-08-06)
+
+**Pitfall**: (a) The gateway returned the SPA shell with 200 for ANY
+unmatched path — including `/_app/immutable/chunks/<deleted>.js`. Stale HTML
+referencing a gone chunk made the browser parse markup as JavaScript
+(white-screen class). (b) App-level `/sw-kill` scripts were unreachable in
+production: `/sw-kill` always routed to the consumer SPA fallback, so the
+admin shell's kill script could never run, and the consumer shell's no
+longer did anything.
+
+**How we fixed it**: The gateway 404s asset-like misses (file extension in
+the final segment, or under `/_app/`) with `no-store`, and serves a
+permanent origin-wide `/sw-kill` recovery page before SPA routing. The
+consumer SW was removed entirely (suicide worker kept at `/sw.js` to heal
+old installs). Canonical caching headers live ONLY in
+`tooling/merge-pages.js` → `.merged/_headers`; per-app `static/_headers`
+files are non-authoritative (admin's was deleted).
+
+**Key rule**: Cache-Control belongs on narrow patterns only; HTML is always
+no-store; only content-hashed paths are immutable; unversioned statics get a
+short bounded `max-age`; missing assets 404. See
+`docs/consumer-service-worker.md` for the full caching table.

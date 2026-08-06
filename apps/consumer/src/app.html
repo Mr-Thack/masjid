@@ -26,15 +26,11 @@
         </div>
       </div>
     </noscript>
-    <script>
-      // Service worker disabled — ALL caching turned off.
-      // Existing SW registrations will auto-update to the pass-through
-      // version on next page load, which no longer caches anything.
-      if ('serviceWorker' in navigator && !/sw-kill/.test(location.pathname)) {
-        navigator.serviceWorker.register('/sw.js').catch(function (err) {
-          console.warn('[sw] Registration failed:', err);
-        });
-      }
-    </script>
+    <!--
+      No service worker is registered here (removed 2026-08; see
+      docs/consumer-service-worker.md). /sw.js still serves a self-removing
+      "suicide worker" that heals old installs, and /sw-kill (gateway route)
+      is the permanent manual recovery hatch.
+    -->
   </body>
 </html>

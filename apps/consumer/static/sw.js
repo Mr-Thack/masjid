@@ -1,117 +1,41 @@
 // ---------------------------------------------------------------------------
-// Service worker for Masjid consumer PWA
+// Masjid consumer — service worker REMOVAL worker ("suicide worker")
 //
-// - Push notification handler
-// - Notification click — focus existing window or open new one
-// - Message — respond to page health-check requests
-// - ALL request caching is DISABLED — fetch events pass through to the browser
-// ---------------------------------------------------------------------------
-
-const CACHE_NAME = 'masjid-consumer-nocache';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Notify all controlled clients of an event (error, health, etc.) */
-async function postToClients(message) {
-  const clients = await self.clients.matchAll({ type: 'window' });
-  for (const client of clients) {
-    client.postMessage(message);
-  }
-}
-
-/** Collect cache stats for health checks */
-async function getCacheStats() {
-  const cache = await caches.open(CACHE_NAME);
-  const keys = await cache.keys();
-  return { name: CACHE_NAME, count: keys.length, urls: keys.map((r) => r.url) };
-}
-
-// ---------------------------------------------------------------------------
-// Install
+// The consumer app no longer registers a service worker (push/offline were
+// never wired up; a purpose-built, hardened worker will return with the real
+// PWA feature work — see docs/consumer-service-worker.md).
+//
+// This file exists to heal browsers that still carry an older worker:
+// because /sw.js is served with no-store, any existing registration picks up
+// this version on its next update check — which purges every CacheStorage
+// cache for the origin and then unregisters itself.
+//
+// KEEP SERVING THIS FILE INDEFINITELY. It costs nothing, intercepts nothing
+// (no fetch handler), and heals dormant installs whenever they return.
+// The manual escape hatch is /sw-kill (served by the gateway worker before
+// SPA routing — works for all apps on the origin).
 // ---------------------------------------------------------------------------
 
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-// ---------------------------------------------------------------------------
-// Activate — purge old cache versions, claim clients
-// ---------------------------------------------------------------------------
-
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(
-        names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)),
-      ),
-    ).catch((err) => {
-      console.warn('[sw] activate: failed to purge old caches', err);
-    }),
-  );
-  self.clients.claim();
-});
-
-// ---------------------------------------------------------------------------
-// Fetch — PASS-THROUGH ONLY, no caching, no interception
-// ---------------------------------------------------------------------------
-
-self.addEventListener('fetch', (event) => {
-  // All requests pass through to the browser's native network handling.
-  // No respondWith() call means the browser handles the request normally.
-  // The event listener exists only so we can add logging if needed;
-  // it never caches, never blocks, never returns error responses.
-});
-
-// ---------------------------------------------------------------------------
-// Push notifications
-// ---------------------------------------------------------------------------
-
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-
-  try {
-    const data = event.data.json();
-    event.waitUntil(
-      self.registration.showNotification(data.title, {
-        body: data.body,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        data: { url: data.url },
-      }),
-    );
-  } catch {
-    // Ignore malformed push payloads
-  }
-});
-
-// ---------------------------------------------------------------------------
-// Notification click — focus existing window or open new one
-// ---------------------------------------------------------------------------
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const url = event.notification.data?.url || '/';
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window' }).then((clients) => {
-      const existing = clients.find((c) => c.url.includes(url));
-      if (existing) return existing.focus();
-      return self.clients.openWindow(url);
-    }).catch((err) => {
-      console.warn('[sw] notificationclick failed', err);
-    }),
+    (async () => {
+      try {
+        const names = await caches.keys();
+        await Promise.all(names.map((n) => caches.delete(n)));
+      } catch (err) {
+        console.warn('[sw] cache purge failed', err);
+      }
+      try {
+        await self.registration.unregister();
+      } catch (err) {
+        console.warn('[sw] unregister failed', err);
+      }
+    })(),
   );
 });
 
-// ---------------------------------------------------------------------------
-// Message — respond to page health-check requests
-// ---------------------------------------------------------------------------
-
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'health-check') {
-    getCacheStats().then((stats) => {
-      event.source?.postMessage({ type: 'health-check-result', stats });
-    });
-  }
-});
+// Deliberately NO fetch handler: nothing is intercepted, nothing is cached.

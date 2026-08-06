@@ -1,3 +1,8 @@
+# NOTE: production serves this app via the merged masjid-live Pages project,
+# whose canonical _headers is written by tooling/merge-pages.js. This file
+# only applies to a standalone Pages deploy of this app (none today).
+# Never put Cache-Control on broad patterns here — Cloudflare COMBINES all
+# matching rules (see docs/unified-deploy.md lesson 2).
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff

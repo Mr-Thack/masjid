@@ -1,5 +1,12 @@
 // ---------------------------------------------------------------------------
-// Integration tests for service worker
+// Integration tests for the service-worker REMOVAL strategy
+//
+// The consumer app no longer registers a service worker. What remains:
+//   - /sw.js serves a "suicide worker" that heals old installs (purges all
+//     CacheStorage caches, then unregisters itself). Kept indefinitely.
+//   - /sw-kill is a permanent gateway-served recovery page (tested against
+//     deployed envs in tests/e2e/deploy.test.js — there is no gateway in
+//     vite dev, so it is not asserted here).
 //
 // Prerequisites: consumer dev server running on localhost:5175
 //                and API server running on localhost:5173
@@ -9,7 +16,7 @@
 
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:5175';
+const BASE = process.env.SW_TEST_BASE || 'http://localhost:5175';
 const MASJID = '/masjid-al-noor';
 let browser;
 let passed = 0;
@@ -26,14 +33,14 @@ function assert(condition, label) {
 }
 
 async function main() {
-  console.log('\n=== Service Worker Integration Tests ===\n');
+  console.log('\n=== Service Worker Removal Tests ===\n');
 
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
 
   // -----------------------------------------------------------------------
-  // Test 1: SW registers on page load
+  // Test 1: page load registers NO service worker
   // -----------------------------------------------------------------------
-  console.log('1. SW registration');
+  console.log('1. No SW registration on page load');
   {
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -42,346 +49,128 @@ async function main() {
     await page.waitForTimeout(3000);
 
     const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'at least one SW registered');
+    assert(workers.length === 0, `no SW registered after page load (got ${workers.length})`);
 
-    const sw = workers[0];
-    const scriptUrl = sw.url();
-    assert(scriptUrl.endsWith('/sw.js'), `SW script URL ends with /sw.js (got ${scriptUrl})`);
-
-    const state = await sw.evaluate(() => self.registration?.active?.state);
-    console.log(`    SW state: ${state}`);
-    assert(state === 'activated', `SW is activated (got ${state})`);
-
-    await context.close();
-  }
-
-  // -----------------------------------------------------------------------
-  // Test 2: Cache name is versioned (no __BUILD_HASH__ placeholder)
-  // -----------------------------------------------------------------------
-  console.log('2. Cache name versioning');
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(2000);
-
-    const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    const cacheNames = await workers[0].evaluate(() => caches.keys());
-    console.log(`    Cache names: ${JSON.stringify(cacheNames)}`);
-
-    assert(cacheNames.length >= 1, 'at least one cache exists');
-    assert(
-      cacheNames.some((n) => n.startsWith('masjid-consumer-') && !n.includes('__BUILD_HASH__')),
-      'cache name is versioned (no placeholder)',
-    );
-
-    await context.close();
-  }
-
-  // -----------------------------------------------------------------------
-  // Test 3: /sw-kill self-destruct unregisters SW and clears caches
-  // -----------------------------------------------------------------------
-  console.log('3. /sw-kill self-destruct');
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
-
-    let workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered before kill');
-
-    // The SW's fetch handler intercepts /sw-kill for non-navigation requests.
-    // We trigger it via page.evaluate (an in-page fetch, not a navigation).
-    const result = await page.evaluate(async () => {
-      const resp = await fetch('/sw-kill');
-      return { status: resp.status, body: await resp.text() };
-    });
-
-    assert(result.status === 200, `/sw-kill fetch returns 200 (got ${result.status})`);
-    assert(result.body.includes('unregistered'), `body confirms unregister: "${result.body}"`);
-
-    // Allow time for unregister to propagate
-    await page.waitForTimeout(4000);
-
-    // Re-check: after unregister, navigator.serviceWorker.getRegistration() should
-    // resolve to undefined. context.serviceWorkers() may still show a stale entry
-    // in some Playwright/Chromium versions, so we check via in-page API.
-    const hasSW = await page.evaluate(async () => {
+    const hasReg = await page.evaluate(async () => {
       const reg = await navigator.serviceWorker.getRegistration();
       return reg !== undefined;
     });
-    assert(!hasSW, `no SW registration after kill (got hasSW=${hasSW})`);
-
-    // Verify caches are empty
-    const cacheKeys = await page.evaluate(() => caches.keys());
-    assert(cacheKeys.length === 0, `all caches cleared (got ${cacheKeys.length})`);
+    assert(!hasReg, 'in-page getRegistration() is undefined');
 
     await context.close();
   }
 
   // -----------------------------------------------------------------------
-  // Test 4: app.html avoids SW registration on /sw-kill path
+  // Test 2: /sw.js serves the suicide worker
   // -----------------------------------------------------------------------
-  console.log('4. SW skipped on /sw-kill path');
+  console.log('2. Suicide worker content');
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-
-    await page.goto(`${BASE}/sw-kill`, { waitUntil: 'load', timeout: 15000 });
-    await page.waitForTimeout(2000);
-
-    const workers = context.serviceWorkers();
-    assert(workers.length === 0, `no SW registered when landing on /sw-kill (got ${workers.length})`);
-
-    await context.close();
-  }
-
-  // -----------------------------------------------------------------------
-  // Test 5: Icons are cached after page load
-  // -----------------------------------------------------------------------
-  console.log('5. Icon caching');
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
     await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
 
-    const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    // In dev mode, JS/CSS come from /@ paths (skipped). Icons should still be
-    // cached if the page triggers a fetch for them that goes through the SW.
-    // Force-cache the icon via an explicit fetch to exercise the cache path.
-    // Use icon-512.png (not icon-192.png which is preloaded by <link> in app.html
-    // and may be served from the browser HTTP cache without going through the SW)
-    const fetchResult = await page.evaluate(async () => {
-      // Use a cache-busting query to avoid HTTP cache
-      const resp = await fetch('/icon-512.png?t=' + Date.now());
-      const blob = await resp.blob();
-      return { status: resp.status, ok: resp.ok, size: blob.size, type: resp.type };
+    const result = await page.evaluate(async () => {
+      const resp = await fetch('/sw.js');
+      return {
+        status: resp.status,
+        contentType: resp.headers.get('content-type') || '',
+        body: await resp.text(),
+      };
     });
-    console.log(`    Icon fetch: ${JSON.stringify(fetchResult)}`);
 
-    // Give the SW time to complete cache.put (async after respondWith)
-    await page.waitForTimeout(3000);
-
-    // Check cache from both page context and SW context
-    const pageCache = await page.evaluate(() => caches.keys());
-    console.log(`    Page cache names: ${JSON.stringify(pageCache)}`);
-
-    const allCached = await workers[0].evaluate(() =>
-      caches.keys().then((names) =>
-        Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-      ).then((arrs) => arrs.flat())
+    assert(result.status === 200, `/sw.js → 200 (got ${result.status})`);
+    assert(
+      result.contentType.includes('javascript'),
+      `/sw.js content-type is JavaScript (got "${result.contentType}")`,
     );
-
-    console.log(`    Cached URLs (${allCached.length}): ${allCached.slice(0, 5).join(', ')}${allCached.length > 5 ? '...' : ''}`);
-
-    // Quick debug: open the cache directly and check keys
-    const debugKeys = await workers[0].evaluate(() =>
-      caches.keys().then((names) =>
-        Promise.all(names.map((n) => caches.open(n).then((c) => c.keys())))
-      ).then((arr) => arr.flat().map((r) => r.url))
+    assert(
+      result.body.includes('registration.unregister'),
+      '/sw.js unregisters itself on activate',
     );
-    console.log(`    Debug cached keys: ${JSON.stringify(debugKeys)}`);
-
-    const hasIcon = allCached.some((u) => u.includes('icon-512'));
-    assert(hasIcon, 'icon-512.png is cached');
+    assert(
+      result.body.includes('caches.delete'),
+      '/sw.js purges CacheStorage on activate',
+    );
+    assert(
+      !result.body.includes('__BUILD_HASH__'),
+      '/sw.js contains no __BUILD_HASH__ placeholder',
+    );
+    assert(
+      !result.body.includes("addEventListener('fetch'") &&
+        !result.body.includes('addEventListener("fetch"'),
+      '/sw.js has NO fetch handler (intercepts nothing)',
+    );
 
     await context.close();
   }
 
   // -----------------------------------------------------------------------
-  // Test 6: API requests are not cached
+  // Test 3: suicide worker heals a stale install — purges caches, then
+  // unregisters itself (simulates a browser carrying the OLD worker)
   // -----------------------------------------------------------------------
-  console.log('6. API requests bypass cache');
+  console.log('3. Suicide worker self-removal');
   {
     const context = await browser.newContext();
     const page = await context.newPage();
-
     await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
 
-    const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    const allCached = await workers[0].evaluate(() =>
-      caches.keys().then((names) =>
-        Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-      ).then((arrs) => arrs.flat())
+    // Seed junk state that mimics the old cache-first worker's leftovers.
+    await page.evaluate(async () => {
+      const cache = await caches.open('masjid-consumer-stalejunk');
+      await cache.put('/junk-entry', new Response('stale'));
+    });
+    const seeded = await page.evaluate(() => caches.keys());
+    assert(
+      seeded.includes('masjid-consumer-stalejunk'),
+      `junk cache seeded before registration (got ${JSON.stringify(seeded)})`,
     );
 
-    const hasApiUrls = allCached.some((u) => u.includes('/api/'));
-    assert(!hasApiUrls, 'no API URLs in cache');
+    // Register the suicide worker exactly as an old install would have it.
+    await page.evaluate(() => navigator.serviceWorker.register('/sw.js'));
 
-    await context.close();
-  }
-
-  // -----------------------------------------------------------------------
-  // Test 7: Health-check postMessage between page and SW
-  // -----------------------------------------------------------------------
-  console.log('7. Health-check postMessage');
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
-
-    const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    const healthResult = await page.evaluate(() => {
-      return new Promise((resolve) => {
-        if (!navigator.serviceWorker.controller) {
-          resolve({ error: 'no controlling SW' });
-          return;
-        }
-        const timeout = setTimeout(() => resolve({ error: 'timeout' }), 5000);
-        const handler = (event) => {
-          navigator.serviceWorker.removeEventListener('message', handler);
-          clearTimeout(timeout);
-          resolve(event.data);
-        };
-        navigator.serviceWorker.addEventListener('message', handler);
-        navigator.serviceWorker.controller.postMessage({ type: 'health-check' });
+    // The worker installs → activates → purges caches → unregisters itself.
+    let healed = false;
+    for (let i = 0; i < 40 && !healed; i++) {
+      await page.waitForTimeout(250);
+      healed = await page.evaluate(async () => {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const names = await caches.keys();
+        return reg === undefined && names.length === 0;
       });
-    });
-
-    console.log(`    Health result: ${JSON.stringify(healthResult)}`);
-    assert(
-      healthResult?.type === 'health-check-result',
-      `got health-check-result response (got ${healthResult?.type})`,
-    );
-    assert(
-      healthResult?.stats?.name?.startsWith('masjid-consumer-'),
-      `cache name in stats (got ${healthResult?.stats?.name})`,
-    );
-    assert(typeof healthResult?.stats?.count === 'number', 'cache count is a number');
+    }
+    assert(healed, 'after activate: registration gone AND all caches purged');
 
     await context.close();
   }
 
   // -----------------------------------------------------------------------
-  // Test 8: Navigation requests are not cached
+  // Test 4: page still functions with no SW at all (sanity — the app must
+  // never depend on a worker existing)
   // -----------------------------------------------------------------------
-  console.log('8. Navigation requests not cached');
+  console.log('4. App works with no service worker');
   {
     const context = await browser.newContext();
     const page = await context.newPage();
 
     await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
+    await page.waitForFunction(() => document.documentElement.dataset.hydrated === 'true', { timeout: 30000 });
+
+    const text = await page.evaluate(() => document.body.innerText);
+    assert(text.length > 100, `masjid page rendered content (${text.length} chars)`);
 
     const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    const allCached = await workers[0].evaluate(() =>
-      caches.keys().then((names) =>
-        Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-      ).then((arrs) => arrs.flat())
-    );
-
-    const hasHtml = allCached.some((u) => u.endsWith('/') || u.endsWith('index.html'));
-    assert(!hasHtml, 'no HTML documents in cache');
+    assert(workers.length === 0, 'still no SW after full hydration');
 
     await context.close();
   }
-
-  // -----------------------------------------------------------------------
-  // Test 9: Opaque responses are not cached
-  // -----------------------------------------------------------------------
-  console.log('9. Opaque responses not cached');
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
-
-    const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    // Try to cache a cross-origin resource. The SW should skip opaque responses.
-    const result = await page.evaluate(async () => {
-      try {
-        // Use no-cors mode to force an opaque response
-        await fetch('https://fonts.googleapis.com/css2?family=Test', { mode: 'no-cors' });
-        return 'fetched';
-      } catch {
-        return 'failed';
-      }
-    });
-    console.log(`    Cross-origin fetch result: ${result}`);
-
-    // Verify no opaque response URLs ended up in cache
-    const allCached = await workers[0].evaluate(() =>
-      caches.keys().then((names) =>
-        Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-      ).then((arrs) => arrs.flat())
-    );
-
-    const hasCrossOrigin = allCached.some((u) => u.includes('fonts.googleapis.com'));
-    assert(!hasCrossOrigin, 'no cross-origin URLs in cache');
-
-    await context.close();
-  }
-
-  // -----------------------------------------------------------------------
-  // Test 10: Non-GET requests are not intercepted
-  // -----------------------------------------------------------------------
-  console.log('10. Non-GET requests not cached');
-  {
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto(`${BASE}${MASJID}`, { waitUntil: 'load', timeout: 30000 });
-    await page.waitForTimeout(3000);
-
-    const workers = context.serviceWorkers();
-    assert(workers.length >= 1, 'SW registered');
-
-    // POST to an API endpoint — should pass through uncached
-    const result = await page.evaluate(async () => {
-      try {
-        await fetch('/api/v1/masjids/masjid-al-noor', { method: 'POST' });
-        return 'made POST';
-      } catch {
-        return 'POST failed';
-      }
-    });
-    console.log(`    POST result: ${result}`);
-
-    // Verify nothing new was cached from this
-    const allCached = await workers[0].evaluate(() =>
-      caches.keys().then((names) =>
-        Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-      ).then((arrs) => arrs.flat())
-    );
-
-    // The POST itself shouldn't be cached because the SW skips non-GET methods
-    // We just check that the test didn't crash the SW
-    assert(true, 'POST request handled without SW errors');
-
-    await context.close();
-  }
-
-  // -----------------------------------------------------------------------
-  // Summary
-  // -----------------------------------------------------------------------
-  console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
 
   await browser.close();
+
+  console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
   process.exit(failed > 0 ? 1 : 0);
 }
 
 main().catch((err) => {
-  console.error('Test runner crashed:', err);
+  console.error('Test run failed:', err);
   process.exit(1);
 });

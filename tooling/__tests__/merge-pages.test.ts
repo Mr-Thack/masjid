@@ -63,8 +63,27 @@ describe('merge-pages output', () => {
     expect(headers).toContain('X-Content-Type-Options: nosniff');
     expect(headers).toContain('Cache-Control: public, max-age=31536000, immutable');
     expect(headers).toContain('Cache-Control: no-cache, no-store, must-revalidate');
+    // direct hits of the SPA fallback files must also be no-store
+    expect(headers).toContain('/__consumer_spa.html');
+    expect(headers).toContain('/__tv_spa.html');
+    expect(headers).toContain('/__admin_spa.html');
+    // unversioned root statics: short bounded cache, NEVER immutable
+    expect(headers).toContain('/manifest.json');
+    expect(headers).toContain('Cache-Control: public, max-age=3600');
     // ensure no SPA-poisoning headers
     expect(headers).not.toContain('stale-while-revalidate');
+    // no Cache-Control on the /* catch-all (rules COMBINE — would poison
+    // the immutable rule; this exact bug shipped once)
+    const catchAll = headers.split('\n\n')[0];
+    expect(catchAll).not.toContain('Cache-Control');
+  });
+
+  it('_worker.js serves a permanent /sw-kill hatch and 404s asset misses', () => {
+    const worker = readFileSync(path.join(MERGED, '_worker.js'), 'utf8');
+    expect(worker).toContain("'/sw-kill'");
+    expect(worker).toContain('getRegistrations');
+    expect(worker).toContain('caches.delete');
+    expect(worker).toContain('looksLikeAsset');
   });
 
   it('has consumer static assets', () => {

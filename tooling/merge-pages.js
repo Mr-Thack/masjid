@@ -105,7 +105,10 @@ console.log('Wrote _worker.js (Pages advanced-mode SPA router)');
 // combined (values comma-appended). So never put Cache-Control on a broad
 // pattern like `/*` or `/*.js` — it would poison the immutable rule below
 // (this exact bug shipped once: `no-store` + `immutable` on every chunk).
-// SPA fallbacks (__*_spa.html) get their no-store header from _worker.js.
+// SPA fallbacks served through the router get no-store from _worker.js; the
+// explicit /__*_spa.html rules below cover direct asset hits of those files.
+// Unversioned root statics (icons, manifest) get a short bounded cache —
+// they are NOT content-hashed, so never mark them immutable.
 writeFileSync(
   path.join(MERGED, '_headers'),
   `/*
@@ -120,6 +123,24 @@ writeFileSync(
 
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
+
+/__consumer_spa.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/__tv_spa.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/__admin_spa.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+/icon-192.png
+  Cache-Control: public, max-age=3600
+
+/icon-512.png
+  Cache-Control: public, max-age=3600
 `,
 );
 console.log('Wrote merged _headers');

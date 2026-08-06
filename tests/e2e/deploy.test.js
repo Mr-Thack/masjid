@@ -224,4 +224,44 @@ console.log('\n  DEP-06 SPA fallbacks distinct');
   t.assert(bodies[1] !== bodies[2], 'DEP-06 TV ≠ admin');
 }
 
+// DEP-07 — asset-miss is a real 404, never the SPA shell. Serving HTML for a
+// missing chunk made browsers parse markup as JS (white-screen class).
+console.log('\n  DEP-07 asset-miss 404');
+{
+  const missing = `/_app/immutable/chunks/definitely-missing-${Date.now().toString(36)}.js`;
+  const r = await getResponse(`${cfg.consumer}${missing}`);
+  const ct = r.headers.get('content-type') || '';
+  const cc = r.headers.get('cache-control') || '';
+  t.assert(r.status === 404, `DEP-07 missing chunk → 404 (got ${r.status})`);
+  t.assert(!ct.includes('text/html'), `DEP-07 missing chunk content-type is NOT text/html (got "${ct}")`);
+  t.assert(cc.includes('no-store'), `DEP-07 missing chunk cache-control includes no-store (got "${cc}")`);
+}
+
+// DEP-08 — /sw-kill is the permanent gateway-served recovery hatch
+console.log('\n  DEP-08 /sw-kill recovery hatch');
+{
+  const r = await getResponse(`${cfg.consumer}/sw-kill`);
+  const cc = r.headers.get('cache-control') || '';
+  t.assert(r.status === 200, `DEP-08 /sw-kill → 200 (got ${r.status})`);
+  t.assert(cc.includes('no-store'), `DEP-08 /sw-kill cache-control includes no-store (got "${cc}")`);
+  t.assert(
+    r.text.includes('getRegistrations') && r.text.includes('caches.delete'),
+    'DEP-08 /sw-kill page unregisters service workers and purges caches',
+  );
+}
+
+// DEP-09 — unversioned root statics get a short bounded cache (never immutable)
+console.log('\n  DEP-09 unversioned statics cache headers');
+{
+  for (const p of ['/manifest.json', '/icon-192.png']) {
+    const r = await getResponse(`${cfg.consumer}${p}`);
+    const cc = (r.headers.get('cache-control') || '').replace(/\s+/g, ' ').trim();
+    t.assert(r.status === 200, `DEP-09 ${p} → 200 (got ${r.status})`);
+    t.assert(
+      cc.includes('max-age=3600') && !cc.includes('immutable'),
+      `DEP-09 ${p} short bounded cache, not immutable (got "${cc}")`,
+    );
+  }
+}
+
 process.exit((await t.done()) > 0 ? 1 : 0);
