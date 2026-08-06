@@ -152,8 +152,12 @@ jobs:
       # Read-only smoke vs production. The deploy is already live at this
       # point — a red result pages a human; it does not roll back.
       # (whatsapp/agent vitest suites intentionally not run — currently red.)
+      # Probe replaces blind sleep: waits for the fresh deploy to propagate to
+      # this runner's edge and warms it (see tests/e2e/wait-for-deploy.js).
       - name: Browser E2E smoke vs prod (read-only)
-        run: sleep 30 && npm run test:e2e:prod
+        run: |
+          E2E_ENV=prod node tests/e2e/wait-for-deploy.js consumer
+          npm run test:e2e:prod
 
   summary:
     needs: [d1-drift-check, deploy-workers, deploy-pages, e2e-prod]

@@ -118,7 +118,9 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Deploy integrity (no browser)
-        run: E2E_ENV=staging node tests/e2e/run.js --suite=deploy
+        run: |
+          node tests/e2e/wait-for-deploy.js consumer
+          E2E_ENV=staging node tests/e2e/run.js --suite=deploy
 
   e2e-consumer:
     needs: [deploy-worker-staging, deploy-pages-staging]
@@ -131,7 +133,11 @@ jobs:
       - name: Install Chromium
         run: npx playwright install chromium --with-deps
       - name: Consumer browser E2E
-        run: sleep 30 && E2E_ENV=staging node tests/e2e/run.js --suite=consumer
+        # Probe replaces blind sleep: waits until the runner's edge serves the
+        # fresh deploy (build-id match + chunks real) and warms it (2026-08-06).
+        run: |
+          node tests/e2e/wait-for-deploy.js consumer
+          E2E_ENV=staging node tests/e2e/run.js --suite=consumer
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
@@ -147,7 +153,9 @@ jobs:
       - name: Install Chromium
         run: npx playwright install chromium --with-deps
       - name: TV browser E2E
-        run: sleep 30 && E2E_ENV=staging node tests/e2e/run.js --suite=tv
+        run: |
+          node tests/e2e/wait-for-deploy.js tv
+          E2E_ENV=staging node tests/e2e/run.js --suite=tv
 
   e2e-admin:
     needs: [deploy-worker-staging, deploy-pages-staging]
@@ -160,7 +168,9 @@ jobs:
       - name: Install Chromium
         run: npx playwright install chromium --with-deps
       - name: Admin browser E2E
-        run: sleep 30 && E2E_ENV=staging node tests/e2e/run.js --suite=admin
+        run: |
+          node tests/e2e/wait-for-deploy.js admin
+          E2E_ENV=staging node tests/e2e/run.js --suite=admin
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}

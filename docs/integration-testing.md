@@ -115,9 +115,13 @@ Rules:
 1. **Nothing merges to `master` unless staging CI is green** on that exact
    commit. Merge staging → master fast-forward where possible so the tested
    commit IS the deployed commit.
-2. `e2e-staging` runs AFTER the staging deploy in the same workflow
-   (`sleep 30` first — edge propagation, unified-deploy lesson 7). A red
-   gate = investigate before promoting; the harness already cache-busts
+2. `e2e-staging` runs AFTER the staging deploy in the same workflow. Each
+   browser/deploy job first runs `tests/e2e/wait-for-deploy.js` — a readiness
+   probe that polls until the runner's edge consistently serves the FRESH
+   deploy (build-id meta == `GITHUB_SHA`, immutable chunks return real assets,
+   API `/status` answers), replacing the old blind `sleep 30` (mixed-version
+   edge serving made consumer/tv flake for minutes post-deploy, 2026-08-06).
+   A red gate = investigate before promoting; the harness already cache-busts
    (`?cb=`), so two consecutive reds is a real failure.
 3. `e2e-prod` runs after the prod deploy as a final job in `deploy.yml`.
    The deploy is already live — a red result pages a human, it does not
@@ -255,6 +259,14 @@ with a bare stack trace. The reworked rules:
 6. **Per-suite + per-case timing** is printed in every summary (slowest 3
    cases), and `run.js` prints a suite-timings rollup. Multiple
    `--suite=<name>` flags are honored (CI splits suites across parallel jobs).
+7. **No sleep-based readiness anywhere, including CI YAML.** The deploy
+   workflows call `tests/e2e/wait-for-deploy.js <app>` before each browser/
+   deploy suite: it polls the target until the served `build-id` meta matches
+   `GITHUB_SHA` and every referenced immutable chunk returns a real asset
+   (never 404/HTML), requiring 2 consecutive clean rounds (default cap 240s).
+   This both verifies edge propagation and warms the runner's edge path —
+   a fresh no-store deploy is otherwise slow enough to trip 15s expectation
+   ceilings and the suite watchdog (staging run 31070131044).
 
 ## 6. Test catalog
 
