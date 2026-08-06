@@ -309,14 +309,18 @@ differ LOCALLY (al-noor=mishkaat, al-jabal=sakeenah). REMOTE: prod data
 differs (al-noor is currently sakeenah in prod) — assert presence/valid
 value only, not specific values. r.ok on both visits.
 
-### CON-16 — Service worker lifecycle | P1 | IMPLEMENTED | Class C4
+### CON-16 — Service worker REMOVAL | P1 | IMPLEMENTED | Class C4
 Env: **local + staging only** (`cfg.env !== 'prod'` guard).
-PORT — do not rewrite — the 10 tests in
-`apps/consumer/tests/sw-integration.test.js` into this suite: replace
-hardcoded `http://localhost:5175` with `cfg.consumer` and `MASJID` with
-`/${SLUG_A}`. Keep their assert text. Delete nothing from the original file
-(the npm `test:sw` script still uses it); the port is a copy that stays in
-sync manually — note this in your hand-off.
+The consumer app no longer registers a service worker (2026-08 caching
+consolidation). PORT — do not rewrite — the 4 tests in
+`apps/consumer/tests/sw-integration.test.js` (removal suite, 12 assertions):
+no SW registers on page load; `/sw.js` serves the suicide worker
+(self-unregister + cache purge, no fetch handler, no `__BUILD_HASH__`);
+registering `/sw.js` heals a stale install (caches purged + registration
+gone); the app renders fully with no SW. Replace `BASE` with `cfg.consumer`
+and `MASJID` with `/${SLUG_A}`. Keep their assert text. `/sw-kill` is a
+gateway-served page — remote-only, covered by DEP-08 (no gateway in vite
+dev). The port stays in sync manually — note drift in your hand-off.
 
 ## Suite: TV — `tests/e2e/tv.test.js`
 

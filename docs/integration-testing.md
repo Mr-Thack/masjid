@@ -317,7 +317,7 @@ so sequence those). Merge order: WP4 before/after WP3–6 in any order.
 | `_headers` combine defeats immutable caching (lesson 2, 25) | DEP-03 exact-match |
 | SPA HTML cached at CDN for 7 days (lesson 30) | DEP-01 `no-store` assertion + harness `?cb=` |
 | Wrong SPA for a path after unified cutover (lesson 24) | DEP-01/DEP-06 + per-app render cases |
-| SW cache poisoning / stale consumer shell | CON-16 (ported SW suite) + DEP-04 |
+| SW cache poisoning / stale consumer shell | CON-16 (SW-removal suite: no registration, suicide worker heals old installs) + DEP-04/DEP-08 |
 | Admin page crash post-deploy (cache poisoning doc) | ADM-04 full settings sweep under the zero-error harness |
 | **Workerd-only crash (nodejs_compat / import.meta.dirname / native modules, lessons 1–3)** | **WRK-01/02 against the real staging worker** |
 | **wrangler.toml env misconfig (assets binding not inherited, lesson 7)** | **WRK-01 + first staging deploy (real config exercised)** |

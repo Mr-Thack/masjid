@@ -27,27 +27,6 @@ const cfg = targets();
 const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
 const browser = await launchBrowser();
 
-// Wait for the consumer service worker to become fully ACTIVATED
-// (event-based, no sleeps). Call AFTER the context's 'serviceworker' event
-// already fired. Polls the registration — registration.active.state passes
-// through 'activating' before 'activated'.
-async function waitForSWActive(page) {
-  return page.evaluate(() =>
-    Promise.race([
-      new Promise((resolve) => {
-        const check = () => {
-          navigator.serviceWorker.getRegistration().then((reg) => {
-            if (reg?.active?.state === 'activated') resolve('activated');
-            else setTimeout(check, 100);
-          });
-        };
-        check();
-      }),
-      new Promise((res) => setTimeout(() => res('timeout'), 10000)),
-    ]),
-  );
-}
-
 // CON-01 — root shows the URL-verification notice, never redirects to a masjid
 await testCase(t, 'CON-01', async () => {
   const r = await visitPage(browser, cfg, `${cfg.consumer}/`, { expectText: 'Please Verify Your URL' });
@@ -227,261 +206,120 @@ await testCase(t, 'CON-15', async () => {
   // Presence + valid value (CON-15a/b) is the meaningful smoke contract.
 });
 
-// CON-16 — service worker lifecycle (local + staging only; skip on prod)
-// Ported from apps/consumer/tests/sw-integration.test.js per the swarm work order.
-// Replaces hardcoded http://localhost:5175 with cfg.consumer and MASJID with /${SLUG_A}.
+// CON-16 — service worker REMOVAL (local + staging only; skip on prod)
+// The consumer app no longer registers a service worker (caching is HTTP-only
+// now — see docs/consumer-service-worker.md). What remains permanently:
+//   - /sw.js serves a "suicide worker" that heals old installs (purges all
+//     CacheStorage caches, then unregisters itself; NO fetch handler).
+//   - /sw-kill is a gateway-served recovery page — remote-only, covered by
+//     DEP-08 (there is no gateway in vite dev).
+// Ported from apps/consumer/tests/sw-integration.test.js (removal suite);
+// replace BASE with cfg.consumer and MASJID with /${SLUG_A}.
 if (cfg.env === 'prod') {
   t.skip('CON-16 SW tests', 'prod — SW tests require local/staging');
 } else {
-  // Test 1: SW registers on page load
-  console.log('\n  CON-16.1 SW registration');
+  // Test 1: page load registers NO service worker
+  console.log('\n  CON-16.1 No SW registration on page load');
   await testCase(t, 'CON-16.1', async () => {
     const context = await newContext(browser);
     const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    t.assert(sw !== null, `CON-16.1 at least one SW registered (got ${sw ? 1 : 0})`);
-    if (sw) {
-      const scriptUrl = sw.url();
-      t.assert(scriptUrl.endsWith('/sw.js'), `CON-16.1 SW script URL ends with /sw.js (got ${scriptUrl})`);
-      const state = await waitForSWActive(page);
-      t.assert(state === 'activated', `CON-16.1 SW is activated (got ${state})`);
-    }
+    const b = collectPage(page, cfg);
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}`);
+
+    const workers = context.serviceWorkers();
+    t.assert(workers.length === 0, `no SW registered after page load (got ${workers.length})`);
+
+    const hasReg = await page.evaluate(async () => {
+      const reg = await navigator.serviceWorker.getRegistration();
+      return reg !== undefined;
+    });
+    t.assert(!hasReg, 'in-page getRegistration() is undefined');
     await context.close();
   });
 
-  // Test 2: SW is active and its CACHE_NAME has no __BUILD_HASH__ placeholder.
-  // The nocache SW doesn't create caches eagerly, so we verify via health-check.
-  console.log('  CON-16.2 SW nocache name has no placeholder');
+  // Test 2: /sw.js serves the suicide worker
+  console.log('  CON-16.2 Suicide worker content');
   await testCase(t, 'CON-16.2', async () => {
     const context = await newContext(browser);
     const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    t.assert(sw !== null, `CON-16.2 SW registered (got ${sw ? 1 : 0})`);
-    if (sw) {
-      await waitForSWActive(page);
-      // The nocache SW's CACHE_NAME is 'masjid-consumer-nocache' (confirmed in
-      // static/sw.js:10). Verify through a health-check postMessage.
-      const healthResult = await page.evaluate(() => {
-        return new Promise((resolve) => {
-          if (!navigator.serviceWorker.controller) {
-            resolve({ error: 'no controlling SW' });
-            return;
-          }
-          const timeout = setTimeout(() => resolve({ error: 'timeout' }), 5000);
-          const handler = (event) => {
-            navigator.serviceWorker.removeEventListener('message', handler);
-            clearTimeout(timeout);
-            resolve(event.data);
-          };
-          navigator.serviceWorker.addEventListener('message', handler);
-          navigator.serviceWorker.controller.postMessage({ type: 'health-check' });
-        });
-      });
-      const cacheName = healthResult?.stats?.name || '';
-      t.assert(
-        cacheName.startsWith('masjid-consumer-') && !cacheName.includes('__BUILD_HASH__'),
-        `CON-16.2 nocache name has no placeholder (got "${cacheName}")`,
-      );
-    }
+    const b = collectPage(page, cfg);
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}`);
+
+    const result = await page.evaluate(async () => {
+      const resp = await fetch('/sw.js');
+      return {
+        status: resp.status,
+        contentType: resp.headers.get('content-type') || '',
+        body: await resp.text(),
+      };
+    });
+
+    t.assert(result.status === 200, `/sw.js → 200 (got ${result.status})`);
+    t.assert(
+      result.contentType.includes('javascript'),
+      `/sw.js content-type is JavaScript (got "${result.contentType}")`,
+    );
+    t.assert(result.body.includes('registration.unregister'), '/sw.js unregisters itself on activate');
+    t.assert(result.body.includes('caches.delete'), '/sw.js purges CacheStorage on activate');
+    t.assert(!result.body.includes('__BUILD_HASH__'), '/sw.js contains no __BUILD_HASH__ placeholder');
+    t.assert(
+      !result.body.includes("addEventListener('fetch'") && !result.body.includes('addEventListener("fetch"'),
+      '/sw.js has NO fetch handler (intercepts nothing)',
+    );
     await context.close();
   });
 
-  // Test 3: /sw-kill path is safe — SW registration is skipped on this path
-  // (the SW no longer handles /sw-kill at the fetch level; the guard is in
-  // app.html's inline script which skips register() when path contains /sw-kill)
-  console.log('  CON-16.3 /sw-kill path guard');
+  // Test 3: suicide worker heals a stale install — purges caches, then
+  // unregisters itself (simulates a browser carrying the OLD worker)
+  console.log('  CON-16.3 Suicide worker self-removal');
   await testCase(t, 'CON-16.3', async () => {
-    // Navigate directly to /sw-kill — SW registration should be skipped.
-    // Registration runs inline during initial HTML evaluation, so by load +
-    // hydration + settle, any (buggy) registration would already be visible.
     const context = await newContext(browser);
     const page = await context.newPage();
     const b = collectPage(page, cfg);
-    await gotoPage(page, b, `${cfg.consumer}/sw-kill`, { timeoutMs: 15000 });
-    const workers = context.serviceWorkers();
-    t.assert(workers.length === 0, `CON-16.3 no SW registered on /sw-kill (got ${workers.length})`);
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}`);
+
+    // Seed junk state that mimics the old cache-first worker's leftovers.
+    await page.evaluate(async () => {
+      const cache = await caches.open('masjid-consumer-stalejunk');
+      await cache.put('/junk-entry', new Response('stale'));
+    });
+    const seeded = await page.evaluate(() => caches.keys());
+    t.assert(
+      seeded.includes('masjid-consumer-stalejunk'),
+      `junk cache seeded before registration (got ${JSON.stringify(seeded)})`,
+    );
+
+    // Register the suicide worker exactly as an old install would have it.
+    await page.evaluate(() => navigator.serviceWorker.register('/sw.js'));
+
+    // The worker installs → activates → purges caches → unregisters itself.
+    let healed = false;
+    for (let i = 0; i < 40 && !healed; i++) {
+      await page.waitForTimeout(250);
+      healed = await page.evaluate(async () => {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const names = await caches.keys();
+        return reg === undefined && names.length === 0;
+      });
+    }
+    t.assert(healed, 'after activate: registration gone AND all caches purged');
     await context.close();
   });
 
-  // Test 4: app.html prevents SW registration on /sw-kill path
-  console.log('  CON-16.4 SW skipped on /sw-kill path');
+  // Test 4: page still functions with no SW at all (sanity — the app must
+  // never depend on a worker existing)
+  console.log('  CON-16.4 App works with no service worker');
   await testCase(t, 'CON-16.4', async () => {
     const context = await newContext(browser);
     const page = await context.newPage();
     const b = collectPage(page, cfg);
-    await gotoPage(page, b, `${cfg.consumer}/sw-kill`, { timeoutMs: 15000 });
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}`, { expectText: 'Fajr' });
+
+    const text = await page.evaluate(() => document.body.innerText);
+    t.assert(text.length > 100, `masjid page rendered content (${text.length} chars)`);
+
     const workers = context.serviceWorkers();
-    t.assert(workers.length === 0, `CON-16.4 no SW registered when landing on /sw-kill (got ${workers.length})`);
-    await context.close();
-  });
-
-  // Test 5: SW does NOT cache API requests (nocache = pass-through)
-  // No icon caching test — the nocache SW never caches anything.
-  console.log('  CON-16.5 nocache does not cache API requests');
-  await testCase(t, 'CON-16.5', async () => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const b = collectPage(page, cfg);
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    if (sw) {
-      await waitForSWActive(page);
-      await page.evaluate(async () => {
-        await fetch('/api/v1/status');
-      });
-      await settlePage(page, b, 1500);
-      const allCached = await sw.evaluate(() =>
-        caches.keys().then((names) =>
-          Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-        ).then((arrs) => arrs.flat())
-      );
-      const hasApiUrls = allCached.some((u) => u.includes('/api/'));
-      t.assert(!hasApiUrls, `CON-16.5 no API URLs cached (got ${hasApiUrls})`);
-    } else {
-      t.assert(false, 'CON-16.5 no SW registered');
-    }
-    await context.close();
-  });
-
-  // Test 6: API requests are not cached (identical to test 5, kept for label continuity)
-  console.log('  CON-16.6 API requests bypass cache');
-  await testCase(t, 'CON-16.6', async () => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    if (sw) {
-      await waitForSWActive(page);
-      const allCached = await sw.evaluate(() =>
-        caches.keys().then((names) =>
-          Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-        ).then((arrs) => arrs.flat())
-      );
-      const hasApiUrls = allCached.some((u) => u.includes('/api/'));
-      t.assert(!hasApiUrls, `CON-16.6 no API URLs in cache (got ${hasApiUrls})`);
-    } else {
-      t.assert(false, 'CON-16.6 no SW registered');
-    }
-    await context.close();
-  });
-
-  // Test 7: Health-check postMessage
-  console.log('  CON-16.7 health-check postMessage');
-  await testCase(t, 'CON-16.7', async () => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    t.assert(sw !== null, `CON-16.7 SW registered (got ${sw ? 1 : 0})`);
-    if (sw) {
-      await waitForSWActive(page);
-      const healthResult = await page.evaluate(() => {
-        return new Promise((resolve) => {
-          if (!navigator.serviceWorker.controller) {
-            resolve({ error: 'no controlling SW' });
-            return;
-          }
-          const timeout = setTimeout(() => resolve({ error: 'timeout' }), 5000);
-          const handler = (event) => {
-            navigator.serviceWorker.removeEventListener('message', handler);
-            clearTimeout(timeout);
-            resolve(event.data);
-          };
-          navigator.serviceWorker.addEventListener('message', handler);
-          navigator.serviceWorker.controller.postMessage({ type: 'health-check' });
-        });
-      });
-      t.assert(
-        healthResult?.type === 'health-check-result',
-        `CON-16.7 got health-check-result response (got ${healthResult?.type})`,
-      );
-      t.assert(
-        healthResult?.stats?.name?.startsWith('masjid-consumer-'),
-        `CON-16.7 cache name in stats (got ${healthResult?.stats?.name})`,
-      );
-      t.assert(typeof healthResult?.stats?.count === 'number', 'CON-16.7 cache count is a number');
-    }
-    await context.close();
-  });
-
-  // Test 8: Navigation requests are not cached
-  console.log('  CON-16.8 navigation not cached');
-  await testCase(t, 'CON-16.8', async () => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    if (sw) {
-      await waitForSWActive(page);
-      const allCached = await sw.evaluate(() =>
-        caches.keys().then((names) =>
-          Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-        ).then((arrs) => arrs.flat())
-      );
-      const hasHtml = allCached.some((u) => u.endsWith('/') || u.endsWith('index.html'));
-      t.assert(!hasHtml, `CON-16.8 no HTML documents in cache (got ${hasHtml})`);
-    } else {
-      t.assert(false, 'CON-16.8 no SW registered');
-    }
-    await context.close();
-  });
-
-  // Test 9: Opaque responses are not cached
-  console.log('  CON-16.9 opaque responses not cached');
-  await testCase(t, 'CON-16.9', async () => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    if (sw) {
-      await waitForSWActive(page);
-      await page.evaluate(async () => {
-        try {
-          await fetch('https://fonts.googleapis.com/css2?family=Test', { mode: 'no-cors' });
-        } catch {
-          // expected
-        }
-      });
-      await page.waitForTimeout(2000);
-      const allCached = await sw.evaluate(() =>
-        caches.keys().then((names) =>
-          Promise.all(names.map((n) => caches.open(n).then((c) => c.keys()).then((keys) => keys.map((r) => r.url))))
-        ).then((arrs) => arrs.flat())
-      );
-      const hasCrossOrigin = allCached.some((u) => u.includes('fonts.googleapis.com'));
-      t.assert(!hasCrossOrigin, `CON-16.9 no cross-origin URLs in cache (got ${hasCrossOrigin})`);
-    } else {
-      t.assert(false, 'CON-16.9 no SW registered');
-    }
-    await context.close();
-  });
-
-  // Test 10: Non-GET requests are not intercepted
-  console.log('  CON-16.10 non-GET not cached');
-  await testCase(t, 'CON-16.10', async () => {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const swPromise = context.waitForEvent('serviceworker', { timeout: 15000 }).catch(() => null);
-    await page.goto(`${cfg.consumer}/${SLUG_A}`, { waitUntil: 'load' });
-    const sw = await swPromise;
-    t.assert(sw !== null, `CON-16.10 SW registered (got ${sw ? 1 : 0})`);
-    await page.evaluate(async () => {
-      try {
-        await fetch('/api/v1/masjids/masjid-al-noor', { method: 'POST' });
-      } catch {
-        // expected
-      }
-    });
-    t.assert(true, 'CON-16.10 POST request handled without SW errors');
+    t.assert(workers.length === 0, 'still no SW after full hydration');
     await context.close();
   });
 }
