@@ -141,13 +141,22 @@ export function verifyComputedTimes(times: ComputedTimes): void {
       continue;
     }
 
-    if (parseHM(prayer.iqaamah) < parseHM(prayer.adhaan)) {
+    const iqaamahMin = parseHM(prayer.iqaamah);
+    const adhaanMin = parseHM(prayer.adhaan);
+    if (isNaN(iqaamahMin) || isNaN(adhaanMin)) {
+      console.warn(`Invalid prayer time for ${name} (adhaan=${prayer.adhaan}, iqaamah=${prayer.iqaamah})`);
+      continue;
+    }
+
+    if (iqaamahMin < adhaanMin) {
       throw new Error(`Iqaamah before adhaan for ${name}`);
     }
   }
 
-  if (parseHM(times.fajr.iqaamah) >= parseHM(times.sunrise)) {
-    throw new Error('Fajr iqaamah must be before sunrise');
+  const fajrIqaamah = parseHM(times.fajr.iqaamah);
+  const sunriseMin = parseHM(times.sunrise);
+  if (!isNaN(fajrIqaamah) && !isNaN(sunriseMin) && fajrIqaamah >= sunriseMin) {
+    console.warn(`Fajr iqaamah (${times.fajr.iqaamah}) is not before sunrise (${times.sunrise}) — coordinates or timezone may be wrong`);
   }
 
   let previousIqaamah = parseHM(times.fajr.iqaamah);

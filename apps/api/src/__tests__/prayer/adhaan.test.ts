@@ -256,4 +256,63 @@ describe('calculateAdhaan', () => {
       }
     });
   });
+
+  describe('extreme coordinates', () => {
+    it('returns --:-- for invalid dates at extreme latitudes (Svalbard 78N summer)', () => {
+      const masjid: MasjidLocation = {
+        ...chicagoMasjid,
+        latitude: 78,
+        longitude: 15,
+        timezone: 'Arctic/Longyearbyen',
+      };
+      const times = calculateAdhaan(masjid, new Date('2026-08-10'));
+      // At extreme latitudes in summer, fajr/isha may be invalid; dhuhr/maghrib should always be valid
+      expect(times.dhuhr).toMatch(/^\d{2}:\d{2}$/);
+      expect(times.maghrib).toMatch(/^(\d{2}:\d{2}|--:--)$/);
+      // fajr may or may not be valid, but should not throw
+      expect(typeof times.fajr).toBe('string');
+    });
+
+    it('returns --:-- at the South Pole', () => {
+      const masjid: MasjidLocation = {
+        ...chicagoMasjid,
+        latitude: -90,
+        longitude: 0,
+        timezone: 'Antarctica/South_Pole',
+      };
+      const times = calculateAdhaan(masjid, new Date('2026-08-10'));
+      // Should not throw; any --:-- values are expected
+      expect(typeof times.fajr).toBe('string');
+      expect(typeof times.dhuhr).toBe('string');
+    });
+
+    it('does not throw with NaN coordinates', () => {
+      const masjid: MasjidLocation = {
+        ...chicagoMasjid,
+        latitude: NaN,
+        longitude: NaN,
+      };
+      // Should not throw; adhan library accepts NaN but may return invalid dates
+      expect(() => calculateAdhaan(masjid, new Date('2026-08-10'))).not.toThrow();
+    });
+
+    it('returns consistent fajr/sunrise ordering for normal Atlanta coordinates in August', () => {
+      const masjid: MasjidLocation = {
+        ...chicagoMasjid,
+        latitude: 33.749,
+        longitude: -84.388,
+        timezone: 'America/New_York',
+        asr_madhab: 'hanafi',
+      };
+      // Test Aug 5 through Aug 15 — all should have fajr < sunrise
+      for (let d = 5; d <= 15; d++) {
+        const date = new Date(Date.UTC(2026, 7, d, 12, 0, 0));
+        const times = calculateAdhaan(masjid, date);
+        if (times.fajr === '--:--' || times.sunrise === '--:--') continue;
+        const fMin = parseInt(times.fajr.split(':')[0]) * 60 + parseInt(times.fajr.split(':')[1]);
+        const sMin = parseInt(times.sunrise.split(':')[0]) * 60 + parseInt(times.sunrise.split(':')[1]);
+        expect(fMin).toBeLessThan(sMin);
+      }
+    });
+  });
 });

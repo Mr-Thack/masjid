@@ -2,7 +2,7 @@ import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb, fetchThemeRow } from '$lib/server/db';
 import { masjids, jumuahSessions, announcements } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
-import { computeIqaamah } from '$lib/server/prayer/engine';
+import { computeIqaamah, type ComputedTimes } from '$lib/server/prayer/engine';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
 
@@ -64,17 +64,37 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     };
 
     const today = new Date();
-    const todayTimes = await computeIqaamah(masjidConfig, today, db);
+    const todayDateStr = today.toISOString().split('T')[0];
+    let todayTimesData: ComputedTimes | null = null;
+    let todayError: string | null = null;
+    try {
+      todayTimesData = await computeIqaamah(masjidConfig, today, db);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.error(`Board: failed to compute today's times for ${params.slug}:`, message);
+      todayError = message;
+    }
 
     const upcomingDays = [];
     for (let offset = 1; offset <= 7; offset++) {
       const date = new Date(today);
       date.setDate(date.getDate() + offset);
-      const dayTimes = await computeIqaamah(masjidConfig, date, db);
-      upcomingDays.push({
-        date: date.toISOString().split('T')[0],
-        times: dayTimes,
-      });
+      const dateStr = date.toISOString().split('T')[0];
+      try {
+        const dayTimes = await computeIqaamah(masjidConfig, date, db);
+        upcomingDays.push({
+          date: dateStr,
+          times: dayTimes,
+        });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error(`Board: failed to compute times for ${params.slug} on ${dateStr}:`, message);
+        upcomingDays.push({
+          date: dateStr,
+          times: null,
+          error: message,
+        });
+      }
     }
 
     const activeSessions = sessions
@@ -117,8 +137,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         label_isha: theme?.label_isha ?? 'Isha',
       },
       today: {
-        date: today.toISOString().split('T')[0],
-        times: todayTimes,
+        date: todayDateStr,
+        times: todayTimesData,
+        ...(todayError ? { error: todayError } : {}),
       },
       // Server-synchronized time (docs/design-language.md §7.7): the TV
       // corrects its clock against this so ceremony states stay honest even
@@ -142,7 +163,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         expires_at: a.expiresAt ? new Date(a.expiresAt).toISOString() : null,
       })),
     });
-  } catch {
-    return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to fetch board');
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('GET board error:', message, e instanceof Error ? e.stack : '');
+    return ErrorJsonResponse('INTERNAL_ERROR', `Failed to fetch board: ${message}`);
   }
 };

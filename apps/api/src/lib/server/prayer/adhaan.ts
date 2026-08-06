@@ -22,20 +22,25 @@ export interface MasjidLocation {
 }
 
 function utcDateToLocalHM(utcDate: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: false,
-    timeZone,
-  }).formatToParts(utcDate);
+  if (isNaN(utcDate.getTime())) return '--:--';
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: false,
+      timeZone,
+    }).formatToParts(utcDate);
 
-  const hourPart = parts.find((p) => p.type === 'hour')?.value;
-  const minutePart = parts.find((p) => p.type === 'minute')?.value;
-  if (!hourPart || !minutePart) return '--:--';
+    const hourPart = parts.find((p) => p.type === 'hour')?.value;
+    const minutePart = parts.find((p) => p.type === 'minute')?.value;
+    if (!hourPart || !minutePart) return '--:--';
 
-  let hour = Number(hourPart);
-  if (hour === 24) hour = 0;
-  return `${String(hour).padStart(2, '0')}:${minutePart}`;
+    let hour = Number(hourPart);
+    if (hour === 24) hour = 0;
+    return `${String(hour).padStart(2, '0')}:${minutePart}`;
+  } catch {
+    return '--:--';
+  }
 }
 
 export function calculateAdhaan(

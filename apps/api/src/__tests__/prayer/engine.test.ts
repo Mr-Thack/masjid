@@ -543,7 +543,8 @@ describe('verifyComputedTimes', () => {
     expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Iqaamah before adhaan/);
   });
 
-  it('rejects fajr iqaamah after sunrise', () => {
+  it('warns when fajr iqaamah is not before sunrise', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const times = {
       fajr: { adhaan: '06:00', iqaamah: '06:30' },
       sunrise: '06:15',
@@ -552,7 +553,9 @@ describe('verifyComputedTimes', () => {
       maghrib: { adhaan: '20:00', iqaamah: '20:05' },
       isha: { adhaan: '22:00', iqaamah: '22:15' },
     };
-    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Fajr iqaamah must be before sunrise/);
+    expect(() => verifyComputedTimes(times as ComputedTimes)).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Fajr iqaamah'));
+    warnSpy.mockRestore();
   });
 
   it('warns but does not reject inverted prayer order', () => {
@@ -568,5 +571,56 @@ describe('verifyComputedTimes', () => {
     expect(() => verifyComputedTimes(times as ComputedTimes)).not.toThrow();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Prayer order invalid'));
     warnSpy.mockRestore();
+  });
+
+  it('warns but does not reject invalid (--:--) prayer times from bad coordinates', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const times = {
+      fajr: { adhaan: '--:--', iqaamah: '--:--' },
+      sunrise: '--:--',
+      dhuhr: { adhaan: '13:45', iqaamah: '14:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      isha: { adhaan: '19:00', iqaamah: '19:10' },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid prayer time'));
+    warnSpy.mockRestore();
+  });
+
+  it('still throws for missing prayer', () => {
+    const times = {
+      fajr: { adhaan: '05:21', iqaamah: '05:41' },
+      sunrise: '06:42',
+      dhuhr: { adhaan: '13:45', iqaamah: '14:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      // isha missing
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Missing isha/);
+  });
+
+  it('still throws for right_after_adhaan with mismatched iqaamah', () => {
+    const times = {
+      fajr: { adhaan: '05:21', iqaamah: '05:41' },
+      sunrise: '06:42',
+      dhuhr: { adhaan: '13:45', iqaamah: '14:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      isha: { adhaan: '21:00', iqaamah: '21:15', right_after_adhaan: true },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/right_after_adhaan.*isha/);
+  });
+
+  it('still throws for iqaamah before adhaan', () => {
+    const times = {
+      fajr: { adhaan: '05:21', iqaamah: '05:41' },
+      sunrise: '06:42',
+      dhuhr: { adhaan: '13:45', iqaamah: '12:00' },
+      asr: { adhaan: '16:31', iqaamah: '16:46' },
+      maghrib: { adhaan: '20:48', iqaamah: '20:53' },
+      isha: { adhaan: '21:00', iqaamah: '21:15' },
+    };
+    expect(() => verifyComputedTimes(times as ComputedTimes)).toThrow(/Iqaamah before adhaan.*dhuhr/);
   });
 });
