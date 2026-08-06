@@ -7,10 +7,14 @@
   "exports": {
     ".": "./src/index.ts",
     "./ceremony": "./src/ceremony.ts",
+    "./rules-engine": "./src/rules-engine.ts",
     "./components/*": "./src/components/*"
   },
   "scripts": {
     "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@masjid/schemas": "*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { masjids } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
+import { validateRulesHealth } from '$lib/server/prayer/validate';
 import type { RequestHandler } from './$types';
 
 const PrayerConfigUpdateSchema = z.object({
@@ -140,7 +141,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
       .where(eq(masjids.id, params.id))
       .get();
 
-    return JsonResponse({
+    const health = await validateRulesHealth(params.id, db);
+
+    const response: Record<string, unknown> = {
       calculation_method: updated?.calculation_method,
       asr_madhab: updated?.asr_madhab,
       high_latitude_rule: updated?.high_latitude_rule,
@@ -154,7 +157,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals, platform 
       adjust_maghrib: updated?.adjust_maghrib,
       adjust_isha: updated?.adjust_isha,
       timezone: updated?.timezone,
-    });
+    };
+
+    if (health && !health.healthy) {
+      response.warning = `This prayer config produces invalid prayer times for ${health.failingDates.join(', ')}. The display will show --:-- for those days.`;
+    }
+
+    return JsonResponse(response);
   } catch (e: unknown) {
     if (e instanceof Error && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);

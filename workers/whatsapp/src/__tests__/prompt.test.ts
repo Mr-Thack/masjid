@@ -89,6 +89,30 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('5=Friday');
   });
 
+  it('includes new condition types month_day_range and hijri_day_range', () => {
+    const prompt = buildSystemPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('month_day_range');
+    expect(prompt).toContain('hijri_day_range');
+  });
+
+  it('includes new condition type time_of_day', () => {
+    const prompt = buildSystemPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('time_of_day');
+    expect(prompt).toContain('operator');
+  });
+
+  it('includes new action types cap_min, cap_max, set_offset_from_prayer', () => {
+    const prompt = buildSystemPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('cap_min');
+    expect(prompt).toContain('cap_max');
+    expect(prompt).toContain('set_offset_from_prayer');
+  });
+
+  it('includes guidance about lower execution order for overrides', () => {
+    const prompt = buildSystemPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('lower execution_order for overrides');
+  });
+
   it('includes JUMUAH domain section', () => {
     const prompt = buildSystemPrompt(testAdmin, {}, testEnv);
     expect(prompt).toContain('### JUMUAH');
@@ -191,6 +215,49 @@ describe('buildVisionPrompt', () => {
     const { buildVisionPrompt } = await import('../agent/prompt');
     const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
     expect(prompt).toContain('date ranges');
+  });
+
+  it('includes two-phase approach in vision prompt', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('Two-Phase');
+    expect(prompt).toContain('Phase 1');
+    expect(prompt).toContain('Phase 2');
+  });
+
+  it('includes OCR error awareness', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('OCR');
+    expect(prompt).toContain('common OCR mistakes');
+  });
+
+  it('includes Jumuah detection hints', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('Jumu\'ah Detection');
+    expect(prompt).toContain('Friday');
+    expect(prompt).toContain('set_fixed_time');
+  });
+
+  it('includes date range vs month detection guidance', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('Date Range vs Month Detection');
+    expect(prompt).toContain('month_day_range');
+    expect(prompt).toContain('hijri_month conditions');
+  });
+
+  it('includes timetable_import guidance', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('timetable_import');
+  });
+
+  it('includes guidance about repeated months check', async () => {
+    const { buildVisionPrompt } = await import('../agent/prompt');
+    const prompt = buildVisionPrompt(testAdmin, {}, testEnv);
+    expect(prompt).toContain('always condition');
   });
 
   it('includes Jumuah/Friday guidance', async () => {

@@ -36,7 +36,7 @@ This is the same **persistent client-poisoning** pattern as the old consumer ser
 
 ## What was changed
 
-### 1. Hardened `apps/admin/static/_headers`
+### 1. Hardened `apps/admin/static/_headers` (later superseded — see below)
 
 - Only immutable hashed assets get long-term caching:
   - `/_app/immutable/*`
@@ -49,21 +49,34 @@ This is the same **persistent client-poisoning** pattern as the old consumer ser
 - Removed the broad `Access-Control-Allow-Origin: *` from the catch-all.
 - Made `/sw.js` itself uncacheable (`no-store`) defensively, in case a worker is ever added intentionally.
 
-### 2. Added a page-level `/sw-kill` escape hatch
+### 2026-08 update — file deleted, rules centralized
 
-`apps/admin/src/app.html` now contains a small script on the `/sw-kill` path that:
+The admin app's standalone `static/_headers` was **deleted** during the
+caching-strategy consolidation: production serves admin exclusively through
+the merged `masjid-live` Pages project, whose canonical `_headers` is written
+by `tooling/merge-pages.js` (immutable only for `/_app/immutable/*`, no-store
+for `/sw.js` and direct `/__*_spa.html` hits, `max-age=3600` for unversioned
+root statics, security headers on `/*` — and **never** a Cache-Control on a
+catch-all, because rules combine). The old per-app file was dead config in
+production and dangerous if ever deployed standalone (`/*.js` + `/*.json`
+immutable would have cached `version.json`/`manifest.json` forever).
 
-1. Unregisters every `navigator.serviceWorker` registration for the origin.
-2. Clears all `CacheStorage` caches.
-3. Replaces the location with `/` so the admin app reloads clean.
+### 2. `/sw-kill` escape hatch — moved to the gateway (2026-08)
 
-This does **not** register a service worker. It is purely a recovery route, mirroring the consumer PWA's `/sw-kill` self-destruct switch.
+The recovery route used to be a page-level script in the admin `app.html`.
+On the unified origin that was broken by construction: `/sw-kill` routes to
+the *consumer* SPA fallback, so the admin script could never run there.
+The route is now served by the **gateway worker**
+(`workers/gateway/src/index.js`) before SPA routing — one canonical URL,
+works for all three apps, unregisters every service worker for the origin,
+purges all `CacheStorage` caches, redirects to `/`. It is permanent
+infrastructure; do not remove it.
 
 ## Recovery steps
 
 If an admin client is stuck with a stale app shell:
 
-1. Visit `https://<admin-host>/sw-kill`. The kill script will clear any stale registration and caches, then reload the app.
+1. Visit `https://masjid-live.pages.dev/sw-kill`. The kill page will clear any stale registration and caches, then reload the app.
 2. If that fails, open DevTools → **Application → Storage → Clear site data**, then hard-reload with **Ctrl+Shift+R** (or **Cmd+Shift+R** on macOS).
 
 ## Future note
@@ -71,5 +84,8 @@ If an admin client is stuck with a stale app shell:
 If the admin app ever genuinely needs a service worker (e.g. for push notifications):
 
 - It must be registered intentionally, not via accidental caching.
-- It must follow the same hardening rules as the consumer worker: scheme/method/origin guards, versioned cache names, skip navigation caching, and a `/sw-kill` self-destruct route.
+- It must follow the hardening checklist in `docs/consumer-service-worker.md`
+  ("Re-adding a service worker"): scheme/method/origin guards, versioned
+  cache names, no navigation caching, and verification that the gateway
+  `/sw-kill` route clears it.
 - Until then, the admin app remains service-worker-free.

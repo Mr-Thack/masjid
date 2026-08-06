@@ -76,6 +76,7 @@ export const prayerRules = sqliteTable('prayer_rules', {
   ruleName: text('rule_name').notNull(),
   conditionsJson: text('conditions_json').notNull(),
   actionJson: text('action_json').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
 }, (table) => ({
   lookupIdx: index('idx_rules_lookup').on(table.masjidId, table.prayerName),
   orderIdx: index('idx_rules_order').on(table.masjidId, table.executionOrder),

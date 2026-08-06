@@ -29,12 +29,22 @@ browser → Cloudflare edge → masjid-live Pages project
                  ├─ env.ASSETS.fetch(request) → real asset (js/css/png/
                  │   sw.js/manifest.json…) → return it
                  │
-                 └─ 404 → pick SPA fallback by path prefix
-                      → env.ASSETS.fetch('/__xxx_spa.html')  ← reads the
-                        asset manifest directly; NOT an HTTP subrequest
-                      → return with status 200 + forced headers:
-                        content-type: text/html;charset=UTF-8
-                        cache-control: no-cache, no-store, must-revalidate
+                 └─ 404 → decide what the miss means:
+                      │
+                      ├─ /sw-kill → permanent recovery page (unregisters
+                      │   all service workers, purges CacheStorage, → /)
+                      │
+                      ├─ asset-like path (has extension or under /_app/)
+                      │   → real 404 + no-store (NEVER the SPA shell —
+                      │   serving HTML for a missing JS chunk makes the
+                      │   browser parse markup as JS: white-screen)
+                      │
+                      └─ anything else → pick SPA fallback by path prefix
+                           → env.ASSETS.fetch('/__xxx_spa.html')  ← reads the
+                             asset manifest directly; NOT an HTTP subrequest
+                           → return with status 200 + forced headers:
+                             content-type: text/html;charset=UTF-8
+                             cache-control: no-cache, no-store, must-revalidate
 ```
 
 The `_worker.js` source of truth lives at `workers/gateway/src/index.js`;
@@ -127,6 +137,11 @@ npx wrangler@latest deploy --env production --keep-vars \
 2. **Cache headers**: an `_app/immutable` chunk must have exactly
    `cache-control: public, max-age=31536000, immutable` (nothing appended).
    `/sw.js` must have `no-cache, no-store, must-revalidate`.
+   `/manifest.json` and `/icon-*.png` must have `public, max-age=3600`
+   (short bounded cache — unversioned files are never immutable).
+   A missing `/_app/immutable/...` path must return **404** + no-store,
+   never the SPA shell. `/sw-kill` must return the gateway recovery page
+   (200, no-store). E2E: DEP-01..DEP-09 in `tests/e2e/deploy.test.js`.
 3. **CORS**: `curl -s -H "Origin: https://masjid-live.pages.dev" -D - -o /dev/null https://mapi.mr-thack.workers.dev/api/v1/masjids/masjid-al-noor | grep -i access-control-allow-origin`
 4. **Rendered content in a real browser**: `/` shows "Please Verify Your
    URL", `/masjid-al-noor` shows live prayer times, `/display/<slug>` shows
@@ -186,9 +201,22 @@ It does **NOT** redirect to any specific masjid. A redirect confused people
    `.env.prod` values containing spaces must be quoted, otherwise sourcing
    truncates them (`command not found` warnings).
 10. **Pages advanced mode runs `_worker.js` for EVERY request** (unlike
-    Workers Static Assets, where matching assets bypass the Worker). The
-    first line of the worker (`env.ASSETS.fetch(request)`) is therefore not
-    just defensive — it IS the asset-serving path.
+     Workers Static Assets, where matching assets bypass the Worker). The
+     first line of the worker (`env.ASSETS.fetch(request)`) is therefore not
+     just defensive — it IS the asset-serving path.
+11. **Asset-miss must be a real 404, not the SPA shell.** Before 2026-08 the
+     gateway returned the SPA fallback for ANY unmatched path, including
+     `/_app/immutable/chunks/<deleted>.js` — the browser got `text/html` with
+     a 200 and tried to execute it as JavaScript (white-screen class). The
+     gateway now 404s asset-like misses (extension in the final segment or
+     under `/_app/`) with no-store. SvelteKit's failed-chunk recovery
+     (reload → fresh HTML → fresh chunks) can then do its job.
+12. **Recovery hatches must live at the gateway, not in an app shell.** An
+     app-level `/sw-kill` script only runs when that app's shell serves the
+     path — but `/sw-kill` always routed to the *consumer* fallback, so the
+     admin/consumer app-level scripts were unreachable in production. The
+     gateway now serves a permanent origin-wide `/sw-kill` page before SPA
+     routing.
 
 ## Cutover history
 

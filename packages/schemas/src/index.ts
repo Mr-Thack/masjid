@@ -8,4 +8,5 @@ export * from './common.js';
 export * from './zero-ui.js';
 export * from './maktab.js';
 export * from './post.js';
-export * from './post.js';
+export { formatZodError, formatPrayerRuleError } from './format-zod-error.js';
+export type { FormattedZodError } from './format-zod-error.js';

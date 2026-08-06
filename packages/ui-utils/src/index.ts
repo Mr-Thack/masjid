@@ -55,3 +55,11 @@ export {
   type IqaamahSource,
   type NearestIqaamahChange,
 } from './prayer-changes.js';
+export {
+  parseTime,
+  formatTime,
+  applyAction,
+  allConditionsMatch,
+  computeHijriDate,
+  type HijriDate,
+} from './rules-engine.js';

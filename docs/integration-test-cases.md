@@ -224,6 +224,24 @@ Steps: GET `/display/{SLUG_A}` and `/admin/{SLUG_A}` and `/{SLUG_A}`.
 Assert: pairwise-different bodies (protects against a merge regression
 serving one SPA everywhere).
 
+### DEP-07 — Asset-miss is a real 404 | Priority: P0 | Class: C4
+Steps: GET `/_app/immutable/chunks/definitely-missing-<rand>.js`.
+Assert: status **404**; `content-type` NOT `text/html`; `cache-control`
+contains `no-store`. (Serving the SPA shell for a missing chunk made
+browsers parse markup as JS — the white-screen failure class. See
+unified-deploy lesson 11.)
+
+### DEP-08 — /sw-kill recovery hatch | Priority: P1 | Class: C4
+Steps: GET `/sw-kill`.
+Assert: 200; `cache-control` contains `no-store`; body contains
+`getRegistrations` and `caches.delete` (the gateway-served recovery page —
+see unified-deploy lesson 12).
+
+### DEP-09 — Unversioned root statics cache headers | Priority: P1 | Class: C4
+Steps: GET `/manifest.json` and `/icon-192.png`.
+Assert: 200; `cache-control` contains `max-age=3600` and does NOT contain
+`immutable` (unversioned files get short bounded cache, never immutable).
+
 ## Suite: CONSUMER — `tests/e2e/consumer.test.js`
 
 **Status: CON-01..16 IMPLEMENTED + green.** Env: all.

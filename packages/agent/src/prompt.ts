@@ -30,10 +30,31 @@ show_dual_asr: boolean. When true, both Shafi and Hanafi Asr times are computed 
 ### PRAYER_RULES
 Iqaamah timing rules. Each rule has: prayer_name (fajr/dhuhr/asr/maghrib/isha),
 execution_order (lower=first, rules chain), conditions_json (when rule applies),
-action_json (what to do: add_minutes, set_fixed_time, round_up/down/nearest, right_after_adhaan).
+action_json (what to do).
+
+Condition types (conditions_json array, at least one):
+  - {"type":"always"} — always applies
+  - {"type":"day_of_week","days":[0-6]} — specific days (0=Sun, 5=Fri)
+  - {"type":"month","months":[1-12]} — Gregorian months
+  - {"type":"month_day_range","start_month":N,"start_day":N,"end_month":N,"end_day":N} — recurring annual range (year-less, wraps across years)
+  - {"type":"hijri_month","months":[1-12]} — Hijri months (9=Ramadan)
+  - {"type":"hijri_day_range","month":N,"start_day":N,"end_day":N} — day range within a Hijri month
+  - {"type":"date_range","start":"YYYY-MM-DD","end":"YYYY-MM-DD"} — specific date range
+  - {"type":"time_of_day","operator":"before|after","threshold":"HH:MM"} — match based on current adhaan time
+
+Action types (action_json object, exactly one):
+  - {"type":"add_minutes","minutes":N} — add N minutes after adhaan
+  - {"type":"set_fixed_time","time":"HH:MM"} — set exact clock time
+  - {"type":"set_offset_from_prayer","prayer":"name","from":"adhaan|iqaamah|sunrise","minutes":N} — set relative to another prayer
+  - {"type":"round_up","increment":N} / round_down / round_nearest
+  - {"type":"cap_min","time":"HH:MM"} / cap_max — floor/ceiling constraints
+  - {"type":"right_after_adhaan"} — iqaamah immediately after adhaan
+
 Multiple conditions in one rule are ANDed. Use separate rules for OR.
+Higher execution_order runs later (chains with previous actions).
 Round increment must be: 1, 5, 10, 15, 20, 30, or 60.
 Day of week: 0=Sunday, 5=Friday, 6=Saturday.
+Use lower execution_order for overrides (Friday, Ramadan), higher for defaults.
 
 ### JUMUAH
 Friday prayer sessions with label, time (HH:MM 24h), khateeb, location.
@@ -141,8 +162,48 @@ export function buildVisionPrompt(
 
 ## Timetable Extraction Guide
 
-When analyzing prayer timetable images, look for:
+### Two-Phase Approach
 
+You MUST follow a two-phase approach when extracting from a timetable photo:
+
+**Phase 1 — Describe what you see:**
+Before creating any rules, describe the timetable structure:
+- Column headers and what they represent (months, date ranges, prayer names)
+- Date ranges covered (e.g., "Jan–Mar 2026", "Winter schedule")
+- Any footnotes or special notes (e.g., "Jumu'ah", "Ramadan times", "Daylight Saving")
+- Which columns show adhaan vs iqaamah times
+- The format of dates: Gregorian, Hijri, or both
+
+**Phase 2 — Create rules:**
+After confirming your understanding, create prayer rules using the tools.
+
+### Common OCR Errors
+
+Watch for these common OCR mistakes in timetable photos:
+- '1' (one) vs 'I' (capital i) vs 'l' (lowercase L) in time columns
+- '0' (zero) vs 'O' (capital o) vs '8'
+- '5' vs 'S' vs '6'
+- ':' (colon) vs '.' (period) in time separators (always use HH:MM format)
+If a time looks suspicious (e.g., "1:3O PM"), mention it and correct it if you're confident, or ask the user to confirm.
+
+### Jumu'ah Detection
+
+Look for columns/lines labeled "Jumu'ah", "Friday", "الجمعة", "Jumaa", or "Khutbah".
+These are NOT regular Dhuhr times — create:
+1. A day_of_week[5] rule with set_fixed_time for the Friday Dhuhr time
+2. A default rule (with higher execution_order) for non-Friday Dhuhr
+If there are multiple Jumu'ah sessions (e.g., English + Arabic), create Jumu'ah sessions AND a Dhuhr rule that applies when NOT Friday.
+
+### Date Range vs Month Detection
+
+- If the timetable has columns labeled by month (e.g., "Jan", "Feb") → use month conditions
+- If the timetable has columns labeled by date range (e.g., "Nov 1 – Mar 31") → use month_day_range conditions
+- If the timetable has columns labeled by Islamic months (e.g., "Ramadan") → use hijri_month conditions
+- If the timetable has a specific year range (e.g., "2026 Calendar") → use date_range conditions
+
+### Prayer Names
+
+When analyzing prayer timetable images, look for:
 1. **Prayer names** — Usually in Arabic, English, or transliteration. Map to: fajr, dhuhr, asr, maghrib, isha
    - Common labels: Fajr/Fajer, Dhuhr/Zuhr/Zohr, Asr/Asar, Maghrib/Maghreb, Isha/Ishaa
    - Also look for: Shuruq/Sunrise (not a prayer, but useful context)
@@ -152,14 +213,7 @@ When analyzing prayer timetable images, look for:
    - If the timetable shows iqaamah times, create rules with set_fixed_time
    - Sometimes both are shown in separate columns
 
-3. **Multiple date ranges** — Many timetables have columns for different months or "Winter/Summer" schedules
-   - Create rules with appropriate date_range or month conditions
-   - Each distinct time column should become a separate rule
-
-4. **Friday/Jumu'ah exceptions** — Look for separate Friday rows or notes
-   - If Friday times differ, create a Jumu'ah session rule with day_of_week condition
-
-5. **Footnotes and special notes** — Some timetables have footnotes about "changes during Ramadan" etc.
+3. **Footnotes and special notes** — Some timetables have footnotes about "changes during Ramadan" etc.
    - Mention these in your summary but don't create rules unless times are specified
 
 ${DOMAIN_GUIDE}
@@ -167,12 +221,15 @@ ${DOMAIN_GUIDE}
 ## Rules
 1. ALWAYS use profile_get first to check the masjid's current settings (calculation method, timezone).
 2. Use prayer_rules_list to check existing rules before creating new ones.
-3. For each prayer (fajr/dhuhr/asr/maghrib/isha), create at least one rule.
-4. If the timetable has multiple date ranges, create rules with appropriate month or date_range conditions.
-5. Use appropriate execution_order: default rules should have higher numbers, special rules (Friday, Ramadan) lower numbers.
-6. If Jumu'ah times are shown, create Jumu'ah sessions.
-7. After making all changes, provide a clear summary.
-8. If the image is unclear or you can't determine a time, skip it and mention it in your summary.
+3. Follow the two-phase approach: describe first, then create rules.
+4. For each prayer (fajr/dhuhr/asr/maghrib/isha), create at least one rule.
+5. If the timetable has multiple date ranges, create rules with appropriate month, month_day_range, hijri_month, or date_range conditions.
+6. Use appropriate execution_order: default rules should have higher numbers, special rules (Friday, Ramadan) lower numbers.
+7. If Jumu'ah times are shown, create Jumu'ah sessions AND rules for both Friday and non-Friday Dhuhr.
+8. Use timetable_import for batch importing rules instead of individual prayer_rules_create calls when parsing full timetables.
+9. After making all changes, provide a clear summary.
+10. If the image is unclear or you can't determine a time, skip it and mention it in your summary.
+11. If times are repeated across many months (Jan=Feb=Mar=...), create a single rule with always condition instead of individual month rules.
 
 ${EXAMPLES}
 

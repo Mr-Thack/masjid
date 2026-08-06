@@ -44,6 +44,17 @@ export const api = {
   getPrayerRules: (masjidId: string) =>
     request('GET', `/api/v1/admin/masjids/${masjidId}/prayer/rules`),
 
+  getPrayerRulesPreview: (masjidId: string, date?: string) => {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+    return request('GET', `/api/v1/admin/masjids/${masjidId}/prayer/rules/preview${qs}`);
+  },
+
+  getHijriToday: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/prayer/hijri-today`),
+
+  getPrayerHealth: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/prayer/health`),
+
   createPrayerRule: (masjidId: string, data: Record<string, unknown>) =>
     request('POST', `/api/v1/admin/masjids/${masjidId}/prayer/rules`, data),
 

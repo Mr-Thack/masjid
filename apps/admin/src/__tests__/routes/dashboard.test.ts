@@ -18,6 +18,7 @@ const mockGetPrayerRules = vi.fn().mockResolvedValue({ rules: [{ id: 'r1' }, { i
 const mockGetDomains = vi.fn().mockResolvedValue({ domain: null });
 const mockGetPrayerConfig = vi.fn().mockResolvedValue({ calculation_method: 2, timezone: 'America/Chicago' });
 const mockGetBranches = vi.fn().mockResolvedValue({ branches: [] });
+const mockGetPrayerHealth = vi.fn().mockResolvedValue({ healthy: true, failingDates: [] });
 
 vi.mock('$lib/api', () => ({
   api: {
@@ -28,6 +29,7 @@ vi.mock('$lib/api', () => ({
     getDomains: (...args: unknown[]) => mockGetDomains(...args),
     getPrayerConfig: (...args: unknown[]) => mockGetPrayerConfig(...args),
     getBranches: (...args: unknown[]) => mockGetBranches(...args),
+    getPrayerHealth: (...args: unknown[]) => mockGetPrayerHealth(...args),
   },
 }));
 
