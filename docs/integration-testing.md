@@ -217,7 +217,44 @@ allowlist (favicon, Vite dev chatter, Square SDK CSP font noise) lives ONLY
 in `helpers.js`; third-party ≥400s are warnings, not failures;
 `allowFailures: [RegExp]` per test marks expected failures (e.g. the
 deliberate unknown-masjid 404); `expectTextCI` exists for CSS-uppercased
-text; navigation timeout 30s, expectation timeout 15s, settle 1.5s.
+text.
+
+**Determinism contract (2026-08-05 rework).** The suite previously relied on
+fixed `waitForTimeout` sleeps (too long on the happy path, too short on a
+loaded CI runner) and let any thrown timeout kill the whole suite process
+with a bare stack trace. The reworked rules:
+
+1. **`testCase(t, id, fn)` wraps EVERY case.** A thrown timeout/error becomes
+   a FAIL line (with the Playwright "waiting for" detail) and the rest of the
+   suite keeps running. Stray `unhandledRejection`s also become FAIL lines.
+2. **Condition-based waits only.** `waitForHydration(page)` (the apps set
+   `html[data-hydrated]` on first mount), `waitForContent(page)` (`<main>`
+   children or any body text — admin /login has no `<main>`),
+   `settlePage(page, buckets, maxMs)` (adaptive: exits after 500ms of network/
+   console/error silence, capped at maxMs, default 2s), and `gotoPage(...)`
+   (goto + hydration + optional expectation + settle) for multi-step flows.
+   Fixed sleeps are allowed ONLY as stress pacing (rapid-nav cadence, typing
+   debounce), never as readiness guesses.
+3. **Timeout ceilings**: navigation 30s, hydration 30s, expectation 15s,
+   login navigation 45s, adaptive settle ≤2s. `visitPage` runs all text/
+   selector expectations CONCURRENTLY (a missing N expectations cost one
+   15s ceiling, not N × 15s). visitPage's own pacing waits are short
+   (12s/5s, swallowed) because known-blank error pages never hydrate.
+4. **One real login per admin run** (`loginAdmin(page, cfg)`): hydration is
+   awaited BEFORE touching the form (a pre-hydration click triggers a NATIVE
+   form submit — that was the `waitForURL('**/admin/**')` CI flake), and
+   `waitForURL(..., { waitUntil: 'commit' })` is registered BEFORE the submit
+   click. ADM-03 captures `context.storageState()` (the JWT lives in
+   localStorage, which storageState preserves); every later authed case opens
+   `newContext(browser, { storageState })` — no re-login races or bcrypt
+   latency per case.
+5. **Suite watchdog**: `E2E_SUITE_WATCHDOG_MS` (default 8 min) aborts a stuck
+   suite with the in-flight case name — a suite can never hang a CI job
+   silently. All non-browser fetches use `AbortSignal.timeout` and return
+   `status: 0` on failure (a hung API = FAIL line, not a hang).
+6. **Per-suite + per-case timing** is printed in every summary (slowest 3
+   cases), and `run.js` prints a suite-timings rollup. Multiple
+   `--suite=<name>` flags are honored (CI splits suites across parallel jobs).
 
 ## 6. Test catalog
 
@@ -238,8 +275,9 @@ Implement cases exactly as specced there; update statuses as they land.
    via branch, never copy files.
 3. **All page visits through the shared harness.** Extend `helpers.js`
    rather than bypassing it — error-collection logic must not fork.
-4. **Determinism**: no wall-clock-dependent assertions; no fixed sleeps
-   > 5s; remote URLs are cache-busted by the harness.
+4. **Determinism**: no wall-clock-dependent assertions; fixed sleeps only as
+   stress pacing (never as readiness waits — use the condition-based helpers
+   in §5.2); remote URLs are cache-busted by the harness.
 5. **No remote writes**: anything that submits/creates/updates is guarded
    by `cfg.writes` (local only). Anything needing auth is guarded by
    `cfg.adminEmail`.

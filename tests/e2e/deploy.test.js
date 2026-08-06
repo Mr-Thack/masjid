@@ -31,9 +31,14 @@ function sha256(text) {
 async function getResponse(url) {
   const sep = url.includes('?') ? '&' : '?';
   const cb = `${sep}cb=${Math.random().toString(36).slice(2, 10)}`;
-  const resp = await fetch(`${url}${cb}`);
-  const text = await resp.text();
-  return { status: resp.status, headers: resp.headers, text };
+  try {
+    const resp = await fetch(`${url}${cb}`, { signal: AbortSignal.timeout(20000) });
+    const text = await resp.text();
+    return { status: resp.status, headers: resp.headers, text };
+  } catch (err) {
+    // Bounded failure: assertions see status 0 and fail cleanly, never hang.
+    return { status: 0, headers: new Headers(), text: String(err?.message ?? err) };
+  }
 }
 
 // DEP-01 — route→SPA mapping: each path returns 200 HTML, cache-control no-store

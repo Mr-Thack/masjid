@@ -9,16 +9,40 @@ import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
 const cfg = targets();
 const t = createReporter(`API smoke [${cfg.env}] → ${cfg.api}`);
 
+// Every fetch is bounded (15s) and failures return status 0 instead of
+// throwing — a hung/unreachable API becomes a FAIL line, never a hung CI job
+// or an uncaught exception.
 async function getJson(path, headers = {}) {
-  const resp = await fetch(`${cfg.api}${path}`, { headers });
-  const text = await resp.text();
-  let body = null;
   try {
-    body = JSON.parse(text);
-  } catch {
-    /* body stays null */
+    const resp = await fetch(`${cfg.api}${path}`, { headers, signal: AbortSignal.timeout(15000) });
+    const text = await resp.text();
+    let body = null;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      /* body stays null */
+    }
+    return { status: resp.status, headers: resp.headers, body, isJson: body !== null };
+  } catch (err) {
+    return { status: 0, headers: new Headers(), body: null, isJson: false, error: String(err?.message ?? err) };
   }
-  return { status: resp.status, headers: resp.headers, body, isJson: body !== null };
+}
+
+async function postJson(path, payload) {
+  try {
+    const resp = await fetch(`${cfg.api}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(15000),
+    });
+    const text = await resp.text();
+    let body = null;
+    try { body = JSON.parse(text); } catch { /* body stays null */ }
+    return { status: resp.status, body, isJson: body !== null };
+  } catch (err) {
+    return { status: 0, body: null, isJson: false, error: String(err?.message ?? err) };
+  }
 }
 
 // API-01 — status endpoint healthy
@@ -103,7 +127,8 @@ for (const [id, slug] of [
       'Access-Control-Request-Method': 'GET',
       'Access-Control-Request-Headers': 'authorization,content-type',
     },
-  });
+    signal: AbortSignal.timeout(15000),
+  }).catch((err) => ({ status: 0, headers: new Headers(), error: String(err?.message ?? err) }));
   const allowMethods = resp.headers.get('access-control-allow-methods') || '';
   const allowHeaders = resp.headers.get('access-control-allow-headers') || '';
   t.assert(resp.status < 400, `API-08 preflight status < 400 (got ${resp.status})`);
@@ -135,20 +160,13 @@ for (const [id, path, check] of [
 
 // API-11 — maktab verify-code without body returns validation error, never 500
 {
-  const resp = await fetch(`${cfg.api}/api/v1/masjids/${SLUG_A}/maktab/verify-code`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
-  });
-  const text = await resp.text();
-  let body = null;
-  try { body = JSON.parse(text); } catch { /* body stays null */ }
+  const r = await postJson(`/api/v1/masjids/${SLUG_A}/maktab/verify-code`, {});
   t.assert(
-    resp.status < 500,
-    `API-11 verify-code without code → status < 500 (got ${resp.status})`,
+    r.status < 500,
+    `API-11 verify-code without code → status < 500 (got ${r.status})`,
   );
   t.assert(
-    body !== null,
+    r.body !== null,
     `API-11 verify-code returns JSON (not HTML/empty)`,
   );
 }
@@ -203,36 +221,22 @@ for (const [id, path, check] of [
 
 // API-17 — maktab: verify-code with invalid postal code returns error, not 500
 {
-  const resp = await fetch(`${cfg.api}/api/v1/masjids/${SLUG_A}/maktab/verify-code`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code: 'DEFINITELY-INVALID-CODE' }),
-  });
-  const text = await resp.text();
-  let body = null;
-  try { body = JSON.parse(text); } catch { /* body stays null */ }
+  const r = await postJson(`/api/v1/masjids/${SLUG_A}/maktab/verify-code`, { code: 'DEFINITELY-INVALID-CODE' });
   t.assert(
-    resp.status < 500,
-    `API-17 verify-code with bad code → status < 500 (got ${resp.status})`,
+    r.status < 500,
+    `API-17 verify-code with bad code → status < 500 (got ${r.status})`,
   );
-  t.assert(body !== null, 'API-17 verify-code returns JSON');
+  t.assert(r.body !== null, 'API-17 verify-code returns JSON');
 }
 
 // API-18 — maktab: POST enroll without Square token returns validation error, never 500
 {
-  const resp = await fetch(`${cfg.api}/api/v1/masjids/${SLUG_A}/maktab/enroll`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
-  });
+  const r = await postJson(`/api/v1/masjids/${SLUG_A}/maktab/enroll`, {});
   t.assert(
-    resp.status < 500,
-    `API-18 enroll with empty body → status < 500 (got ${resp.status})`,
+    r.status < 500,
+    `API-18 enroll with empty body → status < 500 (got ${r.status})`,
   );
-  const text = await resp.text();
-  let body = null;
-  try { body = JSON.parse(text); } catch { /* body stays null */ }
-  t.assert(body !== null, 'API-18 enroll returns JSON');
+  t.assert(r.body !== null, 'API-18 enroll returns JSON');
 }
 
 // API-19 — maktab: unknown masjid maktab returns 404

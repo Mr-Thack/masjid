@@ -34,12 +34,14 @@ Notes:
 
 ## The one pattern (copy this)
 
-Every browser case is one of two shapes. **Do not invent a third.**
+Every browser case is one of two shapes, **wrapped in `testCase`** so a
+thrown timeout becomes a FAIL line instead of killing the suite process.
+**Do not invent a third.**
 
 ### Shape A — one-shot page check (90% of cases)
 
 ```js
-import { createReporter, launchBrowser, visitPage, explain } from './helpers.js';
+import { createReporter, launchBrowser, visitPage, explain, testCase } from './helpers.js';
 import { targets, SLUG_A } from './targets.js';
 
 const cfg = targets();
@@ -47,7 +49,7 @@ const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
 const browser = await launchBrowser();
 
 // CON-07 — announcements page renders
-{
+await testCase(t, 'CON-07', async () => {
   const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/announcements`, {
     expectText: 'Announcements',            // string or string[]; exact case
     // expectTextCI: ['Fajr'],              // use for CSS-uppercased text
@@ -55,7 +57,7 @@ const browser = await launchBrowser();
     // allowFailures: [/some-expected-404/], // expected failed requests
   });
   t.assert(r.ok, `CON-07 renders clean ${r.ok ? '' : '— ' + explain(r)}`);
-}
+});
 
 await browser.close();
 process.exit((await t.done()) > 0 ? 1 : 0);
@@ -70,25 +72,32 @@ optionally one extra bucket.
 
 ### Shape B — multi-step flow (login, navigation)
 
-Use when the case has clicks/form fills. Attach collectors BEFORE `goto`:
+Use when the case has clicks/form fills. Attach collectors BEFORE `goto`;
+use `newContext` (bounded default timeouts) and `gotoPage` (goto + hydration
++ optional expectation + adaptive settle). For the admin login itself, use
+`loginAdmin` — it awaits hydration BEFORE touching the form and registers
+`waitForURL` BEFORE the click (the two races that made logins flaky on CI).
+Authed cases after the first login reuse `storageState` instead of logging
+in again (see admin.test.js):
 
 ```js
-import { collectPage } from './helpers.js';
+import { collectPage, newContext, testCase, gotoPage, settlePage, loginAdmin } from './helpers.js';
 
-const context = await browser.newContext();
-const page = await context.newPage();
-const b = collectPage(page, cfg); // buckets mutate live as the page runs
+await testCase(t, 'ADM-03', async () => {
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const b = collectPage(page, cfg); // buckets mutate live as the page runs
 
-await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
-await page.fill('input[type="email"]', cfg.adminEmail);
-await page.fill('input[type="password"]', cfg.adminPassword);
-await page.click('button[type="submit"]');
-await page.waitForURL('**/admin/**', { timeout: 15000 });
-await page.waitForTimeout(1500); // let the dashboard settle
+  await loginAdmin(page, cfg);                       // race-free login
+  const authState = await context.storageState();    // reuse for later cases:
+  // const ctx2 = await newContext(browser, { storageState: authState });
 
-t.assert(b.pageErrors.length === 0, `ADM-03 no uncaught exceptions — ${JSON.stringify(b.pageErrors)}`);
-t.assert(b.failedRequests.length === 0, `ADM-03 no failed requests — ${JSON.stringify(b.failedRequests)}`);
-await context.close();
+  await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`, { expectText: 'Style' });
+
+  t.assert(b.pageErrors.length === 0, `ADM-03 no uncaught exceptions — ${JSON.stringify(b.pageErrors)}`);
+  t.assert(b.failedRequests.length === 0, `ADM-03 no failed requests — ${JSON.stringify(b.failedRequests)}`);
+  await context.close();
+});
 ```
 
 ### Guards you must use
@@ -111,18 +120,23 @@ else { ...write test... }
 1. ALL page visits via `visitPage` or `collectPage`. Never attach your own
    `pageerror`/`console` listeners. Extend `helpers.js` if something is
    missing (one shared allowlist lives there).
-2. No `waitForTimeout` longer than 5s. Prefer `expectSelector`/`expectText`.
-3. No assertions on wall-clock-dependent UI (which prayer is "current",
+2. Every case body runs inside `testCase(t, id, fn)` — a thrown timeout must
+   become a FAIL line, never a process-killing uncaught exception.
+3. No fixed `waitForTimeout` as a readiness wait. Use the condition-based
+   helpers (`waitForHydration`, `waitForContent`, `gotoPage`, `settlePage`).
+   Fixed sleeps are allowed ONLY as stress pacing (rapid-nav cadence, typing
+   debounce) and stay ≤ 1s.
+4. No assertions on wall-clock-dependent UI (which prayer is "current",
    countdown values, ceremony states). Presence + zero-error only.
-4. No `data-testid` additions to components unless text is genuinely
+5. No `data-testid` additions to components unless text is genuinely
    ambiguous — and if you add one, record it in the case's Notes here.
-5. Remote URLs are cache-busted automatically by the harness (`?cb=`). Do
+6. Remote URLs are cache-busted automatically by the harness (`?cb=`). Do
    not add your own.
-6. Verify the expected string on a running page BEFORE writing the
+7. Verify the expected string on a running page BEFORE writing the
    assertion (`curl` the API, or open the dev page). Never assert from
    imagination. If reality differs from this doc, the doc is stale — fix
    the doc.
-7. A case is DONE when: it passes locally (`node tests/e2e/<suite>.test.js`
+8. A case is DONE when: it passes locally (`node tests/e2e/<suite>.test.js`
    with dev servers up), its Status row here says IMPLEMENTED, and
    `node tests/e2e/run.js` is still green.
 
