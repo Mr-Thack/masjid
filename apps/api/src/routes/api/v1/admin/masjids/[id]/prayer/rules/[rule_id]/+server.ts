@@ -2,11 +2,13 @@ import {
   UpdatePrayerRuleSchema,
   ErrorJsonResponse,
   JsonResponse,
+  formatPrayerRuleError,
 } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { prayerRules, masjids as masjidsTable } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
+import { validateRulesHealth } from '$lib/server/prayer/validate';
 import type { RequestHandler } from './$types';
 
 export const PUT: RequestHandler = async ({ params, request, locals, platform }) => {
@@ -37,6 +39,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (body.execution_order !== undefined) updateData.executionOrder = body.execution_order;
     if (body.conditions_json !== undefined) updateData.conditionsJson = JSON.stringify(body.conditions_json);
     if (body.action_json !== undefined) updateData.actionJson = JSON.stringify(body.action_json);
+    if (body.enabled !== undefined) updateData.enabled = body.enabled;
 
     if (Object.keys(updateData).length > 0) {
       await db.update(prayerRules).set(updateData).where(eq(prayerRules.id, params.rule_id));
@@ -57,7 +60,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       .where(eq(prayerRules.id, params.rule_id))
       .get();
 
-    return JsonResponse({
+    const health = await validateRulesHealth(params.id, db);
+
+    const response: Record<string, unknown> = {
       id: updated?.id,
       masjid_id: updated?.masjidId,
       prayer_name: updated?.prayerName,
@@ -65,10 +70,18 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       execution_order: updated?.executionOrder,
       conditions_json: JSON.parse(updated?.conditionsJson ?? '[]'),
       action_json: JSON.parse(updated?.actionJson ?? '{}'),
-    });
+      enabled: updated?.enabled ?? true,
+    };
+
+    if (health && !health.healthy) {
+      response.warning = `This update produces invalid prayer times for ${health.failingDates.join(', ')}. The display will show --:-- for those days.`;
+    }
+
+    return JsonResponse(response);
   } catch (e: unknown) {
     if (e instanceof Error && e.name === 'ZodError') {
-      return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
+      const { message, field } = formatPrayerRuleError(e as unknown as import('zod').ZodError);
+      return ErrorJsonResponse('VALIDATION_ERROR', `${message} (field: ${field})`);
     }
     return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to update prayer rule');
   }
@@ -121,7 +134,15 @@ export const DELETE: RequestHandler = async ({ params, locals, platform }) => {
     await invalidateMasjidCache(platform?.env?.CACHE, params.id);
     if (masjid) await invalidatePageCache(platform?.env?.CACHE, masjid.slug);
 
-    return JsonResponse({ success: true });
+    const health = await validateRulesHealth(params.id, db);
+
+    const response: Record<string, unknown> = { success: true };
+
+    if (health && !health.healthy) {
+      response.warning = `After deleting this rule, prayer times are invalid for ${health.failingDates.join(', ')}. The display will show --:-- for those days.`;
+    }
+
+    return JsonResponse(response);
   } catch {
     return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to delete prayer rule');
   }

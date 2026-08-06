@@ -61,6 +61,11 @@ function buildMutationSummary(domain: string, action: string, payload: Record<st
       if (action === 'DELETE') return 'Archived';
       return 'Updated';
     }
+    case 'TIMETABLE_IMPORT': {
+      const count = payload.count || payload.rules ? (payload.rules as unknown[])?.length : 0;
+      const del = payload.deleted || 0;
+      return `Imported ${count || '?'} rule(s)${del ? ` (deleted ${del} existing)` : ''}`;
+    }
     default:
       return `${action}`;
   }

@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { Loader, Plus, ExternalLink, Sparkles } from 'lucide-svelte';
+  import { Loader, Plus, ExternalLink, Sparkles, Check, TriangleAlert } from 'lucide-svelte';
 
   let { data }: { data: { masjidSlug: string } } = $props();
 
@@ -15,6 +15,7 @@
   let domains = $state<{ domain: unknown | null }>({ domain: null });
   let prayerConfig = $state<{ calculation_method: number; timezone: string }>({ calculation_method: 2, timezone: 'America/Chicago' });
   let branches = $state<unknown[]>([]);
+  let prayerHealth = $state<{ healthy: boolean; failingDates: string[] } | null>(null);
 
   $effect(() => {
     loadDashboard();
@@ -42,6 +43,11 @@
         branches = b.branches || [];
       } catch {
         branches = [];
+      }
+      try {
+        prayerHealth = await api.getPrayerHealth(masjidId);
+      } catch {
+        prayerHealth = null;
       }
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : 'Failed to load dashboard';
@@ -109,20 +115,31 @@
         </div>
       </div>
 
-      <!-- Prayer config -->
-      <div class="bg-surface border border-border rounded-xl p-5 space-y-2">
-        <h2 class="font-heading font-semibold text-sm text-text-muted uppercase tracking-wider">Prayer Config</h2>
-        <div class="flex gap-4 text-sm">
-          <div>
-            <span class="text-text-muted">Method:</span>
-            <span class="ml-1 text-text font-medium">{prayerConfig.calculation_method}</span>
-          </div>
-          <div>
-            <span class="text-text-muted">Timezone:</span>
-            <span class="ml-1 text-text font-medium">{prayerConfig.timezone}</span>
-          </div>
+      <!-- Display Health -->
+      {#if prayerHealth !== null}
+        <div class="bg-surface border border-border rounded-xl p-5 space-y-3">
+          <h2 class="font-heading font-semibold text-sm text-text-muted uppercase tracking-wider">Display Health</h2>
+          {#if prayerHealth.healthy}
+            <div class="flex items-center gap-2 text-green-400">
+              <Check size={18} />
+              <span class="text-sm font-medium">All 30 days valid</span>
+            </div>
+          {:else}
+            <div class="flex items-start gap-2 text-amber-400">
+              <TriangleAlert size={18} class="mt-0.5 shrink-0" />
+              <div>
+                <p class="text-sm font-medium">{prayerHealth.failingDates.length} day{prayerHealth.failingDates.length > 1 ? 's' : ''} failing</p>
+                <p class="text-xs text-text-muted mt-1">{prayerHealth.failingDates.join(', ')}</p>
+              </div>
+            </div>
+          {/if}
         </div>
-      </div>
+      {:else}
+        <div class="bg-surface border border-border rounded-xl p-5 space-y-3">
+          <h2 class="font-heading font-semibold text-sm text-text-muted uppercase tracking-wider">Display Health</h2>
+          <p class="text-sm text-text-muted">Unable to check</p>
+        </div>
+      {/if}
     </div>
 
     <!-- Active branches -->

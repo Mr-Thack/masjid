@@ -2,11 +2,13 @@ import {
   CreatePrayerRuleSchema,
   ErrorJsonResponse,
   JsonResponse,
+  formatPrayerRuleError,
 } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { prayerRules, masjids as masjidsTable } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
+import { validateRulesHealth } from '$lib/server/prayer/validate';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals, platform }) => {
@@ -33,6 +35,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       execution_order: r.executionOrder,
       conditions_json: JSON.parse(r.conditionsJson),
       action_json: JSON.parse(r.actionJson),
+      enabled: r.enabled ?? true,
     }));
 
     return JsonResponse({ rules: mapped });
@@ -72,12 +75,15 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       executionOrder: body.execution_order,
       conditionsJson: JSON.stringify(body.conditions_json),
       actionJson: JSON.stringify(body.action_json),
+      enabled: body.enabled !== false,
     });
 
     await invalidateMasjidCache(platform?.env?.CACHE, params.id);
     await invalidatePageCache(platform?.env?.CACHE, masjid.slug);
 
-    return JsonResponse({
+    const health = await validateRulesHealth(params.id, db);
+
+    const response: Record<string, unknown> = {
       id: ruleId,
       masjid_id: params.id,
       prayer_name: body.prayer_name,
@@ -85,10 +91,18 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       execution_order: body.execution_order,
       conditions_json: body.conditions_json,
       action_json: body.action_json,
-    }, 201);
+      enabled: body.enabled !== false,
+    };
+
+    if (health && !health.healthy) {
+      response.warning = `This rule produces invalid prayer times for ${health.failingDates.join(', ')}. The display will show --:-- for those days.`;
+    }
+
+    return JsonResponse(response, 201);
   } catch (e: unknown) {
     if (e instanceof Error && e.name === 'ZodError') {
-      return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
+      const { message, field } = formatPrayerRuleError(e as unknown as import('zod').ZodError);
+      return ErrorJsonResponse('VALIDATION_ERROR', `${message} (field: ${field})`);
     }
     return ErrorJsonResponse('INTERNAL_ERROR', 'Failed to create prayer rule');
   }

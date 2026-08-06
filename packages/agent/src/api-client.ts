@@ -199,3 +199,52 @@ export async function rollbackRestore(
   const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/rollback`, { snapshot_id: snapshotId }, config);
   return res.json() as Promise<Record<string, unknown>>;
 }
+
+export async function explainPrayerRules(
+  date: string | undefined,
+  config: ApiClientConfig,
+): Promise<{ dryRun: Record<string, unknown>; rules: unknown[] }> {
+  const dryBody: Record<string, unknown> = {};
+  if (date) dryBody.date = date;
+  const dryRun = await dryRunPrayerTimes(dryBody, config);
+  const rulesRes = await getPrayerRulesList(config);
+  const rulesList = (rulesRes as Record<string, unknown>).rules as unknown[] || [];
+  return { dryRun, rules: rulesList };
+}
+
+export async function importTimetable(
+  rules: Array<{ prayer_name: string; rule_name: string; conditions_json: unknown[]; action_json: Record<string, unknown> }>,
+  replaceExisting: boolean,
+  config: ApiClientConfig,
+): Promise<{ created: number; deleted: number; rules: unknown[] }> {
+  let deletedCount = 0;
+
+  if (replaceExisting) {
+    const existing = await getPrayerRulesList(config);
+    const existingRules = (existing as Record<string, unknown>).rules as Array<{ id: string }> || [];
+    for (const r of existingRules) {
+      await deletePrayerRule(r.id, config);
+      deletedCount++;
+    }
+  }
+
+  const created: unknown[] = [];
+  for (const rule of rules) {
+    const body: Record<string, unknown> = {
+      prayer_name: rule.prayer_name,
+      rule_name: rule.rule_name,
+      conditions_json: rule.conditions_json,
+      action_json: rule.action_json,
+    };
+
+    const existing = await getPrayerRulesList(config);
+    const existingRules = (existing as Record<string, unknown>).rules as Array<{ id: string; prayer_name: string }> || [];
+    const maxOrder = existingRules.filter((r: { prayer_name: string }) => r.prayer_name === rule.prayer_name).length;
+    body.execution_order = replaceExisting ? created.filter(r => (r as Record<string, unknown>).prayer_name === rule.prayer_name).length : maxOrder;
+
+    const res = await createPrayerRule(body, config);
+    created.push(res);
+  }
+
+  return { created: created.length, deleted: deletedCount, rules: created };
+}

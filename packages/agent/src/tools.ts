@@ -21,7 +21,13 @@ import {
   pinAnnouncement,
   dryRunPrayerTimes,
   rollbackRestore,
+  explainPrayerRules,
+  importTimetable,
 } from './api-client';
+import { explainAllPrayers, validateRules } from './rules-engine';
+import type { RuleWithDb, ConditionEval, RuleTrace, PrayerTrace } from './rules-engine';
+import type { PrayerName } from './types';
+import type { Condition, Action } from '@masjid/schemas';
 
 const NOWHERE = 'nowhere';
 
@@ -57,6 +63,9 @@ function describeMutation(domain: string, action: string, args: Record<string, u
       if (action === 'DELETE') return `Delete announcement`;
       if (action === 'PIN') return `Pin/unpin announcement`;
       return 'Announcement change';
+    case 'TIMETABLE_IMPORT':
+      if (action === 'IMPORT') return `Import timetable rules`;
+      return 'Timetable change';
     default:
       return `${domain} ${action}: ${truncate(args)}`;
   }
@@ -567,6 +576,133 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
           data,
           mutationSummary: `Restored masjid configuration from snapshot ${args.snapshot_id}. Restored domains: ${(data.restored as string[])?.join(', ') || 'all'}.`,
         };
+      },
+    },
+  {
+      name: 'rules_explain',
+      description: `Explain which prayer rules fired (or didn't) for a given date, producing a human-readable trace of the rule chain for each prayer. Useful when an admin asks why a specific iqaamah time is what it is.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          date: stringProp('Date to explain (YYYY-MM-DD). Defaults to today.'),
+          prayer: enumProp(['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'], 'Optional: explain only one prayer. If omitted, explains all five.'),
+        },
+        required: [],
+      },
+      handler: async (args, ctx) => {
+        const dateStr = (args.date as string) || new Date().toISOString().slice(0, 10);
+        const { dryRun, rules: rulesList } = await explainPrayerRules(args.date as string | undefined, ctx);
+
+        const date = new Date(dateStr + 'T12:00:00Z');
+
+        const rules: RuleWithDb[] = (rulesList as Array<Record<string, unknown>>).map((r: Record<string, unknown>) => ({
+          id: r.id as string,
+          prayer_name: r.prayer_name as PrayerName,
+          rule_name: r.rule_name as string,
+          execution_order: r.execution_order as number,
+          conditions: (r.conditions_json || []) as Condition[],
+          action: r.action_json as Action,
+        }));
+
+        const dryData = dryRun as Record<string, unknown>;
+
+        const adhaanTimes: Record<PrayerName, string> = {
+          fajr: ((dryData.fajr as Record<string, string>)?.adhaan) || '00:00',
+          dhuhr: ((dryData.dhuhr as Record<string, string>)?.adhaan) || '00:00',
+          asr: ((dryData.asr as Record<string, string>)?.adhaan) || '00:00',
+          maghrib: ((dryData.maghrib as Record<string, string>)?.adhaan) || '00:00',
+          isha: ((dryData.isha as Record<string, string>)?.adhaan) || '00:00',
+        };
+
+        const hijriDate = dryData.hijri_date as { month: number; day: number; year: number } | undefined
+          || { month: 1, day: 1, year: 1447 };
+
+        const allExplained = explainAllPrayers(rules, adhaanTimes, date, hijriDate);
+
+        if (args.prayer) {
+          return {
+            success: true,
+            data: {
+              date: dateStr,
+              hijri_date: hijriDate,
+              prayer: args.prayer,
+              ...allExplained[args.prayer as PrayerName],
+            },
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            date: dateStr,
+            hijri_date: hijriDate,
+            prayers: allExplained,
+          },
+        };
+      },
+    },
+    {
+      name: 'rules_validate',
+      description: `Validate the current prayer rule set for common issues. Returns warnings about dead rules, conflicting rules, missing prayer coverage, and other potential problems. Read-only — does not modify anything.`,
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const rulesRes = await getPrayerRulesList(ctx);
+        const rulesList = (rulesRes as Record<string, unknown>).rules as Array<Record<string, unknown>> || [];
+
+        const rules: RuleWithDb[] = rulesList.map((r: Record<string, unknown>) => ({
+          id: r.id as string,
+          prayer_name: r.prayer_name as PrayerName,
+          rule_name: r.rule_name as string,
+          execution_order: r.execution_order as number,
+          conditions: (r.conditions_json || []) as Condition[],
+          action: r.action_json as Action,
+        }));
+
+        const result = validateRules(rules);
+        return { success: true, data: result };
+      },
+    },
+    {
+      name: 'timetable_import',
+      description: `Import a complete prayer timetable as a set of rules. Accepts a structured timetable object (prayer names, times, date ranges, and conditions) and creates all rules in one atomic operation. Use this after extracting times from a timetable photo or when an admin provides a full schedule.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          rules: {
+            type: 'array',
+            description: 'Array of rule objects to create. Each rule follows the same shape as prayer_rules_create (prayer_name, rule_name, conditions_json, action_json). Rules are created in array order with auto-incrementing execution_order per prayer.',
+            items: {
+              type: 'object',
+              properties: {
+                prayer_name: { type: 'string', enum: ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] },
+                rule_name: { type: 'string' },
+                conditions_json: { type: 'array' },
+                action_json: { type: 'object' },
+              },
+              required: ['prayer_name', 'rule_name', 'conditions_json', 'action_json'],
+            },
+          },
+          replace_existing: boolProp('If true, delete ALL existing prayer rules before importing. If false (default), append new rules with execution_order after existing ones.'),
+        },
+        required: ['rules'],
+      },
+      handler: async (args, ctx) => {
+        const rules = args.rules as Array<{
+          prayer_name: string;
+          rule_name: string;
+          conditions_json: unknown[];
+          action_json: Record<string, unknown>;
+        }>;
+        const replaceExisting = !!(args.replace_existing);
+
+        const data = await importTimetable(rules, replaceExisting, ctx);
+        const summary = describeMutation('TIMETABLE_IMPORT', 'IMPORT', { count: data.created, deleted: data.deleted });
+        await storeMutation(ctx.branchId, 'TIMETABLE_IMPORT', 'IMPORT', 'timetable', { rules, replace_existing: replaceExisting }, ctx.db);
+        return { success: true, data, mutationSummary: summary };
       },
     },
   ];

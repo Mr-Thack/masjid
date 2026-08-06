@@ -20,3 +20,4 @@ export {
 } from './session';
 export { bufferToDataUri, uploadToR2, registerAsset } from './media';
 export * from './types';
+export { applyAction, evaluateCondition, replayRules, explainAllPrayers, validateRules } from './rules-engine';

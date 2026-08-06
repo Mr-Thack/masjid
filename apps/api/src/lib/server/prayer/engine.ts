@@ -1,9 +1,12 @@
 import { calculateAdhaan } from './adhaan';
 import { computeHijriDate } from './hijri';
+import { applyAction, allConditionsMatch } from '@masjid/ui-utils';
 import type { Condition, Action } from '@masjid/schemas';
 import type { Db } from '../db';
 import { prayerRules } from '../db/schema';
 import { and, eq, asc } from 'drizzle-orm';
+
+export { applyAction, allConditionsMatch };
 
 export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
 
@@ -24,85 +27,6 @@ interface MasjidConfig {
   asr_madhab: string;
   high_latitude_rule: string;
   show_dual_asr: boolean;
-}
-
-function parseTime(time: string): number {
-  const [h, m] = time.split(':').map(Number) as [number, number];
-  return h * 60 + m;
-}
-
-function formatTime(minutes: number): string {
-  const total = ((minutes % 1440) + 1440) % 1440;
-  const h = Math.floor(total / 60);
-  const m = total % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-export function applyAction(action: Action, time: string): string {
-  let minutes = parseTime(time);
-
-  switch (action.type) {
-    case 'add_minutes':
-      minutes += action.minutes;
-      break;
-    case 'set_fixed_time':
-      minutes = parseTime(action.time);
-      break;
-    case 'round_up': {
-      const inc = action.increment;
-      const remainder = minutes % inc;
-      if (remainder > 0) minutes += inc - remainder;
-      break;
-    }
-    case 'round_down': {
-      const inc = action.increment;
-      minutes -= minutes % inc;
-      break;
-    }
-    case 'round_nearest': {
-      const inc = action.increment;
-      const remainder = minutes % inc;
-      if (remainder >= inc / 2) {
-        minutes += inc - remainder;
-      } else {
-        minutes -= remainder;
-      }
-      break;
-    }
-    case 'right_after_adhaan':
-      // iqaamah stays at adhaan time; flag is set downstream
-      break;
-  }
-
-  return formatTime(minutes);
-}
-
-export function allConditionsMatch(
-  conditions: Condition[],
-  gregorianDate: Date,
-  hijriDate: { month: number; day: number; year: number },
-): boolean {
-  for (const condition of conditions) {
-    switch (condition.type) {
-      case 'always':
-        continue;
-      case 'day_of_week':
-        if (!condition.days.includes(gregorianDate.getUTCDay())) return false;
-        break;
-      case 'month':
-        if (!condition.months.includes(gregorianDate.getUTCMonth() + 1)) return false;
-        break;
-      case 'hijri_month':
-        if (!condition.months.includes(hijriDate.month)) return false;
-        break;
-      case 'date_range': {
-        const d = gregorianDate.toISOString().slice(0, 10);
-        if (d < condition.start || d > condition.end) return false;
-        break;
-      }
-    }
-  }
-  return true;
 }
 
 export type PrayerTimeResult = {
@@ -189,6 +113,8 @@ export async function computeIqaamah(
   const prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as PrayerName[];
   const result = {} as Record<PrayerName, PrayerTimeResult>;
 
+  const computedTimes = { sunrise: adhaan.sunrise } as ComputedTimes;
+
   for (const prayer of prayers) {
     const adhaanTime = adhaan[prayer];
     let iqaamahTime = adhaanTime;
@@ -201,6 +127,8 @@ export async function computeIqaamah(
       .orderBy(asc(prayerRules.executionOrder));
 
     for (const rule of rules) {
+      if (rule.enabled === false) continue;
+
       let conditions: Condition[];
       try {
         conditions = JSON.parse(rule.conditionsJson);
@@ -215,8 +143,8 @@ export async function computeIqaamah(
         continue;
       }
 
-      if (allConditionsMatch(conditions, date, hijriDate)) {
-        iqaamahTime = applyAction(action, iqaamahTime);
+      if (allConditionsMatch(conditions, date, hijriDate, iqaamahTime)) {
+        iqaamahTime = applyAction(action, iqaamahTime, computedTimes);
         if (action.type === 'right_after_adhaan') {
           rightAfterAdhaan = true;
         }
@@ -224,6 +152,7 @@ export async function computeIqaamah(
     }
 
     result[prayer] = { adhaan: adhaanTime, iqaamah: iqaamahTime, right_after_adhaan: rightAfterAdhaan };
+    computedTimes[prayer] = result[prayer];
   }
 
   const computed = {

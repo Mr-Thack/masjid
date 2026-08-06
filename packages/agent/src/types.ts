@@ -1,3 +1,5 @@
+export type PrayerName = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
+
 export interface ApiClientConfig {
   apiUrl: string;
   jwtSecret: string;

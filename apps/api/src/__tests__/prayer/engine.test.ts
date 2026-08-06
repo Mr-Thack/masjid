@@ -4,7 +4,8 @@ import type { Condition, Action } from '@masjid/schemas';
 // ---------------------------------------------------------------------------
 // Import pure functions (now exported) and the full pipeline
 // ---------------------------------------------------------------------------
-import { applyAction, allConditionsMatch, computeIqaamah, verifyComputedTimes } from '$lib/server/prayer/engine';
+import { applyAction, allConditionsMatch } from '@masjid/ui-utils';
+import { computeIqaamah, verifyComputedTimes, ComputedTimes } from '$lib/server/prayer/engine';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +43,7 @@ interface DbRule {
   ruleName: string;
   conditionsJson: string;
   actionJson: string;
+  enabled?: boolean;
 }
 
 // =========================================================================
@@ -219,6 +221,98 @@ describe('applyAction', () => {
       expect(after).toBe('13:35');
     });
   });
+
+  describe('set_offset_from_prayer', () => {
+    const computed: ComputedTimes = {
+      sunrise: '06:30',
+      fajr: { adhaan: '04:45', iqaamah: '05:15' },
+      dhuhr: { adhaan: '13:05', iqaamah: '13:30' },
+      asr: { adhaan: '16:30', iqaamah: '16:45' },
+      maghrib: { adhaan: '20:15', iqaamah: '20:20' },
+      isha: { adhaan: '21:45', iqaamah: '22:00' },
+    };
+
+    it('sets iqaamah from another prayer adhaan', () => {
+      expect(applyAction({ type: 'set_offset_from_prayer', prayer: 'maghrib', from: 'adhaan', minutes: 90 }, '12:00', computed)).toBe('21:45');
+    });
+
+    it('sets iqaamah from another prayer iqaamah', () => {
+      expect(applyAction({ type: 'set_offset_from_prayer', prayer: 'maghrib', from: 'iqaamah', minutes: 75 }, '12:00', computed)).toBe('21:35');
+    });
+
+    it('sets iqaamah from sunrise (subtracts minutes)', () => {
+      expect(applyAction({ type: 'set_offset_from_prayer', prayer: 'fajr', from: 'sunrise', minutes: 30 }, '12:00', computed)).toBe('06:00');
+    });
+
+    it('zero minute offset from adhaan (equal)', () => {
+      expect(applyAction({ type: 'set_offset_from_prayer', prayer: 'dhuhr', from: 'adhaan', minutes: 0 }, '12:00', computed)).toBe('13:05');
+    });
+
+    it('throws when computedTimes is missing', () => {
+      expect(() => applyAction({ type: 'set_offset_from_prayer', prayer: 'maghrib', from: 'adhaan', minutes: 90 }, '12:00')).toThrow(/computedTimes/);
+    });
+
+    it('throws when referenced prayer not yet computed', () => {
+      const partial: ComputedTimes = {
+        sunrise: '06:30',
+        fajr: { adhaan: '04:45', iqaamah: '05:15' },
+        dhuhr: { adhaan: '13:05', iqaamah: '13:30' },
+      } as ComputedTimes;
+      expect(() => applyAction({ type: 'set_offset_from_prayer', prayer: 'maghrib', from: 'adhaan', minutes: 90 }, '12:00', partial)).toThrow(/Cannot reference/);
+    });
+
+    it('wraps around midnight correctly (sunrise subtract)', () => {
+      const nightComputed: ComputedTimes = {
+        sunrise: '00:30',
+        fajr: { adhaan: '23:45', iqaamah: '00:15' },
+        dhuhr: { adhaan: '13:05', iqaamah: '13:30' },
+        asr: { adhaan: '16:30', iqaamah: '16:45' },
+        maghrib: { adhaan: '20:15', iqaamah: '20:20' },
+        isha: { adhaan: '21:45', iqaamah: '22:00' },
+      } as ComputedTimes;
+      expect(applyAction({ type: 'set_offset_from_prayer', prayer: 'fajr', from: 'sunrise', minutes: 30 }, '12:00', nightComputed)).toBe('00:00');
+    });
+  });
+
+  describe('cap_min', () => {
+    it('raises time below cap', () => {
+      expect(applyAction({ type: 'cap_min', time: '13:00' }, '12:11')).toBe('13:00');
+    });
+
+    it('no-op when time is above cap', () => {
+      expect(applyAction({ type: 'cap_min', time: '13:00' }, '13:15')).toBe('13:15');
+    });
+
+    it('no-op when time equals cap', () => {
+      expect(applyAction({ type: 'cap_min', time: '13:00' }, '13:00')).toBe('13:00');
+    });
+
+    it('raises near midnight', () => {
+      expect(applyAction({ type: 'cap_min', time: '01:00' }, '00:30')).toBe('01:00');
+    });
+
+    it('no-op when above near midnight', () => {
+      expect(applyAction({ type: 'cap_min', time: '01:00' }, '01:30')).toBe('01:30');
+    });
+  });
+
+  describe('cap_max', () => {
+    it('lowers time above cap', () => {
+      expect(applyAction({ type: 'cap_max', time: '22:00' }, '23:00')).toBe('22:00');
+    });
+
+    it('no-op when time is below cap', () => {
+      expect(applyAction({ type: 'cap_max', time: '22:00' }, '21:30')).toBe('21:30');
+    });
+
+    it('no-op when time equals cap', () => {
+      expect(applyAction({ type: 'cap_max', time: '22:00' }, '22:00')).toBe('22:00');
+    });
+
+    it('no-op when time well below cap', () => {
+      expect(applyAction({ type: 'cap_max', time: '02:00' }, '01:00')).toBe('01:00');
+    });
+  });
 });
 
 // =========================================================================
@@ -336,6 +430,123 @@ describe('allConditionsMatch', () => {
     });
   });
 
+  describe('time_of_day', () => {
+    it('matches when running time is before threshold', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'before', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri, '12:00')).toBe(true);
+    });
+
+    it('does NOT match when running time equals threshold (before)', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'before', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri, '12:30')).toBe(false);
+    });
+
+    it('does NOT match when running time is after threshold (before)', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'before', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri, '13:00')).toBe(false);
+    });
+
+    it('matches when running time is after threshold (after)', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'after', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri, '13:00')).toBe(true);
+    });
+
+    it('matches when running time equals threshold (after)', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'after', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri, '12:30')).toBe(true);
+    });
+
+    it('does NOT match when running time is before threshold (after)', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'after', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri, '12:00')).toBe(false);
+    });
+
+    it('returns true when runningTime is not provided (backward compat)', () => {
+      const c: Condition[] = [{ type: 'time_of_day', operator: 'before', threshold: '12:30' }];
+      expect(allConditionsMatch(c, monday, hijri)).toBe(true);
+    });
+
+    it('combines with day_of_week (AND logic)', () => {
+      const c: Condition[] = [
+        { type: 'day_of_week', days: [5] },
+        { type: 'time_of_day', operator: 'before', threshold: '12:30' },
+      ];
+      expect(allConditionsMatch(c, friday, hijri, '12:00')).toBe(true);
+      expect(allConditionsMatch(c, friday, hijri, '13:00')).toBe(false);
+      expect(allConditionsMatch(c, monday, hijri, '12:00')).toBe(false);
+    });
+  });
+
+  describe('hijri_day_range', () => {
+    it('matches day inside range', () => {
+      const c: Condition[] = [{ type: 'hijri_day_range', month: 9, start_day: 21, end_day: 30 }];
+      expect(allConditionsMatch(c, monday, { ...hijri, day: 25 })).toBe(true);
+    });
+
+    it('matches on start boundary', () => {
+      const c: Condition[] = [{ type: 'hijri_day_range', month: 9, start_day: 21, end_day: 30 }];
+      expect(allConditionsMatch(c, monday, { ...hijri, day: 21 })).toBe(true);
+    });
+
+    it('matches on end boundary', () => {
+      const c: Condition[] = [{ type: 'hijri_day_range', month: 9, start_day: 21, end_day: 30 }];
+      expect(allConditionsMatch(c, monday, { ...hijri, day: 30 })).toBe(true);
+    });
+
+    it('does NOT match day outside range', () => {
+      const c: Condition[] = [{ type: 'hijri_day_range', month: 9, start_day: 21, end_day: 30 }];
+      expect(allConditionsMatch(c, monday, { ...hijri, day: 15 })).toBe(false);
+    });
+
+    it('does NOT match wrong month', () => {
+      const c: Condition[] = [{ type: 'hijri_day_range', month: 9, start_day: 21, end_day: 30 }];
+      expect(allConditionsMatch(c, monday, { ...hijri, month: 10, day: 25 })).toBe(false);
+    });
+
+    it('single day range works', () => {
+      const c: Condition[] = [{ type: 'hijri_day_range', month: 12, start_day: 9, end_day: 9 }];
+      expect(allConditionsMatch(c, monday, { year: 1447, month: 12, day: 9 })).toBe(true);
+      expect(allConditionsMatch(c, monday, { year: 1447, month: 12, day: 10 })).toBe(false);
+    });
+  });
+
+  describe('month_day_range', () => {
+    it('matches date inside non-wrapping range (Jan 1 → Mar 31)', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 1, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-02-15T12:00:00Z'), hijri)).toBe(true);
+    });
+
+    it('does NOT match date outside non-wrapping range', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 1, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-07-15T12:00:00Z'), hijri)).toBe(false);
+    });
+
+    it('matches on start boundary', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 11, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-11-01T12:00:00Z'), hijri)).toBe(true);
+    });
+
+    it('matches on end boundary', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 11, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-03-31T12:00:00Z'), hijri)).toBe(true);
+    });
+
+    it('matches year-wrapping range (Nov 1 → Mar 31) in December', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 11, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-12-15T12:00:00Z'), hijri)).toBe(true);
+    });
+
+    it('matches year-wrapping range in January', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 11, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-01-15T12:00:00Z'), hijri)).toBe(true);
+    });
+
+    it('does NOT match outside year-wrapping range (July)', () => {
+      const c: Condition[] = [{ type: 'month_day_range', start_month: 11, start_day: 1, end_month: 3, end_day: 31 }];
+      expect(allConditionsMatch(c, new Date('2026-07-15T12:00:00Z'), hijri)).toBe(false);
+    });
+  });
+
   // AND logic (multiple conditions in one rule)
   describe('AND — multiple conditions', () => {
     it('Friday in July: day_of_week[5] AND month[7]', () => {
@@ -440,6 +651,23 @@ describe('computeIqaamah', () => {
     } as any;
   }
 
+  function createDbWithRules(allRules: DbRule[]) {
+    return {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => Promise.resolve(allRules.map((r) => ({ ...r, enabled: r.enabled !== false }))),
+          }),
+        }),
+      }),
+    } as any;
+  }
+
+  function parseTimeMin(t: string): number {
+    const [h, m] = t.split(':').map(Number) as [number, number];
+    return h * 60 + m;
+  }
+
   it('returns all expected prayer times with valid time format', async () => {
     const db = createDb();
     const result = await computeIqaamah(chicagoMasjid, mondayDate, db);
@@ -512,6 +740,100 @@ describe('computeIqaamah', () => {
     expect(toMinutes(result.dhuhr.adhaan)).toBeLessThan(900); // before 3 PM
     expect(toMinutes(result.maghrib.adhaan)).toBeGreaterThan(1170); // after 7:30 PM
     expect(toMinutes(result.maghrib.adhaan)).toBeLessThan(1320); // before 10 PM
+  });
+
+  it('skips rules where enabled is false', async () => {
+    const rules: DbRule[] = [
+      {
+        id: 'r1',
+        masjidId: 'masjid-test-1',
+        prayerName: 'dhuhr',
+        executionOrder: 1,
+        ruleName: 'Disabled rule',
+        conditionsJson: JSON.stringify([{ type: 'always' }]),
+        actionJson: JSON.stringify({ type: 'set_fixed_time', time: '15:00' }),
+        enabled: false,
+      },
+    ];
+    const db = createDbWithRules(rules);
+    const result = await computeIqaamah(chicagoMasjid, mondayDate, db);
+    expect(result.dhuhr.iqaamah).toBe(result.dhuhr.adhaan);
+  });
+
+  it('applies enabled rules normally', async () => {
+    const rules: DbRule[] = [
+      {
+        id: 'r1',
+        masjidId: 'masjid-test-1',
+        prayerName: 'dhuhr',
+        executionOrder: 1,
+        ruleName: 'Enabled rule',
+        conditionsJson: JSON.stringify([{ type: 'always' }]),
+        actionJson: JSON.stringify({ type: 'add_minutes', minutes: 10 }),
+        enabled: true,
+      },
+    ];
+    const db = createDbWithRules(rules);
+    const result = await computeIqaamah(chicagoMasjid, mondayDate, db);
+    const adhaanMins = parseTimeMin(result.dhuhr.adhaan);
+    const iqaamahMins = parseTimeMin(result.dhuhr.iqaamah);
+    expect(iqaamahMins).toBeGreaterThan(adhaanMins);
+  });
+
+  it('conveys runningTime to time_of_day conditions', async () => {
+    const rules: DbRule[] = [
+      {
+        id: 'r1',
+        masjidId: 'masjid-test-1',
+        prayerName: 'dhuhr',
+        executionOrder: 1,
+        ruleName: 'After 12:30 add 5',
+        conditionsJson: JSON.stringify([{ type: 'time_of_day', operator: 'after', threshold: '12:30' }]),
+        actionJson: JSON.stringify({ type: 'add_minutes', minutes: 5 }),
+        enabled: true,
+      },
+    ];
+    const db = createDbWithRules(rules);
+    const result = await computeIqaamah(chicagoMasjid, mondayDate, db);
+    const adhaanMins = parseTimeMin(result.dhuhr.adhaan);
+    const iqaamahMins = parseTimeMin(result.dhuhr.iqaamah);
+    // July Chicago Dhuhr adhaan ~13:00, which is after 12:30, so rule applies
+    expect(iqaamahMins).toBe(adhaanMins + 5);
+  });
+
+  it('set_offset_from_prayer forwards computedTimes through the chain', async () => {
+    // Test via applyAction directly since the integration mock can't
+    // distinguish prayers. The plumbing is tested at unit level.
+    const computed: ComputedTimes = {
+      sunrise: '06:30',
+      fajr: { adhaan: '04:45', iqaamah: '05:15' },
+      dhuhr: { adhaan: '13:05', iqaamah: '13:30' },
+      asr: { adhaan: '16:30', iqaamah: '16:45' },
+      maghrib: { adhaan: '20:15', iqaamah: '20:20' },
+      isha: { adhaan: '21:45', iqaamah: '22:00' },
+    };
+    const result = applyAction(
+      { type: 'set_offset_from_prayer', prayer: 'maghrib', from: 'adhaan', minutes: 90 },
+      '12:00', computed,
+    );
+    expect(result).toBe('21:45');
+  });
+
+  it('cap_min and cap_max chain through applyAction', async () => {
+    // chain: add(10) → cap_min(13:00) → cap_max(14:00)
+    let time = applyAction({ type: 'add_minutes', minutes: 10 }, '12:01');
+    time = applyAction({ type: 'cap_min', time: '13:00' }, time);
+    time = applyAction({ type: 'cap_max', time: '14:00' }, time);
+    // 12:01 + 10 = 12:11 → cap_min(13:00) → 13:00 → cap_max(14:00) → 13:00
+    expect(time).toBe('13:00');
+  });
+
+  it('cap_max no-op when below cap', async () => {
+    let time = applyAction({ type: 'add_minutes', minutes: 10 }, '13:05');
+    time = applyAction({ type: 'cap_min', time: '13:00' }, time);
+    time = applyAction({ type: 'cap_max', time: '14:00' }, time);
+    // 13:05 + 10 = 13:15 → cap_min(13:00) → 13:15 (no-op) → cap_max(14:00) → 13:15 (no-op)
+    expect(time).toBe('13:15');
   });
 });
 

@@ -97,6 +97,8 @@ const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
   ['masjids', 'adjust_asr', 'INTEGER NOT NULL DEFAULT 0'],
   ['masjids', 'adjust_maghrib', 'INTEGER NOT NULL DEFAULT 0'],
   ['masjids', 'adjust_isha', 'INTEGER NOT NULL DEFAULT 0'],
+  // prayer_rules
+  ['prayer_rules', 'enabled', 'INTEGER NOT NULL DEFAULT 1'],
 ];
 
 function ensureTables(sqlite: Database.Database) {
@@ -168,7 +170,8 @@ function ensureTables(sqlite: Database.Database) {
       execution_order INTEGER NOT NULL,
       rule_name TEXT NOT NULL,
       conditions_json TEXT NOT NULL,
-      action_json TEXT NOT NULL
+      action_json TEXT NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1
     );
     CREATE INDEX IF NOT EXISTS idx_rules_lookup ON prayer_rules(masjid_id, prayer_name);
     CREATE INDEX IF NOT EXISTS idx_rules_order ON prayer_rules(masjid_id, execution_order);

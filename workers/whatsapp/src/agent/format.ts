@@ -8,6 +8,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   PRAYER_RULES: 'Prayer Rules',
   JUMUAH: "Jumu'ah",
   ANNOUNCEMENTS: 'Announcements',
+  TIMETABLE_IMPORT: 'Timetable Import',
 };
 
 function truncate(s: string, max: number): string {
@@ -65,6 +66,13 @@ function formatMutationAsWhatsApp(m: MutationData, index: number): string {
         return `${index}. *${action} ${domain}* (archived)`;
       }
       return `${index}. *${action} ${domain}* (updated)`;
+    }
+    case 'TIMETABLE_IMPORT': {
+      const ruleCount = m.payload.rules ? (Array.isArray(m.payload.rules) ? m.payload.rules.length : String(m.payload.rules)) : '?';
+      const del = m.payload.deleted;
+      const parts = [`${index}. *+ Imported ${ruleCount} rule(s)*`];
+      if (del) parts.push(`  Deleted ${del} existing rule(s)`);
+      return parts.join('\n');
     }
     default:
       return `${index}. *${action} ${domain}*`;

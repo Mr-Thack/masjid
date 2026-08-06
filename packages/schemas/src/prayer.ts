@@ -22,6 +22,24 @@ export const ConditionSchema = z.discriminatedUnion('type', [
     start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }),
+  z.object({
+    type: z.literal('time_of_day'),
+    operator: z.enum(['before', 'after']),
+    threshold: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  }),
+  z.object({
+    type: z.literal('hijri_day_range'),
+    month: z.number().int().min(1).max(12),
+    start_day: z.number().int().min(1).max(30),
+    end_day: z.number().int().min(1).max(30),
+  }),
+  z.object({
+    type: z.literal('month_day_range'),
+    start_month: z.number().int().min(1).max(12),
+    start_day: z.number().int().min(1).max(31),
+    end_month: z.number().int().min(1).max(12),
+    end_day: z.number().int().min(1).max(31),
+  }),
 ]);
 export type Condition = z.infer<typeof ConditionSchema>;
 
@@ -55,6 +73,20 @@ export const ActionSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('right_after_adhaan'),
   }),
+  z.object({
+    type: z.literal('set_offset_from_prayer'),
+    prayer: z.enum(['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']),
+    from: z.enum(['adhaan', 'iqaamah', 'sunrise']),
+    minutes: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('cap_min'),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  }),
+  z.object({
+    type: z.literal('cap_max'),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  }),
 ]);
 export type Action = z.infer<typeof ActionSchema>;
 
@@ -64,6 +96,7 @@ export const CreatePrayerRuleSchema = z.object({
   execution_order: z.number().int().min(0),
   conditions_json: z.array(ConditionSchema).min(1),
   action_json: ActionSchema,
+  enabled: z.boolean().optional().default(true),
 });
 export type CreatePrayerRule = z.infer<typeof CreatePrayerRuleSchema>;
 
@@ -78,6 +111,7 @@ export type ReorderRules = z.infer<typeof ReorderRulesSchema>;
 export const PrayerRuleSchema = CreatePrayerRuleSchema.extend({
   id: z.string(),
   masjid_id: z.string(),
+  enabled: z.boolean(),
 });
 export type PrayerRule = z.infer<typeof PrayerRuleSchema>;
 

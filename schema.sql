@@ -107,6 +107,9 @@ CREATE TABLE prayer_rules (
     --   {"type":"round_nearest","increment":5}
     action_json TEXT NOT NULL,
 
+    -- 0=disabled, 1=enabled. Rules with enabled=0 are skipped during computation.
+    enabled INTEGER NOT NULL DEFAULT 1,
+
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_rules_lookup ON prayer_rules(masjid_id, prayer_name);

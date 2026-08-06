@@ -50,7 +50,7 @@ describe('getToolDefinitions', () => {
   it('returns all tools', async () => {
     const { getToolDefinitions } = await import('../agent/tools');
     const tools = getToolDefinitions();
-    expect(tools).toHaveLength(23);
+    expect(tools).toHaveLength(26);
   });
 
   it('all tools have name, description, parameters, handler', async () => {
@@ -385,5 +385,160 @@ describe('Stage 4 tools', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('not found');
+  });
+});
+
+describe('new tools — rules_explain, rules_validate, timetable_import', () => {
+  it('rules_explain calls dry-run and rules list APIs', async () => {
+    mockFetch.mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({
+        fajr: { adhaan: '04:23', iqaamah: '04:43' },
+        sunrise: '06:00',
+        dhuhr: { adhaan: '12:56', iqaamah: '13:10' },
+        asr: { adhaan: '16:30', iqaamah: '16:40' },
+        maghrib: { adhaan: '19:15', iqaamah: '19:20' },
+        isha: { adhaan: '20:45', iqaamah: '20:55' },
+        hijri_date: { month: 1, day: 21, year: 1448 },
+        date: '2026-08-05',
+      }), { status: 200 })),
+    );
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rules_explain')!;
+
+    const result = await tool.handler({ date: '2026-08-05' }, testCtx);
+
+    expect(result.success).toBe(true);
+    const data = result.data as Record<string, unknown>;
+    expect(data.date).toBe('2026-08-05');
+    expect(data.prayers).toBeDefined();
+
+    const prayers = data.prayers as Record<string, unknown>;
+    expect(prayers.fajr).toBeDefined();
+    expect(prayers.dhuhr).toBeDefined();
+  });
+
+  it('rules_explain with a single prayer', async () => {
+    mockFetch.mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({
+        fajr: { adhaan: '04:23', iqaamah: '04:43' },
+        sunrise: '06:00',
+        dhuhr: { adhaan: '12:56', iqaamah: '13:10' },
+        asr: { adhaan: '16:30', iqaamah: '16:40' },
+        maghrib: { adhaan: '19:15', iqaamah: '19:20' },
+        isha: { adhaan: '20:45', iqaamah: '20:55' },
+        hijri_date: { month: 1, day: 21, year: 1448 },
+      }), { status: 200 })),
+    );
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rules_explain')!;
+
+    const result = await tool.handler({ date: '2026-08-05', prayer: 'dhuhr' }, testCtx);
+
+    expect(result.success).toBe(true);
+    const data = result.data as Record<string, unknown>;
+    expect(data.prayer).toBe('dhuhr');
+    expect(data.trace).toBeDefined();
+  });
+
+  it('rules_validate calls rules list and returns validation result', async () => {
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ rules: [] }), { status: 200 }),
+    );
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rules_validate')!;
+
+    const result = await tool.handler({}, testCtx);
+
+    expect(result.success).toBe(true);
+    const data = result.data as Record<string, unknown>;
+    expect(data.warnings).toBeDefined();
+    expect(data.suggestions).toBeDefined();
+    expect(data.valid).toBeDefined();
+
+    const warnings = data.warnings as Array<Record<string, unknown>>;
+    expect(warnings.length).toBeGreaterThan(0);
+  });
+
+  it('rules_validate detects no rules for prayer', async () => {
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ rules: [] }), { status: 200 }),
+    );
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'rules_validate')!;
+
+    const result = await tool.handler({}, testCtx);
+    const data = result.data as Record<string, unknown>;
+    const warnings = data.warnings as Array<Record<string, unknown>>;
+
+    const fajrWarnings = warnings.filter(w => w.prayer === 'fajr');
+    expect(fajrWarnings.length).toBeGreaterThan(0);
+  });
+
+  it('timetable_import creates rules and stores mutation', async () => {
+    mockFetch.mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ id: 'rule-1', prayer_name: 'dhuhr' }), { status: 201 })),
+    );
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'timetable_import')!;
+
+    const result = await tool.handler({
+      rules: [
+        {
+          prayer_name: 'dhuhr',
+          rule_name: 'Dhuhr Default',
+          conditions_json: [{ type: 'always' }],
+          action_json: { type: 'add_minutes', minutes: 10 },
+        },
+      ],
+    }, testCtx);
+
+    expect(result.success).toBe(true);
+    expect(result.mutationSummary).toBeDefined();
+    expect(mockDbPrepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO config_mutations'));
+  });
+
+  it('timetable_import with replace_existing deletes old rules first', async () => {
+    mockFetch
+      .mockResolvedValueOnce(new Response(JSON.stringify({ rules: [{ id: 'old-1' }, { id: 'old-2' }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ rules: [] }), { status: 200 }))
+      .mockResolvedValue(new Response(JSON.stringify({ id: 'new-1' }), { status: 201 }));
+
+    const { getToolDefinitions } = await import('../agent/tools');
+    const tools = getToolDefinitions();
+    const tool = tools.find(t => t.name === 'timetable_import')!;
+
+    const result = await tool.handler({
+      rules: [
+        {
+          prayer_name: 'dhuhr',
+          rule_name: 'New Rule',
+          conditions_json: [{ type: 'always' }],
+          action_json: { type: 'add_minutes', minutes: 5 },
+        },
+      ],
+      replace_existing: true,
+    }, testCtx);
+
+    expect(result.success).toBe(true);
+    const data = result.data as Record<string, unknown>;
+    expect(data.deleted).toBe(2);
+    expect(data.created).toBe(1);
+
+    const deleteCalls = mockFetch.mock.calls.filter((c: unknown[]) =>
+      (c[1] as Record<string, string>)?.method === 'DELETE' && (c[0] as string).includes('rules'),
+    );
+    expect(deleteCalls.length).toBe(2);
   });
 });
