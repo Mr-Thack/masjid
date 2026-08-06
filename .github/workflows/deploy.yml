@@ -59,12 +59,17 @@ jobs:
           - name: api
             workspace: '@masjid/api'
             dir: apps/api
-          - name: whatsapp
-            workspace: '@masjid/worker-whatsapp'
-            dir: workers/whatsapp
-          - name: push
-            workspace: '@masjid/worker-push'
-            dir: workers/push
+          # whatsapp + push are DISABLED until launch (2026-08-06): they have
+          # never been deployed (account has mapi + mapi-staging only) and
+          # their entries failed every prod run ("Missing script: build"),
+          # blocking e2e-prod. Re-add when the WhatsApp bot goes live — the
+          # no-op build scripts are already in place:
+          # - name: whatsapp
+          #   workspace: '@masjid/worker-whatsapp'
+          #   dir: workers/whatsapp
+          # - name: push
+          #   workspace: '@masjid/worker-push'
+          #   dir: workers/push
     steps:
       - uses: actions/checkout@v4
 

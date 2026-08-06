@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "build": "echo 'no build step - wrangler compiles TS at deploy time'",
     "deploy": "wrangler deploy --env production",
     "deploy:dry": "wrangler deploy --env production --dry-run",
     "dev": "wrangler dev"

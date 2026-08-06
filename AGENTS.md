@@ -289,6 +289,8 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
+> **NOT DEPLOYED (2026-08-06)**: WhatsApp/push workers are disabled until launch and have never been deployed (the account runs `mapi` + `mapi-staging` only). The prod deploy matrix in `deploy.yml` skips them — their entries are commented out with re-add instructions (no-op `build` scripts already in place; wrangler compiles TS at deploy time, no build step needed).
+
 Stages 1-3 are complete. The worker handles Meta webhook verification, inbound message parsing,
 phone-to-tenant resolution, branch lifecycle (OPEN/MERGED/ABANDONED), media file handling,
 and LLM-powered configuration via OpenAI-compatible API.
