@@ -44,6 +44,15 @@ jobs:
       - name: Schema drift check
         run: npm run check-schema
 
+      # Live-D1 guard: the file check above only proves schema.sql and
+      # schema.ts agree — it can't see the real database (the staging DB was
+      # missing the posts table on 2026-08-06 and every masjid endpoint 500'd
+      # post-deploy). Fail BEFORE the worker ships if the target database is
+      # missing tables/columns the code needs. Resolved by name so a recreated
+      # database (new UUID) never goes stale.
+      - name: Live D1 drift check
+        run: npx tsx tooling/check-d1-drift.ts masjid-db-staging
+
       - name: Build API worker
         run: npm run build --workspace=@masjid/api
 

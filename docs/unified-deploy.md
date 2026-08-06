@@ -123,6 +123,30 @@ npx wrangler@latest deploy --env production --keep-vars \
   --var ENVIRONMENT:production "${VAR_ARGS[@]}"
 ```
 
+## Pre-deploy: live D1 drift gate
+
+Both deploy workflows diff `schema.sql` against the ACTUAL target database
+before any worker ships — staging as a step in `deploy-worker-staging`, prod
+as the `d1-drift-check` gate job that `deploy-workers` needs. The static
+`npm run check-schema` only proves `schema.sql` and the Drizzle schema agree
+with each other; it cannot see the real databases, which only change when
+someone manually runs `wrangler d1 execute` (staging 500'd on
+`no such table: posts` post-deploy, 2026-08-06).
+
+`tooling/check-d1-drift.ts` fails the deploy on missing tables/columns and
+type mismatches. Column-order divergence is a warning, not a failure (safe
+post-lesson-31: Drizzle selects explicit columns; `masjid_themes` reads use
+the raw-D1 bypass). Database names are resolved to UUIDs via the API, so a
+recreated database never goes stale.
+
+Run it manually (env: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`):
+
+```bash
+set -a; source .env.prod; set +a
+npx tsx tooling/check-d1-drift.ts masjid-db          # prod
+npx tsx tooling/check-d1-drift.ts masjid-db-staging  # staging (.env.staging)
+```
+
 ## Verification checklist (do ALL of these after a deploy)
 
 1. **Route→SPA mapping** (hash-compare against local files — page content

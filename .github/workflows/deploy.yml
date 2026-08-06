@@ -8,7 +8,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Live-D1 gate: the production database must contain every table/column the
+  # code expects BEFORE any worker ships. The static check-schema step in
+  # deploy-workers only proves schema.sql and schema.ts agree with each
+  # other — it cannot see the real database (the "no such table: posts"
+  # staging incident, 2026-08-06). Resolved by name so a recreated database
+  # (new UUID) never goes stale.
+  d1-drift-check:
+    runs-on: ubuntu-latest
+    environment: Prod
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Live D1 drift check
+        run: npx tsx tooling/check-d1-drift.ts masjid-db
+
   deploy-workers:
+    needs: [d1-drift-check]
     runs-on: ubuntu-latest
     environment: Prod
     env:
@@ -130,13 +156,14 @@ jobs:
         run: sleep 30 && npm run test:e2e:prod
 
   summary:
-    needs: [deploy-workers, deploy-pages, e2e-prod]
+    needs: [d1-drift-check, deploy-workers, deploy-pages, e2e-prod]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Deployment summary
         run: |
           echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "D1 drift gate: ${{ needs.d1-drift-check.result }}" >> $GITHUB_STEP_SUMMARY
           echo "Workers: ${{ needs.deploy-workers.result }}" >> $GITHUB_STEP_SUMMARY
           echo "Pages: ${{ needs.deploy-pages.result }}" >> $GITHUB_STEP_SUMMARY
           echo "E2E (prod, read-only): ${{ needs.e2e-prod.result }}" >> $GITHUB_STEP_SUMMARY

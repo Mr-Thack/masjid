@@ -32,6 +32,7 @@
     "test:admin": "vitest run --config vitest.admin.config.ts",
     "test:tooling": "vitest run --config vitest.tooling.config.ts",
     "check-schema": "npx tsx tooling/check-schema-drift.ts",
+    "check-d1-drift": "npx tsx tooling/check-d1-drift.ts",
     "test:watch": "vitest",
     "db:generate": "npm run db:generate -w @masjid/api",
     "db:migrate": "npm run db:migrate -w @masjid/api",

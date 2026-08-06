@@ -943,3 +943,30 @@ files are non-authoritative (admin's was deleted).
 no-store; only content-hashed paths are immutable; unversioned statics get a
 short bounded `max-age`; missing assets 404. See
 `docs/consumer-service-worker.md` for the full caching table.
+
+### 35. `schema.sql` ≠ the actual D1 databases — gate deploys with a live drift check (2026-08-06)
+
+**Pitfall**: The post-engine's `posts` table existed in both `schema.sql` and
+the Drizzle schema, so the CI "Schema drift check" passed — but the staging
+D1 had never had `CREATE TABLE posts` applied, and every masjid endpoint
+500'd after the staging deploy. The file-based checker
+(`tooling/check-schema-drift.ts`) only compares the two repo files against
+each other; real D1 instances only change when someone manually runs
+`wrangler d1 execute`. Local dev never hits this because `ensureTables()`
+auto-syncs `.masjid/local.db`. (Compounding factor: the staging DB had been
+RECREATED the day before — database UUIDs go stale when a DB is recreated,
+which is why the checker resolves names → UUIDs.)
+
+**How we fixed it**: `tooling/check-d1-drift.ts` diffs `schema.sql` against
+the LIVE target database via the Cloudflare REST API and fails on missing
+tables/columns and type mismatches. Wired as a step in `deploy-staging.yml`
+and as the `d1-drift-check` gate job in `deploy.yml` (`deploy-workers` needs
+it). Column-order divergence is a WARNING, not a failure — verified safe on
+prod: Drizzle lists columns explicitly in SELECTs and `masjid_themes` reads
+use the raw-D1 bypass (lesson 31). Run manually:
+`npx tsx tooling/check-d1-drift.ts masjid-db` (needs `CLOUDFLARE_ACCOUNT_ID`
++ `CLOUDFLARE_API_TOKEN` from `.env.prod` / `.env.staging`).
+
+**Key rule**: there are THREE schemas — `schema.sql`, the Drizzle schema, and
+each physical D1 database. `check-schema` covers the first two;
+`check-d1-drift` covers the third. A deploy must pass both before it ships.

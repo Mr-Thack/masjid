@@ -10,61 +10,11 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { parseSchemaSql, type SqlCol } from './schema-parse.ts';
 
 const ROOT = path.resolve(import.meta.dirname!, '..');
 const SCHEMA_SQL_PATH = path.join(ROOT, 'schema.sql');
 const SCHEMA_TS_PATH = path.join(ROOT, 'apps/api/src/lib/server/db/schema.ts');
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-interface SqlCol {
-  name: string;
-  type: string;
-  nullable: boolean;
-}
-
-/** Normalize SQLite type affinities: BOOLEAN/INT/TINYINT → INTEGER, TIMESTAMP → TEXT */
-function normalizeSqlType(t: string): string {
-  const map: Record<string, string> = { INT: 'INTEGER', TINYINT: 'INTEGER', BOOLEAN: 'INTEGER', TIMESTAMP: 'TEXT' };
-  return map[t] || t;
-}
-
-// ---------------------------------------------------------------------------
-// Parse schema.sql → Map<table_name, Map<column_name, SqlCol>>
-// ---------------------------------------------------------------------------
-function parseSchemaSql(content: string): Map<string, Map<string, SqlCol>> {
-  const tables = new Map<string, Map<string, SqlCol>>();
-
-  const tableRe = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)\s*\(([\s\S]*?)\);/gi;
-  let match;
-
-  while ((match = tableRe.exec(content)) !== null) {
-    const tableName = match[1];
-    const body = match[2];
-    const cols = new Map<string, SqlCol>();
-
-    for (const line of body.split('\n')) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('--')) continue;
-      if (/^\s*(?:FOREIGN\s+KEY|PRIMARY\s+KEY|UNIQUE|CHECK|CONSTRAINT|CREATE|INDEX)\b/i.test(trimmed)) continue;
-
-      const colMatch = trimmed.match(/^(\w+)\s+(TEXT|INTEGER|INT|REAL|BLOB|BOOLEAN|TIMESTAMP|TINYINT)\b/i);
-      if (!colMatch) continue;
-
-      const colName = colMatch[1];
-      const rawType = colMatch[2].toUpperCase();
-      const colType = normalizeSqlType(rawType);
-      const nullable = !/\bNOT\s+NULL\b/i.test(trimmed);
-
-      cols.set(colName, { name: colName, type: colType, nullable });
-    }
-
-    tables.set(tableName, cols);
-  }
-
-  return tables;
-}
 
 // ---------------------------------------------------------------------------
 // Parse Drizzle schema.ts → Map<table_name, Map<db_column_name, SqlCol>>
