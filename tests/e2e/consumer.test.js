@@ -51,12 +51,35 @@ for (const [id, slug, name, prayers] of [
 }
 
 // CON-04 — weekly prayer timetable renders.
+// The prayer page fetches 7 days of data in loadWeek() ($effect after
+// hydration). Body-text checks are unreliable because the loading spinner
+// is visible during the fetch. Wait for the table cells to render instead.
 await testCase(t, 'CON-04', async () => {
-  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/prayer`, {
-    expectTextCI: ['Fajr', 'Isha'],
-    expectTimeout: 25_000,
-  });
-  t.assert(r.ok, `CON-04 /prayer weekly table renders clean ${r.ok ? '' : '— ' + explain(r)}`);
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const b = collectPage(page, cfg);
+
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/prayer`);
+
+  // Wait for the weekly table to finish loading — the iqaamah cells
+  // only render when loadWeek() completes and loading=false.
+  await page.locator('.c-wt-iqaamah').first().waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+  await page.locator('.c-wt-empty').first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+
+  // Verify prayer names are in the body (case-insensitive: CSS uppercases them)
+  await page.waitForFunction(
+    () => {
+      const t = document.body.innerText.toLowerCase();
+      return t.includes('fajr') && t.includes('isha');
+    },
+    { timeout: 15000 },
+  ).catch(() => b.missing.push('text not found (CI): "Fajr" or "Isha"'));
+
+  await settlePage(page, b);
+  await context.close();
+
+  const ok = b.missing.length === 0 && b.pageErrors.length === 0 && b.failedRequests.length === 0;
+  t.assert(ok, `CON-04 /prayer weekly table renders clean ${ok ? '' : '— ' + explain(b)}`);
 });
 
 // CON-05 — unknown masjid slug: the failing masjid fetch is EXPECTED.
@@ -190,6 +213,13 @@ await testCase(t, 'CON-15', async () => {
     const b = collectPage(page, cfg);
 
     await gotoPage(page, b, `${cfg.consumer}/${slug}`);
+
+    // $effect runs asynchronously after hydration — wait for applyTheme()
+    // to set the data-style-system attribute on <html>.
+    await page.waitForFunction(
+      () => document.documentElement.dataset.styleSystem != null,
+      { timeout: 10000 },
+    ).catch(() => {});
 
     const styleSystem = await page.evaluate(() => document.documentElement.dataset.styleSystem);
     t.assert(
@@ -626,14 +656,14 @@ await testCase(t, 'CON-35', async () => {
   const b = collectPage(page, cfg);
 
   // Non-embed first
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
   const nonEmbedErrorsBefore = b.pageErrors.length;
 
   // Switch to embed
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'domcontentloaded' });
 
   // Switch back to non-embed
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   t.assert(b.pageErrors.length === nonEmbedErrorsBefore, `CON-35 embed toggle no accumulated errors (before: ${nonEmbedErrorsBefore}, now: ${b.pageErrors.length})`);
   await context.close();

@@ -135,9 +135,10 @@ jobs:
       - name: Consumer browser E2E
         # Probe replaces blind sleep: waits until the runner's edge serves the
         # fresh deploy (build-id match + chunks real) and warms it (2026-08-06).
+        # 5-min warmup lets CDN edges fully propagate and API/D1 wake up.
         run: |
           E2E_ENV=staging node tests/e2e/wait-for-deploy.js consumer
-          E2E_ENV=staging node tests/e2e/run.js --suite=consumer
+          E2E_ENV=staging E2E_WARMUP_SECONDS=300 node tests/e2e/run.js --suite=consumer
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
@@ -155,7 +156,7 @@ jobs:
       - name: TV browser E2E
         run: |
           E2E_ENV=staging node tests/e2e/wait-for-deploy.js tv
-          E2E_ENV=staging node tests/e2e/run.js --suite=tv
+          E2E_ENV=staging E2E_WARMUP_SECONDS=300 node tests/e2e/run.js --suite=tv
 
   e2e-admin:
     needs: [deploy-worker-staging, deploy-pages-staging]
@@ -170,7 +171,7 @@ jobs:
       - name: Admin browser E2E
         run: |
           E2E_ENV=staging node tests/e2e/wait-for-deploy.js admin
-          E2E_ENV=staging node tests/e2e/run.js --suite=admin
+          E2E_ENV=staging E2E_WARMUP_SECONDS=300 node tests/e2e/run.js --suite=admin
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}

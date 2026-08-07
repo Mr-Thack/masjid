@@ -5,6 +5,10 @@
 //   node tests/e2e/run.js --suite=api              one suite
 //   node tests/e2e/run.js --suite=api --suite=worker   several suites
 //
+// E2E_WARMUP_SECONDS env var: delay before running suites. Default 0
+// locally; set to 300 in CI to let CDN edges propagate and API/D1 warm
+// up after a fresh deploy.
+//
 // Suite order: api → worker → deploy → consumer → tv → admin. Suites that
 // don't exist yet (pending swarm work) are skipped with a note.
 // deploy.test.js self-skips on local unless .merged/ exists.
@@ -25,6 +29,13 @@ if (unknown.length) console.warn(`WARNING: unknown suite(s) ignored: ${unknown.j
 const selected = requested.length ? SUITES.filter((s) => requested.includes(s)) : SUITES;
 
 console.log(`E2E_ENV=${process.env.E2E_ENV || 'local'} — suites: ${selected.join(', ')}`);
+
+const warmup = parseInt(process.env.E2E_WARMUP_SECONDS || '0', 10);
+if (warmup > 0) {
+  console.log(`Warming up for ${warmup}s (CDN edge propagation + API/D1 wake)…`);
+  await new Promise((r) => setTimeout(r, warmup * 1000));
+  console.log('Warmup complete, starting suites.');
+}
 
 let anyFailed = false;
 const timings = [];
