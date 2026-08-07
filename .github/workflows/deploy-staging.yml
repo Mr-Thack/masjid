@@ -119,7 +119,7 @@ jobs:
       - run: npm ci
       - name: Deploy integrity (no browser)
         run: |
-          node tests/e2e/wait-for-deploy.js consumer
+          E2E_ENV=staging node tests/e2e/wait-for-deploy.js consumer
           E2E_ENV=staging node tests/e2e/run.js --suite=deploy
 
   e2e-consumer:
@@ -136,7 +136,7 @@ jobs:
         # Probe replaces blind sleep: waits until the runner's edge serves the
         # fresh deploy (build-id match + chunks real) and warms it (2026-08-06).
         run: |
-          node tests/e2e/wait-for-deploy.js consumer
+          E2E_ENV=staging node tests/e2e/wait-for-deploy.js consumer
           E2E_ENV=staging node tests/e2e/run.js --suite=consumer
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
@@ -154,7 +154,7 @@ jobs:
         run: npx playwright install chromium --with-deps
       - name: TV browser E2E
         run: |
-          node tests/e2e/wait-for-deploy.js tv
+          E2E_ENV=staging node tests/e2e/wait-for-deploy.js tv
           E2E_ENV=staging node tests/e2e/run.js --suite=tv
 
   e2e-admin:
@@ -169,7 +169,7 @@ jobs:
         run: npx playwright install chromium --with-deps
       - name: Admin browser E2E
         run: |
-          node tests/e2e/wait-for-deploy.js admin
+          E2E_ENV=staging node tests/e2e/wait-for-deploy.js admin
           E2E_ENV=staging node tests/e2e/run.js --suite=admin
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
