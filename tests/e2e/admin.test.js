@@ -583,6 +583,9 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
       const newBtn = page.locator('button:has-text("New")');
       if (await newBtn.isVisible().catch(() => false)) {
         await newBtn.click();
+        // The create form only renders once load() finishes (loading=false).
+        // Wait for the form's title input to appear before interacting.
+        await page.locator('input[type="text"]').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
       }
       const titleInput = page.locator('input:enabled').first();
       const hasCreateForm = await titleInput.isVisible().catch(() => false);
