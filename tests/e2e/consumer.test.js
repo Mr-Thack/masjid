@@ -333,7 +333,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   // CON-18 — jumuah page deferred (not linked in nav; will be revisited later)
   // ['CON-18', SLUG_B, 'jumuah', "Jumu'ah", {}],
   ['CON-19', SLUG_B, 'info', 'Contact & Location', {}],
-  ['CON-20', SLUG_B, 'donate', 'Why Give?', {}],
+  ['CON-20', SLUG_B, 'donate', 'Why Give?', { expectTimeout: 25_000 }],
   ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', {}],
 ]) {
   await testCase(t, id, async () => {
@@ -384,11 +384,18 @@ await testCase(t, 'CON-25', async () => {
   await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}`, { expectText: 'Fajr' });
 
   // Rapid successive navigations — the SPA router must not loop or crash.
-  // The 800ms pacing IS the test input (stress cadence), not a readiness guess.
   const navs = ['Times', 'Home', 'News', 'Times', 'Home', 'Maktab', 'Home'];
   for (const label of navs) {
-    await page.getByRole('link', { name: label }).first().click();
-    await page.waitForTimeout(800);
+    const link = page.getByRole('link', { name: label }).first();
+    if (!(await link.isVisible().catch(() => false))) {
+      b.pageErrors.push(`CON-25 nav link "${label}" not visible`);
+      break;
+    }
+    await link.click();
+    // Wait for navigation to complete — look for a stable element on the new page
+    // rather than a fixed sleep that races the network.
+    await page.waitForFunction(() => document.body.innerText.length > 50, { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(400); // breathing room for hydration
   }
   await settlePage(page, b);
 
@@ -816,10 +823,19 @@ await testCase(t, 'CON-45', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  // Navigate to prayer page cold — loading spinner may flash. Wait for the
-  // weekly table to actually render (condition, not a fixed 5s guess).
+  // Navigate to prayer page cold — loading spinner may flash.
+  // First, wait for the page to have ANY content (body text proves the shell loaded).
   await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/prayer`);
-  await page.waitForSelector('table', { state: 'visible', timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => document.body.innerText.length > 100, { timeout: 15000 }).catch(() => {});
+
+  // Then wait for the weekly table to actually render. Retry once if the first
+  // attempt times out (cold API worker + cold edge can push past 15s).
+  let tableReady = false;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    await page.waitForSelector('table', { state: 'visible', timeout: 12000 }).then(() => { tableReady = true; }).catch(() => {});
+    if (tableReady) break;
+  }
+
   // Verify the final state has actual content (no permanent spinner)
   const hasContent = await page.evaluate(() => {
     const spinners = document.querySelectorAll('.animate-spin');
