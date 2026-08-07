@@ -20,13 +20,14 @@ const REQUIRED_TOKENS = [
 ];
 
 describe('presetTokens', () => {
-  it('defines the two Sakeenah presets and the Mishkaat default preset', () => {
+  it('defines the two Sakeenah presets and the Mishkaat default + light presets', () => {
     expect(Object.keys(presetTokens)).toContain('glass-dark');
     expect(Object.keys(presetTokens)).toContain('minimal-light');
     expect(Object.keys(presetTokens)).toContain('mishkaat');
+    expect(Object.keys(presetTokens)).toContain('mishkaat-light');
   });
 
-  it.each(['glass-dark', 'minimal-light', 'mishkaat'])('%s defines all required tokens', (name) => {
+  it.each(['glass-dark', 'minimal-light', 'mishkaat', 'mishkaat-light'])('%s defines all required tokens', (name) => {
     for (const token of REQUIRED_TOKENS) {
       expect(presetTokens[name], `missing ${token}`).toHaveProperty(token);
       expect(typeof presetTokens[name][token]).toBe('string');
@@ -82,6 +83,44 @@ describe('presetTokens', () => {
     it('minimal-light keeps its documented tokens', () => {
       expect(presetTokens['minimal-light']['--color-bg']).toBe('#f8fafc');
       expect(presetTokens['minimal-light']['--color-surface']).toBe('#ffffff');
+    });
+  });
+
+  describe('mishkaat-light preset', () => {
+    const tokens = presetTokens['mishkaat-light'];
+
+    it('uses a warm cream base (light, not dark)', () => {
+      expect(tokens['--color-bg']).toMatch(/^#[0-9a-f]{6}$/i);
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(tokens['--color-bg'].slice(i, i + 2), 16));
+      expect(r + g + b).toBeGreaterThan(400);
+      // Warm: red channel > blue channel.
+      expect(r).toBeGreaterThan(b);
+    });
+
+    it('uses dark warm brown text (not pure black)', () => {
+      expect(tokens['--color-text'].toLowerCase()).not.toBe('#000000');
+      expect(tokens['--color-text'].toLowerCase()).not.toBe('#000');
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(tokens['--color-text'].slice(i, i + 2), 16));
+      expect(r + g + b).toBeLessThan(200);
+    });
+
+    it('uses a light surface (near-white, not pure white)', () => {
+      const surface = parseInt(tokens['--color-surface'].match(/[\d.]+/)?.[0] ?? '0');
+      expect(surface).toBeGreaterThan(0.7);
+      expect(tokens['--color-surface']).not.toBe('#ffffff');
+    });
+
+    it('ties borders to the gold family at low alpha for light background legibility', () => {
+      expect(tokens['--color-border']).toContain('156, 124, 30');
+      const match = tokens['--color-border'].match(/([\d.]+)\)/);
+      expect(match).toBeTruthy();
+      expect(parseFloat(match![1])).toBeGreaterThanOrEqual(0.1);
+    });
+
+    it('has stronger shadows than dark mode for depth on light background', () => {
+      const darkShadow = parseFloat(presetTokens['mishkaat']['--shadow-card'].match(/rgba\(0, 0, 0, ([\d.]+)\)/)?.[1] ?? '0');
+      const lightShadow = parseFloat(tokens['--shadow-card'].match(/rgba\(0, 0, 0, ([\d.]+)\)/)?.[1] ?? '0');
+      expect(lightShadow).toBeLessThan(darkShadow);
     });
   });
 });

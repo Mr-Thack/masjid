@@ -2,6 +2,7 @@
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
+  import { metalPalettes } from '@masjid/ui-utils';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
 
   let { data }: { data: { masjidSlug: string } } = $props();
@@ -20,6 +21,7 @@
       numerals: 'western' as string,
       density: 'standard' as string,
       ambient: true,
+      themeMode: 'dark' as string,
       quietHours: {
         enabled: false,
         quietMinutes: 10,
@@ -310,11 +312,29 @@
                   <button
                     type="button"
                     class="px-3 py-1.5 rounded-lg text-xs border transition-colors capitalize {form.style_options.metal === metal ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
-                    onclick={() => { form.style_options.metal = metal; dirty = true; }}
+                    onclick={() => { form.style_options.metal = metal; form.primary_color = metalPalettes[metal as keyof typeof metalPalettes].primary; form.accent_color = metalPalettes[metal as keyof typeof metalPalettes].accent; dirty = true; }}
                   >
                     {metal}
                   </button>
                 {/each}
+              </div>
+            </div>
+
+            <!-- Light/Dark Mode -->
+            <div class="mb-5">
+              <label class="block text-sm font-medium text-text mb-2">Theme Mode</label>
+              <p class="text-xs text-text-muted mb-2">Light mode uses a warm cream background; dark mode uses deep espresso. The metal palette colors the accents in both.</p>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.themeMode === 'dark' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                  onclick={() => { form.style_options.themeMode = 'dark'; dirty = true; }}
+                >Dark</button>
+                <button
+                  type="button"
+                  class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.themeMode === 'light' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
+                  onclick={() => { form.style_options.themeMode = 'light'; dirty = true; }}
+                >Light</button>
               </div>
             </div>
 

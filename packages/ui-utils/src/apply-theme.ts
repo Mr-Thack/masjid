@@ -18,9 +18,6 @@ export interface ThemeInput {
   style_options?: string | Record<string, unknown> | null;
 }
 
-/** Presets that belong to the Mishkaat style system (§3: reserved names included). */
-const MISHKAAT_PRESETS = new Set(['mishkaat', 'manara', 'mashrabiya', 'qandeel']);
-
 /** Resolve the active style system; anything unknown degrades to Sakeenah. */
 export function resolveStyleSystem(theme: ThemeInput | null | undefined): StyleSystemName {
   return theme?.style_system === 'mishkaat' ? 'mishkaat' : 'sakeenah';
@@ -85,7 +82,8 @@ function mishkaatVars(theme: ThemeInput | null | undefined): Record<string, stri
     '--font-body': `${theme?.font_body ?? 'Inter'}, sans-serif`,
   };
 
-  const presetName = MISHKAAT_PRESETS.has(theme?.layout_preset ?? '') ? theme!.layout_preset! : 'mishkaat';
+  // Theme mode selects light/dark Mishkaat preset tokens.
+  const presetName = options.themeMode === 'light' ? 'mishkaat-light' : 'mishkaat';
   const tokens = presetTokens[presetName] ?? presetTokens['mishkaat'];
   Object.assign(vars, tokens);
 
