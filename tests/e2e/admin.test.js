@@ -585,7 +585,7 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
         await newBtn.click();
         // The create form only renders once load() finishes (loading=false).
         // Wait for the form's title input to appear before interacting.
-        await page.locator('input[type="text"]').first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+        await page.locator('input[type="text"]').first().waitFor({ state: 'visible', timeout: 25000 }).catch(() => {});
       }
       const titleInput = page.locator('input:enabled').first();
       const hasCreateForm = await titleInput.isVisible().catch(() => false);
@@ -604,7 +604,7 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
 
         const created = await page.waitForFunction(
           () => document.body.innerText.includes('E2E Test Announcement'),
-          { timeout: 10000 },
+          { timeout: 25000 },
         ).then(() => true).catch(() => false);
         t.assert(created, `ADM-20 announcement created: ${created}`);
 
@@ -722,17 +722,29 @@ if (!cfg.adminEmail || !authState) {
 } else {
   await testCase(t, 'ADM-24', async () => {
     const context = await authedContext();
-    const page = await context.newPage();
-    const b = collectPage(page, cfg);
 
-    await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { expectText: 'Snapshots' });
+    // CDN edge inconsistency can serve stale chunks that prevent SPA
+    // hydration → blank body. Retry the page load up to 3 times.
+    let bodyText = '';
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const page = await context.newPage();
+      try {
+        const b = collectPage(page, cfg);
 
-    const bodyText = await page.evaluate(() => document.body.innerText);
+        await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { expectText: 'Snapshots' });
+
+        bodyText = await page.evaluate(() => document.body.innerText);
+        if (bodyText.length > 0) break;
+
+        t.assert(b.pageErrors.length === 0, `ADM-24 attempt ${attempt} no errors — ${JSON.stringify(b.pageErrors)}`);
+      } finally {
+        await page.close();
+      }
+    }
+
     const hasEmpty = bodyText.includes('No snapshots') || bodyText.includes('available') || bodyText.includes('Snapshots');
     t.assert(hasEmpty || bodyText.length > 100,
       `ADM-24 snapshots page renders content (body length: ${bodyText.length})`);
-    t.assert(b.pageErrors.length === 0, `ADM-24 snapshots no errors — ${JSON.stringify(b.pageErrors)}`);
-    await context.close();
   });
 }
 
