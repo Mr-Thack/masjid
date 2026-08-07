@@ -346,6 +346,7 @@ export async function testCase(t, id, fn) {
 //   expectText     string | string[]  — must appear in document.body.innerText
 //   expectTextCI   string | string[]  — same, case-insensitive (for CSS-uppercased text)
 //   expectSelector string             — must be visible (waited for, EXPECT_TIMEOUT)
+//   expectTimeout  number             — timeout for expectText/expectTextCI/expectSelector (default EXPECT_TIMEOUT)
 //   allowFailures  RegExp[]           — console errors / failed requests matching
 //                                       these are EXPECTED (e.g. a deliberate 404)
 //                                       and are moved to warnings
@@ -378,11 +379,12 @@ export async function visitPage(browser, cfg, url, opts = {}) {
 
     // All expectations run CONCURRENTLY (they only read the DOM) — a page
     // missing N expectations costs one EXPECT_TIMEOUT, not N × EXPECT_TIMEOUT.
+    const expectTimeout = opts.expectTimeout ?? EXPECT_TIMEOUT;
     const checks = [];
     if (opts.expectSelector) {
       checks.push(
         page
-          .waitForSelector(opts.expectSelector, { state: 'visible', timeout: EXPECT_TIMEOUT })
+          .waitForSelector(opts.expectSelector, { state: 'visible', timeout: expectTimeout })
           .catch(() => buckets.missing.push(`selector not visible: ${opts.expectSelector}`)),
       );
     }
@@ -391,7 +393,7 @@ export async function visitPage(browser, cfg, url, opts = {}) {
     for (const text of texts) {
       checks.push(
         page
-          .waitForFunction((t) => document.body.innerText.includes(t), text, { timeout: EXPECT_TIMEOUT })
+          .waitForFunction((t) => document.body.innerText.includes(t), text, { timeout: expectTimeout })
           .catch(() => buckets.missing.push(`text not found: "${text}"`)),
       );
     }
@@ -405,7 +407,7 @@ export async function visitPage(browser, cfg, url, opts = {}) {
       checks.push(
         page
           .waitForFunction((t) => document.body.innerText.toLowerCase().includes(t.toLowerCase()), text, {
-            timeout: EXPECT_TIMEOUT,
+            timeout: expectTimeout,
           })
           .catch(() => buckets.missing.push(`text not found (CI): "${text}"`)),
       );

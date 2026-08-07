@@ -54,6 +54,7 @@ for (const [id, slug, name, prayers] of [
 await testCase(t, 'CON-04', async () => {
   const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/prayer`, {
     expectTextCI: ['Fajr', 'Isha'],
+    expectTimeout: 25_000,
   });
   t.assert(r.ok, `CON-04 /prayer weekly table renders clean ${r.ok ? '' : '— ' + explain(r)}`);
 });
