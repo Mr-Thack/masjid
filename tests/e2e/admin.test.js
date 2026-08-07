@@ -579,6 +579,11 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
     // ADM-20 — Announcements: create, verify, archive
     {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/announcements`);
+      // Click "New" to open the create form
+      const newBtn = page.locator('button:has-text("New")');
+      if (await newBtn.isVisible().catch(() => false)) {
+        await newBtn.click();
+      }
       const titleInput = page.locator('input:enabled').first();
       const hasCreateForm = await titleInput.isVisible().catch(() => false);
       if (hasCreateForm) {
