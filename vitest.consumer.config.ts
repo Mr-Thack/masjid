@@ -12,6 +12,7 @@ export default defineConfig({
     alias: {
       $lib: path.resolve(__dirname, 'apps/consumer/src/lib'),
       $app: path.resolve(__dirname, 'apps/consumer/src/__tests__/__mocks__/$app'),
+      'lucide-svelte': path.resolve(__dirname, 'apps/consumer/src/__tests__/__mocks__/lucide-svelte'),
     },
     conditions: ['browser'],
   },

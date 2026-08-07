@@ -371,3 +371,23 @@ CREATE TABLE posts (
 CREATE INDEX idx_posts_masjid ON posts(masjid_id, created_at);
 CREATE INDEX idx_posts_homepage ON posts(masjid_id, show_on_homepage) WHERE show_on_homepage = 1;
 CREATE INDEX idx_posts_info ON posts(masjid_id, show_on_info) WHERE show_on_info = 1;
+
+-- ============================================================
+-- Table 16: Navigation Items (per-masjid navigation config)
+-- ============================================================
+CREATE TABLE nav_items (
+    id TEXT PRIMARY KEY,
+    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL,
+    kind TEXT NOT NULL,                     -- 'route' | 'page' | 'link'
+    route_segment TEXT,                     -- built-in route (e.g., 'prayer', 'news')
+    page_slug TEXT,                         -- custom page slug (when kind='page')
+    external_url TEXT,                      -- external link URL (when kind='link')
+    label TEXT NOT NULL,
+    icon TEXT,                              -- lucide icon name
+    is_highlighted INTEGER NOT NULL DEFAULT 0,
+    show_on_desktop_header INTEGER NOT NULL DEFAULT 1,
+    show_on_mobile_bottom INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_nav_items_masjid ON nav_items(masjid_id, sort_order);

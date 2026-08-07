@@ -90,7 +90,6 @@ case 'POSTS': {
       if (del) parts.push(`  Deleted ${del} existing rule(s)`);
       return parts.join('\n');
     }
-    }
     default:
       return `${index}. *${action} ${domain}*`;
   }

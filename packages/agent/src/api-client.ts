@@ -294,4 +294,3 @@ export async function importTimetable(
 
   return { created: created.length, deleted: deletedCount, rules: created };
 }
-}

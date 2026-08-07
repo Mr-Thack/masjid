@@ -236,6 +236,23 @@ function ensureTables(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_posts_homepage ON posts(masjid_id, show_on_homepage);
     CREATE INDEX IF NOT EXISTS idx_posts_info ON posts(masjid_id, show_on_info);
 
+    CREATE TABLE IF NOT EXISTS nav_items (
+      id TEXT PRIMARY KEY,
+      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      route_segment TEXT,
+      page_slug TEXT,
+      external_url TEXT,
+      label TEXT NOT NULL,
+      icon TEXT,
+      is_highlighted INTEGER NOT NULL DEFAULT 0,
+      show_on_desktop_header INTEGER NOT NULL DEFAULT 1,
+      show_on_mobile_bottom INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_nav_items_masjid ON nav_items(masjid_id, sort_order);
+
     CREATE TABLE IF NOT EXISTS mkt_registrations (
       id TEXT PRIMARY KEY,
       masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,

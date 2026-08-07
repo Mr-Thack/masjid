@@ -292,3 +292,21 @@ export const posts = sqliteTable('posts', {
   infoIdx: index('idx_posts_info').on(table.masjidId, table.showOnInfo),
   uniqueSlug: uniqueIndex('uq_posts_slug').on(table.masjidId, table.slug),
 }));
+
+export const navItems = sqliteTable('nav_items', {
+  id: text('id').primaryKey().$defaultFn(uuid),
+  masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
+  sortOrder: integer('sort_order').notNull(),
+  kind: text('kind').notNull(),
+  routeSegment: text('route_segment'),
+  pageSlug: text('page_slug'),
+  externalUrl: text('external_url'),
+  label: text('label').notNull(),
+  icon: text('icon'),
+  isHighlighted: integer('is_highlighted', { mode: 'boolean' }).notNull().default(false),
+  showOnDesktopHeader: integer('show_on_desktop_header', { mode: 'boolean' }).notNull().default(true),
+  showOnMobileBottom: integer('show_on_mobile_bottom', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  masjidIdx: index('idx_nav_items_masjid').on(table.masjidId, table.sortOrder),
+}));

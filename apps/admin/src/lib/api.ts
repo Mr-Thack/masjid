@@ -161,4 +161,31 @@ export const api = {
     const qs = termId ? `?term_id=${encodeURIComponent(termId)}` : '';
     return request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/registrations${qs}`);
   },
+
+  getNavItems: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/nav`),
+
+  createNavItem: (masjidId: string, data: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/nav`, data),
+
+  updateNavItem: (masjidId: string, itemId: string, data: Record<string, unknown>) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/nav/${itemId}`, data),
+
+  deleteNavItem: (masjidId: string, itemId: string) =>
+    request('DELETE', `/api/v1/admin/masjids/${masjidId}/nav/${itemId}`),
+
+  reorderNavItems: (masjidId: string, itemIds: string[]) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/nav/reorder`, { item_ids: itemIds }),
+
+  getPages: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/pages`),
+
+  createPage: (masjidId: string, data: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/pages`, data),
+
+  updatePage: (masjidId: string, slug: string, data: Record<string, unknown>) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/pages/${slug}`, data),
+
+  deletePage: (masjidId: string, slug: string) =>
+    request('DELETE', `/api/v1/admin/masjids/${masjidId}/pages/${slug}`),
 };
