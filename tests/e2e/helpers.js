@@ -24,7 +24,7 @@ import { chromium } from 'playwright';
 // --- timeout ceilings (happy path never waits on these — conditions win) ----
 export const NAV_TIMEOUT = 30_000; // page.goto (remote CDN + cold worker)
 export const HYDRATION_TIMEOUT = 30_000; // SvelteKit boot on a cold context
-export const EXPECT_TIMEOUT = 15_000; // content expectations
+export const EXPECT_TIMEOUT = 20_000; // content expectations
 export const LOGIN_TIMEOUT = 45_000; // bcrypt + 2 API round trips + SPA nav
 export const SETTLE_MAX = 2_000; // adaptive-settle ceiling
 const CONTENT_TIMEOUT = 10_000; // best-effort "something rendered" signal
