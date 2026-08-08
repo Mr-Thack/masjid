@@ -355,118 +355,100 @@ export async function testCase(t, id, fn) {
 //   waitUntil      string             — page.goto waitUntil (default 'load')
 //                                       use 'networkidle' for pages without persistent
 //                                       third-party connections (Square SDK etc.)
-//   retries        number             — retry the full page load once if text is
-//                                       missing (default 1 for CDN/API jitter)
 //
 // Result: { pageErrors, consoleErrors, failedRequests, apiOrigins, warnings,
 //           missing, ok, badApiOrigins }
 // ok = no pageErrors, no consoleErrors, no failedRequests, nothing missing,
 // and every /api/* request went to an allowed origin.
 export async function visitPage(browser, cfg, url, opts = {}) {
-  const maxAttempts = (opts.retries ?? 1) + 1;
-  let lastResult = null;
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const buckets = collectPage(page, cfg);
+  buckets.missing = [];
 
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const context = await newContext(browser);
-    const page = await context.newPage();
-    const buckets = collectPage(page, cfg);
-    buckets.missing = [];
-    buckets.warnings = [];
+  const target = bust(url, cfg);
+  try {
+    await page.goto(target, { waitUntil: opts.waitUntil ?? 'load', timeout: opts.timeoutMs ?? NAV_TIMEOUT });
 
-    const target = bust(url, cfg);
-    try {
-      await page.goto(target, { waitUntil: opts.waitUntil ?? 'load', timeout: opts.timeoutMs ?? NAV_TIMEOUT });
+    // Pacing waits (best-effort, swallowed): give a healthy SPA time to boot
+    // before expectations start. Kept SHORT on purpose — known-blank error
+    // pages (e.g. the SPA-mode +error.svelte dedup glitch) never hydrate, and
+    // the real assertions are the expectations below with their own budgets.
+    await waitForHydration(page, 12000).catch(() => {});
+    await waitForContent(page, 5000).catch(() => {});
 
-      await waitForHydration(page, 12000).catch(() => {});
-      await waitForContent(page, 5000).catch(() => {});
-
-      const expectTimeout = opts.expectTimeout ?? EXPECT_TIMEOUT;
-      const checks = [];
-      if (opts.expectSelector) {
-        checks.push(
-          page
-            .waitForSelector(opts.expectSelector, { state: 'visible', timeout: expectTimeout })
-            .catch(() => buckets.missing.push(`selector not visible: ${opts.expectSelector}`)),
-        );
-      }
-
-      const texts = Array.isArray(opts.expectText) ? opts.expectText : opts.expectText ? [opts.expectText] : [];
-      for (const text of texts) {
-        checks.push(
-          page
-            .waitForFunction((t) => document.body.innerText.includes(t), text, { timeout: expectTimeout })
-            .catch(() => buckets.missing.push(`text not found: "${text}"`)),
-        );
-      }
-
-      const textsCI = Array.isArray(opts.expectTextCI)
-        ? opts.expectTextCI
-        : opts.expectTextCI
-          ? [opts.expectTextCI]
-          : [];
-      for (const text of textsCI) {
-        checks.push(
-          page
-            .waitForFunction((t) => document.body.innerText.toLowerCase().includes(t.toLowerCase()), text, {
-              timeout: expectTimeout,
-            })
-            .catch(() => buckets.missing.push(`text not found (CI): "${text}"`)),
-        );
-      }
-      await Promise.all(checks);
-
-      await settlePage(page, buckets, opts.settleMs ?? SETTLE_MAX);
-    } catch (err) {
-      buckets.pageErrors.push(`navigation: ${err.message}`);
+    // All expectations run CONCURRENTLY (they only read the DOM) — a page
+    // missing N expectations costs one EXPECT_TIMEOUT, not N × EXPECT_TIMEOUT.
+    const expectTimeout = opts.expectTimeout ?? EXPECT_TIMEOUT;
+    const checks = [];
+    if (opts.expectSelector) {
+      checks.push(
+        page
+          .waitForSelector(opts.expectSelector, { state: 'visible', timeout: expectTimeout })
+          .catch(() => buckets.missing.push(`selector not visible: ${opts.expectSelector}`)),
+      );
     }
 
-    // Merge collector results.
-    const badApiOrigins = [...new Set(buckets.apiOrigins)].filter((o) => !cfg.allowedApiOrigins.includes(o));
-
-    const allow = opts.allowFailures || [];
-    if (allow.length) {
-      const move = (arr) => {
-        const kept = [];
-        for (const item of arr) {
-          if (allow.some((re) => re.test(item))) buckets.warnings.push(`expected: ${item}`);
-          else kept.push(item);
-        }
-        return kept;
-      };
-      buckets.consoleErrors = move(buckets.consoleErrors);
-      buckets.failedRequests = move(buckets.failedRequests);
+    const texts = Array.isArray(opts.expectText) ? opts.expectText : opts.expectText ? [opts.expectText] : [];
+    for (const text of texts) {
+      checks.push(
+        page
+          .waitForFunction((t) => document.body.innerText.includes(t), text, { timeout: expectTimeout })
+          .catch(() => buckets.missing.push(`text not found: "${text}"`)),
+      );
     }
 
-    const ok =
+    const textsCI = Array.isArray(opts.expectTextCI)
+      ? opts.expectTextCI
+      : opts.expectTextCI
+        ? [opts.expectTextCI]
+        : [];
+    for (const text of textsCI) {
+      checks.push(
+        page
+          .waitForFunction((t) => document.body.innerText.toLowerCase().includes(t.toLowerCase()), text, {
+            timeout: expectTimeout,
+          })
+          .catch(() => buckets.missing.push(`text not found (CI): "${text}"`)),
+      );
+    }
+    await Promise.all(checks);
+
+    await settlePage(page, buckets, opts.settleMs ?? SETTLE_MAX);
+  } catch (err) {
+    buckets.pageErrors.push(`navigation: ${err.message}`);
+  }
+
+  const badApiOrigins = [...new Set(buckets.apiOrigins)].filter((o) => !cfg.allowedApiOrigins.includes(o));
+
+  // Expected failures (e.g. a deliberate 404 for an unknown masjid) are
+  // moved out of the failure buckets into warnings.
+  const allow = opts.allowFailures || [];
+  if (allow.length) {
+    const move = (arr) => {
+      const kept = [];
+      for (const item of arr) {
+        if (allow.some((re) => re.test(item))) buckets.warnings.push(`expected: ${item}`);
+        else kept.push(item);
+      }
+      return kept;
+    };
+    buckets.consoleErrors = move(buckets.consoleErrors);
+    buckets.failedRequests = move(buckets.failedRequests);
+  }
+
+  await context.close();
+
+  return {
+    ...buckets,
+    badApiOrigins,
+    ok:
       buckets.pageErrors.length === 0 &&
       buckets.consoleErrors.length === 0 &&
       buckets.failedRequests.length === 0 &&
       buckets.missing.length === 0 &&
-      badApiOrigins.length === 0;
-
-    const result = {
-      ...buckets,
-      badApiOrigins,
-      ok,
-    };
-
-    if (ok) { await context.close(); return result; }
-
-    // Only missing text (no errors, no failed requests) — retry the page load.
-    // CDN edge inconsistency and cold API jitter resolve on the second attempt.
-    if (attempt < maxAttempts - 1 && buckets.missing.length > 0 &&
-        buckets.pageErrors.length === 0 && buckets.failedRequests.length === 0) {
-      lastResult = result;
-      await context.close();
-      continue;
-    }
-
-    await context.close();
-    lastResult = result;
-    break; // don't retry on page errors or failed requests
-  }
-
-  return lastResult;
+      badApiOrigins.length === 0,
+  };
 }
 
 // Pretty-print a visitPage result for FAIL output.

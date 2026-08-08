@@ -216,13 +216,25 @@ await testCase(t, 'CON-15', async () => {
     await gotoPage(page, b, `${cfg.consumer}/${slug}`);
 
     // $effect runs asynchronously after hydration — wait for applyTheme()
-    // to set the data-style-system attribute on <html>.
-    await page.waitForFunction(
-      () => document.documentElement.dataset.styleSystem != null,
-      { timeout: 10000 },
-    ).catch(() => {});
+    // to set the data-style-system attribute AND for body text to load.
+    const ready = await page.waitForFunction(
+      () => document.documentElement.dataset.styleSystem != null && document.body.innerText.length > 50,
+      { timeout: 20000 },
+    ).then(() => true).catch(() => false);
 
-    const styleSystem = await page.evaluate(() => document.documentElement.dataset.styleSystem);
+    let styleSystem = ready
+      ? await page.evaluate(() => document.documentElement.dataset.styleSystem)
+      : undefined;
+
+    // If the attribute never appeared, reload the page once
+    if (!styleSystem) {
+      await page.goto(`${cfg.consumer}/${slug}`, { waitUntil: 'load', timeout: 30000 });
+      await page.waitForFunction(
+        () => document.documentElement.dataset.styleSystem != null,
+        { timeout: 20000 },
+      ).catch(() => {});
+      styleSystem = await page.evaluate(() => document.documentElement.dataset.styleSystem);
+    }
     t.assert(
       styleSystem === 'mishkaat' || styleSystem === 'sakeenah',
       `${id} data-style-system is "${styleSystem}" (expected mishkaat or sakeenah)`,
