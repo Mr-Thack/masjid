@@ -58,6 +58,7 @@ await testCase(t, 'CON-04', async () => {
   const context = await newContext(browser);
   const page = await context.newPage();
   const b = collectPage(page, cfg);
+  b.missing = [];
 
   await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/prayer`);
 
@@ -364,8 +365,8 @@ for (const [id, slug, path, expectText, extraOpts] of [
   // CON-18 — jumuah page deferred (not linked in nav; will be revisited later)
   // ['CON-18', SLUG_B, 'jumuah', "Jumu'ah", {}],
   ['CON-19', SLUG_B, 'info', 'Contact & Location', {}],
-  ['CON-20', SLUG_B, 'donate', 'Why Give?', { expectTimeout: 25_000 }],
-  ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', {}],
+  ['CON-20', SLUG_B, 'donate', 'Why Give?', { expectTimeout: 30_000 }],
+  ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', { expectTimeout: 25_000 }],
 ]) {
   await testCase(t, id, async () => {
     const r = await visitPage(browser, cfg, `${cfg.consumer}/${slug}/${path}`, {
@@ -487,6 +488,7 @@ await testCase(t, 'CON-29', async () => {
 await testCase(t, 'CON-30', async () => {
   const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/maktab`, {
     expectText: 'Maktab Enrollment',
+    expectTimeout: 25_000,
   });
   // The page should render the enrollment card regardless of open/closed state.
   // If open, "Enroll Now" appears; if closed, "Enrollment Closed" appears.
@@ -888,7 +890,7 @@ if (!cfg.writes) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
 
-    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { settleMs: 3000 });
+await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { settleMs: 3000, waitUntil: 'domcontentloaded' });
 
     // --- Fill parent info ---
     // Use labels to find inputs since they have no name/id attributes

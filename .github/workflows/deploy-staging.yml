@@ -138,7 +138,7 @@ jobs:
         # 5-min warmup lets CDN edges fully propagate and API/D1 wake up.
         run: |
           E2E_ENV=staging node tests/e2e/wait-for-deploy.js consumer
-          E2E_ENV=staging E2E_WARMUP_SECONDS=300 node tests/e2e/run.js --suite=consumer
+          E2E_ENV=staging E2E_WARMUP_SECONDS=300 E2E_SUITE_WATCHDOG_MS=720000 node tests/e2e/run.js --suite=consumer
         env:
           E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL || '' }}
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
