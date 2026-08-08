@@ -24,13 +24,27 @@ import {
   gotoPage,
   settlePage,
   waitForHydration,
-  waitForContent,
+  prewarm,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B } from './targets.js';
 
 const cfg = targets();
 const t = createReporter(`Admin [${cfg.env}] → ${cfg.admin}`);
 const browser = await launchBrowser();
+
+// Pre-warm admin URLs to heat API/D1 and cache CDN chunks.
+// Auth-gated pages will redirect to /login but still warm the worker.
+await prewarm(browser, cfg.admin, [
+  '/login',
+  `/admin/${SLUG_A}`,
+  `/admin/${SLUG_B}`,
+  `/admin/${SLUG_A}/settings/profile`,
+  `/admin/${SLUG_A}/settings/theme`,
+  `/admin/${SLUG_A}/settings/prayer`,
+  `/admin/${SLUG_A}/settings/announcements`,
+  `/admin/${SLUG_A}/settings/snapshots`,
+  `/admin/${SLUG_A}/bot`,
+]);
 
 // Captured once by ADM-03's real login; reused by every later authed case.
 let authState = null;
@@ -722,29 +736,17 @@ if (!cfg.adminEmail || !authState) {
 } else {
   await testCase(t, 'ADM-24', async () => {
     const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
 
-    // CDN edge inconsistency can serve stale chunks that prevent SPA
-    // hydration → blank body. Retry the page load up to 3 times.
-    let bodyText = '';
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const page = await context.newPage();
-      try {
-        const b = collectPage(page, cfg);
+    await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { expectText: 'Snapshots' });
 
-        await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/snapshots`, { expectText: 'Snapshots' });
-
-        bodyText = await page.evaluate(() => document.body.innerText);
-        if (bodyText.length > 0) break;
-
-        t.assert(b.pageErrors.length === 0, `ADM-24 attempt ${attempt} no errors — ${JSON.stringify(b.pageErrors)}`);
-      } finally {
-        await page.close();
-      }
-    }
-
+    const bodyText = await page.evaluate(() => document.body.innerText);
     const hasEmpty = bodyText.includes('No snapshots') || bodyText.includes('available') || bodyText.includes('Snapshots');
     t.assert(hasEmpty || bodyText.length > 100,
       `ADM-24 snapshots page renders content (body length: ${bodyText.length})`);
+    t.assert(b.pageErrors.length === 0, `ADM-24 snapshots no errors — ${JSON.stringify(b.pageErrors)}`);
+    await context.close();
   });
 }
 

@@ -16,6 +16,7 @@ import {
   newContext,
   testCase,
   gotoPage,
+  prewarm,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
 
@@ -32,6 +33,12 @@ async function fetchTheme(slug) {
 }
 
 const browser = await launchBrowser();
+
+// Pre-warm TV display URLs to heat API/D1 and cache CDN chunks.
+await prewarm(browser, cfg.tv, [
+  `/display/${SLUG_A}`,
+  `/display/${SLUG_B}`,
+]);
 
 // TV-01 — Mishkaat board (SLUG_A) renders with prayer-grid and labels
 await testCase(t, 'TV-01', async () => {

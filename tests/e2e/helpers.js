@@ -374,8 +374,15 @@ export async function visitPage(browser, cfg, url, opts = {}) {
     // before expectations start. Kept SHORT on purpose — known-blank error
     // pages (e.g. the SPA-mode +error.svelte dedup glitch) never hydrate, and
     // the real assertions are the expectations below with their own budgets.
-    await waitForHydration(page, 12000).catch(() => {});
+await waitForHydration(page, 12000).catch(() => {});
     await waitForContent(page, 5000).catch(() => {});
+
+    // Wait for the app to declare its data is loaded (data-content-ready
+    // is set when layout load() resolves). Pages without this attribute
+    // (e.g. root verification page, login page) just hit the timeout.
+    await page.waitForSelector('[data-content-ready]', { state: 'attached', timeout: 15000 }).catch(() => {});
+
+    // All expectations run CONCURRENTLY (they only read the DOM) — a page
 
     // All expectations run CONCURRENTLY (they only read the DOM) — a page
     // missing N expectations costs one EXPECT_TIMEOUT, not N × EXPECT_TIMEOUT.
@@ -458,4 +465,29 @@ export function explain(r) {
     if (r[k] && r[k].length) parts.push(`${k}: ${JSON.stringify(r[k].slice(0, 5))}`);
   }
   return parts.join(' | ') || '(no detail)';
+}
+
+// ---------------------------------------------------------------------------
+// Pre-warm: visit every URL the test suite will use to warm the API worker,
+// D1, and CDN edges. Runs once at suite start. Each URL is visited in a
+// fresh context and waited until content is loaded. Failures are logged but
+// never fatal — the actual tests will retry.
+// ---------------------------------------------------------------------------
+export async function prewarm(browser, baseUrl, paths) {
+  console.log(`  pre-warming ${paths.length} URLs…`);
+  const start = Date.now();
+  for (const p of paths) {
+    try {
+      const ctx = await newContext(browser);
+      const page = await ctx.newPage();
+      await page.goto(`${baseUrl}${p}`, { waitUntil: 'load', timeout: 45000 });
+      // Wait for content-ready signal if present, otherwise body text > 50 chars
+      await page.waitForSelector('[data-content-ready]', { state: 'attached', timeout: 30000 }).catch(() => {});
+      await page.waitForFunction(() => document.body.innerText.length > 50, { timeout: 15000 }).catch(() => {});
+      await ctx.close();
+    } catch (e) {
+      console.error(`    prewarm ${p}: ${e.message.split('\n')[0]}`);
+    }
+  }
+  console.log(`  pre-warm done in ${((Date.now() - start) / 1000).toFixed(0)}s`);
 }

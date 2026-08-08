@@ -63,7 +63,9 @@
     </div>
   </div>
 {:else}
-  <AdminShell masjidSlug={data.masjidSlug} masjidName={masjidName}>
-    {@render children()}
-  </AdminShell>
+  <div data-content-ready="">
+    <AdminShell masjidSlug={data.masjidSlug} masjidName={masjidName}>
+      {@render children()}
+    </AdminShell>
+  </div>
 {/if}

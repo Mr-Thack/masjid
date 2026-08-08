@@ -107,6 +107,7 @@
 <div
   class="min-h-dvh flex flex-col c-app"
   data-ambient-phase={ambientPhase ?? undefined}
+  data-content-ready={masjid != null ? '' : undefined}
 >
   {#if !embed}
     <header

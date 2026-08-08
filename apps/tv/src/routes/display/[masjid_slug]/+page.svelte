@@ -374,6 +374,7 @@
     class="tv-page tv-page--mishkaat"
     class:tv-page--compact={compact}
     style={themeStyle}
+    data-content-ready=""
     data-ambient-phase={ceremony.ambientPhase ?? undefined}
   >
     <header class="tv-header tv-header--mishkaat">
@@ -485,7 +486,7 @@
     {/if}
   </div>
 {:else}
-  <div class="tv-page" class:tv-page--compact={compact} style={themeStyle}>
+  <div class="tv-page" class:tv-page--compact={compact} style={themeStyle} data-content-ready="">
     <header class="tv-header">
       <div class="flex flex-col">
         <h1 class="tv-header-name">{payload.masjid.name}</h1>
