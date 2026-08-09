@@ -12,6 +12,8 @@ function load() {
   if (stored === 'light' || stored === 'dark') _pref = stored;
 }
 
+load();
+
 export const deviceThemePref = {
   get current(): DevicePreference {
     load();
