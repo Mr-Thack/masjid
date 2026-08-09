@@ -506,7 +506,7 @@
                 maxlength="80"
                 bind:value={form.style_options.donateAppeal}
                 oninput={handleChange}
-                placeholder="Same great experience, in your pocket"
+                placeholder="Every contribution makes a difference"
               />
               <p class="text-xs text-text-muted mt-1">{form.style_options.donateAppeal.length}/80</p>
             </div>
