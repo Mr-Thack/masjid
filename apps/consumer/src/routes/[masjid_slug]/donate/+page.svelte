@@ -4,20 +4,18 @@
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
 
-  let donationLinks = $derived(
-    (() => {
-      const raw = masjid?.donation_links;
-      if (!raw) return [];
-      try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.filter((l: { label?: string; url?: string }) => l && l.url) : [];
-      } catch {
-        return [];
-      }
-    })(),
-  );
+  function parseDonationLinks(raw: string | null | undefined): { label: string; url: string }[] {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((l: { label?: string; url?: string }) => l && l.url) : [];
+    } catch {
+      return [];
+    }
+  }
 
-  let hasLinks = $derived(donationLinks.length > 0);
+  let links = $derived(parseDonationLinks(masjid?.donation_links));
+  let hasLinks = $derived(links.length > 0);
 </script>
 
 <svelte:head>
@@ -47,7 +45,7 @@
 
       {#if hasLinks}
         <div class="flex flex-col items-center gap-3">
-          {#each donationLinks as link}
+          {#each links as link}
             <a
               href={link.url}
               target="_blank"
