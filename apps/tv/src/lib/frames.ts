@@ -13,7 +13,7 @@ export { hadithTagsForContext } from '@masjid/ui-utils';
  * board itself (see board-cycle.ts).
  */
 
-export type FrameKind = 'jumuah' | 'hadith' | 'announcements' | 'donate' | 'donate-qr';
+export type FrameKind = 'jumuah' | 'hadith' | 'announcements' | 'donate-qr';
 
 export interface Frame {
   kind: FrameKind;
@@ -26,7 +26,8 @@ export interface Frame {
 export interface FrameInput {
   jumuahSessionCount: number;
   announcementCount: number;
-  donationUrl: string | null;
+  /** Full URL to the consumer donation page (for QR code). */
+  donatePageUrl: string | null;
   /** Local weekday: 0 = Sunday … 4 = Thursday, 5 = Friday. */
   dayOfWeek: number;
   /** Style option whitelist of enabled frame kinds; null/undefined = all. */
@@ -59,10 +60,8 @@ export function buildFrames(input: FrameInput): Frame[] {
       frames.push({ kind: 'announcements', pinned: false, index: i });
     }
   }
-  // Donate is two separate slides: the appeal text, then the QR code.
-  // Together in one frame was visually too much (§4 ornament budget).
-  if (input.donationUrl && enabled('donate')) {
-    frames.push({ kind: 'donate', pinned: false }, { kind: 'donate-qr', pinned: false });
+  if (input.donatePageUrl && enabled('donate-qr')) {
+    frames.push({ kind: 'donate-qr', pinned: false });
   }
 
   // Pinned frames lead the rotation; relative order otherwise preserved.

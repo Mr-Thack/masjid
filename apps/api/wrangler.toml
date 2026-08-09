@@ -22,6 +22,7 @@ id = "placeholder-kv-id"
 [vars]
 JWT_SECRET = "placeholder-jwt-secret-replace-in-production"
 ENVIRONMENT = "dev"
+CONSUMER_BASE_URL = "http://localhost:5175"
 
 [env.production]
 name = "mapi"
@@ -38,6 +39,7 @@ SENDER_NAME = "Masjid Suffah"
 FORWARD_TO_EMAIL = "suffahmasjid@gmail.com"
 LOGGING_EMAIL = "masjidsuffahlogging@gmail.com"
 BOT_NAME = "masjid-api/1.0"
+CONSUMER_BASE_URL = "https://masjid-live.pages.dev"
 
 [[env.production.d1_databases]]
 binding = "DB"
@@ -66,6 +68,7 @@ SENDER_NAME = "Masjid Suffah (Staging)"
 FORWARD_TO_EMAIL = "suffahmasjid@gmail.com"
 LOGGING_EMAIL = "masjidsuffahlogging@gmail.com"
 BOT_NAME = "masjid-api-staging/1.0"
+CONSUMER_BASE_URL = "https://masjid-staging.pages.dev"
 
 [[env.staging.d1_databases]]
 binding = "DB"

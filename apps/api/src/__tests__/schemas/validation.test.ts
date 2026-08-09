@@ -542,7 +542,7 @@ describe('UpdateMasjidSchema', () => {
       UpdateMasjidSchema.parse({ instagram_url: '' }),
     ).toThrow();
     expect(() =>
-      UpdateMasjidSchema.parse({ external_donation_url: '' }),
+      UpdateMasjidSchema.parse({ website_url: '' }),
     ).toThrow();
   });
 

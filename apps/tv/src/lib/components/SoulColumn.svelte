@@ -14,7 +14,6 @@
   import HadithFrame from './HadithFrame.svelte';
   import JumuahFrame from './JumuahFrame.svelte';
   import AnnouncementFrame from './AnnouncementFrame.svelte';
-  import DonateFrame from './DonateFrame.svelte';
   import QrFrame from './QrFrame.svelte';
 
   interface JumuahSessionView {
@@ -33,8 +32,7 @@
     jumuahLabel,
     speechLabel,
     announcements,
-    donationUrl,
-    appeal,
+    donatePageUrl,
   }: {
     frames: Frame[];
     reducedMotion?: boolean;
@@ -43,8 +41,7 @@
     jumuahLabel: string;
     speechLabel: string;
     announcements: Array<{ title: string; html: string | null }>;
-    donationUrl: string | null;
-    appeal: string;
+    donatePageUrl: string | null;
   } = $props();
 
   // Rotation is driven by wall-clock elapsed time, not by a frame-index
@@ -86,10 +83,8 @@
           {#if announcement}
             <AnnouncementFrame title={announcement.title} html={announcement.html} />
           {/if}
-        {:else if active.kind === 'donate' && donationUrl}
-          <DonateFrame url={donationUrl} {appeal} />
-        {:else if active.kind === 'donate-qr' && donationUrl}
-          <QrFrame url={donationUrl} />
+        {:else if active.kind === 'donate-qr' && donatePageUrl}
+          <QrFrame url={donatePageUrl} />
         {/if}
       </div>
     {/key}

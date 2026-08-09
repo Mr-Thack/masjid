@@ -7,7 +7,7 @@ import {
 import { hashPassword } from '$lib/server/auth/password';
 import { signAccessToken } from '$lib/server/auth/jwt';
 import { getDb } from '$lib/server/db';
-import { masjids, masjidThemes, admins } from '$lib/server/db/schema';
+import { masjids, masjidThemes, admins, navItems } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -86,6 +86,13 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       createdAt: now,
     };
 
+    const defaultNavItems = [
+      { id: crypto.randomUUID(), masjidId, sortOrder: 0, kind: 'route', routeSegment: 'prayer', label: 'Times', icon: 'Clock', isHighlighted: true },
+      { id: crypto.randomUUID(), masjidId, sortOrder: 1, kind: 'route', routeSegment: 'news', label: 'News', icon: 'Newspaper', isHighlighted: false },
+      { id: crypto.randomUUID(), masjidId, sortOrder: 2, kind: 'route', routeSegment: 'info', label: 'Info', icon: 'Info', isHighlighted: false },
+      { id: crypto.randomUUID(), masjidId, sortOrder: 3, kind: 'route', routeSegment: 'maktab', label: 'Maktab', icon: 'GraduationCap', isHighlighted: false },
+    ];
+
     try {
       // D1 (production) supports db.batch for atomic multi-table inserts;
       // better-sqlite3 (local dev) uses a synchronous transaction instead.
@@ -95,12 +102,16 @@ export const POST: RequestHandler = async ({ request, platform }) => {
           db.insert(masjids).values(masjidValues),
           db.insert(masjidThemes).values(themeValues),
           db.insert(admins).values(adminValues),
+          ...defaultNavItems.map(d => db.insert(navItems).values(d)),
         ]);
       } else {
         db.transaction((tx) => {
           tx.insert(masjids).values(masjidValues).run();
           tx.insert(masjidThemes).values(themeValues).run();
           tx.insert(admins).values(adminValues).run();
+          for (const d of defaultNavItems) {
+            tx.insert(navItems).values(d).run();
+          }
         });
       }
     } catch (e) {

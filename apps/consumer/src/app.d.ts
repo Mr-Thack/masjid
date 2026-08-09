@@ -33,7 +33,9 @@ declare global {
         facebook_url: string | null;
         youtube_url: string | null;
         instagram_url: string | null;
-        external_donation_url: string | null;
+        about_markdown: string | null;
+        about_html: string | null;
+        donation_links: string | null;
       };
       theme: Theme;
       prayer_times: PrayerTimes | null;

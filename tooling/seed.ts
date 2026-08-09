@@ -79,7 +79,11 @@ async function seed() {
     contactPhone: '(312) 555-0199',
     contactEmail: 'info@masjid-alnoor.org',
     websiteUrl: 'https://masjid-alnoor.org',
-    externalDonationUrl: 'https://donate.masjid-alnoor.org',
+    aboutMarkdown: '## Our Story\n\nMasjid Al-Noor has been serving the Chicago Muslim community since 1995. What began as a small storefront musalla has grown into a vibrant Islamic center offering daily prayers, Jumu\'ah services, educational programs, and community outreach.\n\n### Our Mission\n\nTo provide a welcoming space for worship, education, and community building in accordance with the Quran and Sunnah.\n\n### Services\n\n- Five daily prayers with iqaamah\n- Jumu\'ah khutbah and prayer\n- Quran and Islamic studies classes\n- Youth programs\n- Community iftars during Ramadan\n- Marriage and counseling services',
+    donationLinks: JSON.stringify([
+      { label: 'Online Donation', url: 'https://donate.masjid-alnoor.org' },
+      { label: 'LaunchGood', url: 'https://www.launchgood.com/masjid-alnoor' },
+    ]),
     adminEmail: 'admin@masjid-alnoor.org',
   }).run();
 
@@ -370,7 +374,11 @@ async function seed() {
     youtubeUrl: 'https://youtube.com/@MasjidAlJabal',
     instagramUrl: 'https://instagram.com/masjid.aljabal',
     websiteUrl: 'https://masjid-aljabal.org',
-    externalDonationUrl: 'https://donate.masjid-aljabal.org',
+    aboutMarkdown: '## Welcome to Masjid Al-Jabal\n\nMasjid Al-Jabal serves the growing Muslim community of Kennesaw and greater Cobb County, Georgia. Established in 2010, our masjid is a hub for worship, learning, and community service.\n\n### Our Community\n\nWe are a diverse congregation following the Hanafi school of thought. Our doors are open to all Muslims regardless of background.\n\n### What We Offer\n\n- Five daily prayers with iqaamah in congregation\n- Jumu\'ah services with English khutbah\n- Weekend Islamic school for children\n- Weekly halaqas and study circles\n- Ramadan taraweeh and iftar program\n- Interfaith outreach and community service',
+    donationLinks: JSON.stringify([
+      { label: 'Online Donation', url: 'https://donate.masjid-aljabal.org' },
+      { label: 'Zelle', url: 'https://enroll.zellepay.com' },
+    ]),
     adminEmail: 'admin@masjid-aljabal.org',
   }).run();
 

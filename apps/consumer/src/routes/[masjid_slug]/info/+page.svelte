@@ -29,16 +29,23 @@
 </script>
 
 <svelte:head>
-  <title>Info — {masjid?.name ?? 'Masjid'}</title>
+  <title>About — {masjid?.name ?? 'Masjid'}</title>
 </svelte:head>
 
 <div class="max-w-2xl mx-auto space-y-6">
   <section class="text-center py-6">
     <h1 class="text-2xl sm:text-3xl font-bold font-heading">
-      {masjid?.name ?? 'Masjid'}
+      About {masjid?.name ?? 'Masjid'}
     </h1>
-    <p class="mt-1 text-sm" style="color: var(--color-text-dim);">Contact & Location</p>
   </section>
+
+  {#if masjid?.about_html}
+    <section class="glass-card p-6">
+      <div class="prose-base leading-relaxed" style="color: var(--color-text);">
+        {@html masjid.about_html}
+      </div>
+    </section>
+  {/if}
 
   {#if address.length > 0}
     <section class="glass-card p-5">
@@ -106,10 +113,10 @@
     </section>
   {/if}
 
-  {#if data.info_post}
+  {#if !masjid?.about_html && data.info_post}
     <section class="glass-card p-5">
       <h2 class="text-sm font-semibold uppercase tracking-wider mb-3" style="color: var(--color-text-muted);">{data.info_post.title}</h2>
-      <div class="text-base leading-relaxed" style="color: var(--color-text);">
+      <div class="prose-base leading-relaxed" style="color: var(--color-text);">
         {@html data.info_post.compiled_html}
       </div>
     </section>

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import PrayerTable from '$lib/components/PrayerTable.svelte';
-  import DonateButton from '$lib/components/DonateButton.svelte';
   import HeroNiche from '$lib/components/HeroNiche.svelte';
   import HadithCard from '$lib/components/HadithCard.svelte';
   import { fetchPrayerTimes, type PrayerTimes } from '$lib/api';
@@ -21,6 +20,16 @@
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
+  let donationLinks = $derived.by(() => {
+    const raw = masjid?.donation_links;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter((l: { url?: string }) => l.url);
+      } catch { /* invalid JSON */ }
+    }
+    return [];
+  });
   let prayerTimes = $derived(data.prayer_times);
   let jumuah = $derived(data.jumuah);
   let pinnedAnnouncement = $derived(data.pinned_announcement);
@@ -462,9 +471,18 @@
       {@render jumuahSection()}
     {/if}
 
-    {#if masjid?.external_donation_url}
+    {#if donationLinks.length > 0}
       <section class="text-center">
-        <DonateButton url={masjid.external_donation_url} />
+        <a
+          href="/{masjid?.slug}/donate"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 bg-accent shadow-lg"
+          style="text-shadow: 0 1px 2px rgba(0,0,0,0.2);"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          Support This Masjid
+        </a>
       </section>
     {/if}
   </aside>

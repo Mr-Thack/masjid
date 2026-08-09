@@ -17,7 +17,7 @@
     name: '', address_line1: '', address_line2: '', city: '', state: '',
     postal_code: '', country: 'US', contact_phone: '', contact_email: '',
     facebook_url: '', youtube_url: '', instagram_url: '', website_url: '',
-    external_donation_url: '', calculation_method: 2, timezone: 'America/Chicago',
+    about_markdown: '', donation_links: '[]', calculation_method: 2, timezone: 'America/Chicago',
     asr_madhab: 'shafi', high_latitude_rule: 'seventh_of_night',
     show_dual_asr: false, fajr_angle: null as number | null, isha_angle: null as number | null,
     adjust_fajr: 0, adjust_sunrise: 0, adjust_dhuhr: 0, adjust_asr: 0, adjust_maghrib: 0, adjust_isha: 0,
@@ -59,6 +59,34 @@
     'Asia/Kolkata', 'Asia/Jakarta', 'Asia/Kuala_Lumpur',
   ];
 
+  let donationLinksList = $state<{ label: string; url: string }[]>([]);
+
+  $effect(() => {
+    try {
+      donationLinksList = JSON.parse(form.donation_links || '[]');
+    } catch {
+      donationLinksList = [];
+    }
+  });
+
+  function addDonationLink() {
+    donationLinksList.push({ label: '', url: '' });
+    form.donation_links = JSON.stringify(donationLinksList);
+    dirty = true;
+  }
+
+  function removeDonationLink(index: number) {
+    donationLinksList.splice(index, 1);
+    form.donation_links = JSON.stringify(donationLinksList);
+    dirty = true;
+  }
+
+  function updateDonationLink(index: number, field: 'label' | 'url', value: string) {
+    donationLinksList[index][field] = value;
+    form.donation_links = JSON.stringify(donationLinksList);
+    dirty = true;
+  }
+
   $effect(() => {
     loadProfile();
   });
@@ -83,7 +111,8 @@
       form.youtube_url = profile.youtube_url || '';
       form.instagram_url = profile.instagram_url || '';
       form.website_url = profile.website_url || '';
-      form.external_donation_url = profile.external_donation_url || '';
+      form.about_markdown = profile.about_markdown || '';
+      form.donation_links = profile.donation_links || '[]';
       form.calculation_method = profile.calculation_method || 2;
       form.asr_madhab = profile.asr_madhab || 'shafi';
       form.high_latitude_rule = profile.high_latitude_rule || 'seventh_of_night';
@@ -129,7 +158,8 @@
         youtube_url: cleanUrl(form.youtube_url),
         instagram_url: cleanUrl(form.instagram_url),
         website_url: cleanUrl(form.website_url),
-        external_donation_url: cleanUrl(form.external_donation_url),
+        about_markdown: form.about_markdown || null,
+        donation_links: form.donation_links || '[]',
         calculation_method: Number(form.calculation_method),
         asr_madhab: coerceAsrMadhab(form.asr_madhab),
         high_latitude_rule: coerceHighLatitudeRule(form.high_latitude_rule),
@@ -235,10 +265,35 @@
             <label for="instagram_url">Instagram URL</label>
             <input id="instagram_url" type="url" class="w-full" bind:value={form.instagram_url} oninput={handleChange} placeholder="https://" />
           </div>
-          <div class="form-group">
-            <label for="external_donation_url">Donation URL</label>
-            <input id="external_donation_url" type="url" class="w-full" bind:value={form.external_donation_url} oninput={handleChange} placeholder="https://" />
-          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Donation Links</label>
+          <p class="text-xs text-text-muted mb-2">Add multiple donation links with labels (e.g. "PayPal", "LaunchGood", "Zelle")</p>
+          {#each donationLinksList as link, i}
+            <div class="form-row mb-2">
+              <div class="form-group flex-1">
+                <input type="text" class="w-full" placeholder="Label" value={link.label} oninput={(e) => updateDonationLink(i, 'label', (e.target as HTMLInputElement).value)} />
+              </div>
+              <div class="form-group flex-[2]">
+                <input type="url" class="w-full" placeholder="https://" value={link.url} oninput={(e) => updateDonationLink(i, 'url', (e.target as HTMLInputElement).value)} />
+              </div>
+              <button type="button" class="btn-ghost text-red-400 text-sm px-2" onclick={() => removeDonationLink(i)}>Remove</button>
+            </div>
+          {/each}
+          <button type="button" class="btn-ghost text-sm" onclick={addDonationLink}>+ Add Link</button>
+        </div>
+
+        <div class="form-group">
+          <label for="about_markdown">About Us (Markdown)</label>
+          <p class="text-xs text-text-muted mb-2">History, story, or any information about the masjid. Supports markdown formatting.</p>
+          <textarea
+            id="about_markdown"
+            class="w-full min-h-[150px]"
+            bind:value={form.about_markdown}
+            oninput={handleChange}
+            placeholder="## Our History&#10;&#10;Masjid Al-Noor was established in..."
+          ></textarea>
         </div>
 
         <div class="form-row">

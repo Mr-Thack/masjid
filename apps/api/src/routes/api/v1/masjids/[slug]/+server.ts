@@ -9,6 +9,7 @@ import {
 import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
+import { compileMarkdown } from '$lib/server/markdown';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, platform }) => {
@@ -123,7 +124,9 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         youtube_url: masjid.youtubeUrl,
         instagram_url: masjid.instagramUrl,
         website_url: masjid.websiteUrl,
-        external_donation_url: masjid.externalDonationUrl,
+        about_markdown: masjid.aboutMarkdown,
+        about_html: masjid.aboutMarkdown ? compileMarkdown(masjid.aboutMarkdown) : null,
+        donation_links: masjid.donationLinks,
       },
       theme: rawTheme
         ? {

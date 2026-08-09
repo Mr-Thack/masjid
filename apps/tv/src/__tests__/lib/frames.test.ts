@@ -8,20 +8,16 @@ import {
   MAX_ANNOUNCEMENT_FRAMES,
 } from '$lib/frames';
 
-// ---------------------------------------------------------------------------
-// Soul-column frame choreography (docs/design-language.md §7.5)
-// ---------------------------------------------------------------------------
-
 const fullInput = {
   jumuahSessionCount: 2,
   announcementCount: 3,
-  donationUrl: 'https://example.com/donate',
-  dayOfWeek: 3, // Wednesday
+  donatePageUrl: 'https://example.com/masjid/donate',
+  dayOfWeek: 3,
   enabledFrames: null,
 };
 
 describe('buildFrames', () => {
-  it('builds the full inventory in priority order (§7.5)', () => {
+  it('builds the full inventory in priority order', () => {
     const frames = buildFrames(fullInput);
     expect(frames.map((f) => f.kind)).toEqual([
       'jumuah',
@@ -29,7 +25,6 @@ describe('buildFrames', () => {
       'announcements',
       'announcements',
       'announcements',
-      'donate',
       'donate-qr',
     ]);
   });
@@ -54,21 +49,16 @@ describe('buildFrames', () => {
     const frames = buildFrames({
       jumuahSessionCount: 0,
       announcementCount: 0,
-      donationUrl: null,
+      donatePageUrl: null,
       dayOfWeek: 3,
       enabledFrames: null,
     });
     expect(frames.map((f) => f.kind)).toEqual(['hadith']);
   });
 
-  it('suppresses the donate frames without a donation URL', () => {
-    const frames = buildFrames({ ...fullInput, donationUrl: null });
-    expect(frames.some((f) => f.kind === 'donate' || f.kind === 'donate-qr')).toBe(false);
-  });
-
-  it('suppresses the donate frames for an empty-string URL', () => {
-    const frames = buildFrames({ ...fullInput, donationUrl: '' });
-    expect(frames.some((f) => f.kind === 'donate' || f.kind === 'donate-qr')).toBe(false);
+  it('suppresses the donate-qr frame when there is no donate page URL', () => {
+    const frames = buildFrames({ ...fullInput, donatePageUrl: null });
+    expect(frames.some((f) => f.kind === 'donate-qr')).toBe(false);
   });
 
   it('expands announcements one at a time with slot indexes', () => {
@@ -83,8 +73,8 @@ describe('buildFrames', () => {
   });
 
   it('honors the enabledFrames whitelist (style option)', () => {
-    const frames = buildFrames({ ...fullInput, enabledFrames: ['hadith', 'donate'] });
-    expect(frames.map((f) => f.kind)).toEqual(['hadith', 'donate', 'donate-qr']);
+    const frames = buildFrames({ ...fullInput, enabledFrames: ['hadith', 'donate-qr'] });
+    expect(frames.map((f) => f.kind)).toEqual(['hadith', 'donate-qr']);
   });
 
   it('an empty enabledFrames list renders no frames at all', () => {
@@ -127,7 +117,7 @@ describe('getActiveFrameIndex', () => {
   });
 });
 
-describe('motion budget constants (§4)', () => {
+describe('motion budget constants', () => {
   it('frame cadence is within 15–30s', () => {
     expect(FRAME_DURATION_MS).toBeGreaterThanOrEqual(15_000);
     expect(FRAME_DURATION_MS).toBeLessThanOrEqual(30_000);
@@ -140,7 +130,7 @@ describe('motion budget constants (§4)', () => {
 });
 
 describe('hadithTagsForContext', () => {
-  it('seeds jumuah hadith on Friday (§4)', () => {
+  it('seeds jumuah hadith on Friday', () => {
     expect(hadithTagsForContext({ dayOfWeek: 5 })).toContain('jumuah');
     expect(hadithTagsForContext({ dayOfWeek: 4 })).not.toContain('jumuah');
   });
