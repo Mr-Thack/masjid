@@ -972,3 +972,212 @@ use the raw-D1 bypass (lesson 31). Run manually:
 **Key rule**: there are THREE schemas — `schema.sql`, the Drizzle schema, and
 each physical D1 database. `check-schema` covers the first two;
 `check-d1-drift` covers the third. A deploy must pass both before it ships.
+
+## Staging E2E testing lessons (2026-08-06/07)
+
+These came from a week-long effort to make the staging E2E suite pass
+deterministically. The failures were intermittent, seemingly random, and
+resisted every obvious fix. The root cause turned out to be subtle.
+
+### 36. Cloudflare Workers return 503 for ~30s after deploy
+
+**Pitfall**: After a `wrangler deploy`, different Cloudflare edge nodes receive
+the new worker code at different times. During the transition window (~30s),
+requests to some nodes return 503 (Cloudflare's own error page, NOT the
+worker's response — you can identify it by the IE conditional comments in the
+HTML). This causes ANY test that hits the API to fail intermittently.
+
+**How we fixed it**: Added retry logic to the API test helpers (`getJson` /
+`postJson`): on 503, wait 5s and retry (up to 2×). Also serialized the E2E
+workflow: `e2e-api` runs first (fast, ~15s), and all browser-based E2E jobs
+(`consumer`, `tv`, `admin`, `deploy`) depend on it. This ensures the API is
+probed and warmed before any browser tests start.
+
+**Key rule**: Never trust the API to be ready immediately after deploy. Probe
+it with retries. The `wait-for-deploy.js` script only checks Pages (build-id
+in HTML meta) — it does NOT check the API worker.
+
+**Files affected**: `tests/e2e/api.test.js`, `.github/workflows/deploy-staging.yml`
+
+### 37. Parallel E2E jobs can burst the Cloudflare worker
+
+**Pitfall**: All 5 E2E jobs (`api`, `deploy`, `consumer`, `tv`, `admin`) ran in
+parallel with identical `needs` dependencies. The consumer pre-warm alone fired
+16 rapid page loads (each triggering an API call). Combined with the API test's
+50+ requests and the other suites' API calls, the staging worker was hit with
+~100+ requests simultaneously — triggering Cloudflare's burst protection (503).
+
+**How we fixed it**: Made all browser jobs depend on `e2e-api`. This
+serializes: API tests warm the worker alone, then browser tests start.
+Consumer/TV/Admin still run in parallel with each other, but the initial burst
+is spread out.
+
+**Files affected**: `.github/workflows/deploy-staging.yml`
+
+### 38. Pre-warm: use `waitUntil: 'commit'`, not `'load'`
+
+**Pitfall**: The pre-warm phase visits every test URL before the suite runs to
+warm the CDN and API. Using `waitUntil: 'load'` caused it to take 165s for 16
+URLs (~10s each) because it waited for ALL resources (scripts, images, Square
+SDK iframes). Pages with third-party scripts (Square) can delay the `load`
+event for 30s+. Using `waitUntil: 'commit'` (navigation committed — response
+headers received) achieves the warming effect without the wait.
+
+**How we fixed it**: Changed prewarm from `waitUntil: 'load'` (45s timeout) to
+`waitUntil: 'commit'` (10s timeout). The HTTP request is fired, the SPA HTML is
+received, the browser starts parsing, and the API call is triggered via the
+layout `load()` — all without waiting for resources. Pre-warm dropped from 165s
+to ~50s.
+
+**Files affected**: `tests/e2e/helpers.js` (`prewarm()` function)
+
+### 39. visitPage retry makes flaky suites WORSE
+
+**Pitfall**: Adding a global retry to `visitPage()` (reload the page once if
+text is missing) seemed like it would absorb CDN intermittent failures.
+Instead, it doubled the time of EVERY failing test (15s first attempt + 30s
+retry) because the retry created a new browser context and did a full page
+load. The accumulated delays pushed the suite past the watchdog timeout.
+
+**How we fixed it**: Removed the global retry. Instead, increased
+`EXPECT_TIMEOUT` from 15s → 30s (with a warm API, content renders in <10s; 30s
+covers cold starts). Individual tests that need retries (like the prayer page
+with its 7 extra API calls) handle them locally via `data-table-ready` waits.
+
+**Key rule**: Never add global retries to test infrastructure. They multiply
+failure costs. If a test is genuinely timing-dependent, fix the test (add a
+specific signal or wait), don't retry the whole page load.
+
+**Files affected**: `tests/e2e/helpers.js` (reverted), `tests/e2e/consumer.test.js`
+
+### 40. Square SDK pages need `waitUntil: 'domcontentloaded'`
+
+**Pitfall**: The Square Web Payments SDK (`web.squarecdn.com/v1/square.js`)
+creates iframes that keep persistent connections open. `page.goto()` with
+`waitUntil: 'load'` can hang indefinitely because the browser's `load` event
+never fires while Square's iframes are loading. The 30s `page.goto()` timeout
+should catch this, but on CI networks, the Square CDN can be slow enough to
+cause individual test timeouts that cascade into watchdog kills.
+
+**How we fixed it**: Changed enrollment page tests (CON-35, CON-46) to use
+`waitUntil: 'domcontentloaded'`. The SPA hydration signal (`data-hydrated`) is
+the real readiness indicator, not the browser `load` event.
+
+**Key rule**: Any page that loads third-party scripts with persistent
+connections (Square, Stripe, WebSocket) should use `waitUntil: 'domcontentloaded'`.
+
+**Files affected**: `tests/e2e/consumer.test.js`
+
+### 41. `data-content-ready` signals can fire before page content renders
+
+**Pitfall**: We added `data-content-ready` attributes to layout root `<div>`s,
+set reactively when `$page.data.masjid != null` (layout `load()` completed).
+The idea was that `visitPage()` could wait for this signal instead of racing
+against the API with body-text timeouts. But Svelte renders parent templates
+BEFORE child components: the layout's `<div data-content-ready>` attribute
+appears in the DOM a microtask before the page component (`{@render children()}`)
+renders its content. `waitForSelector('[data-content-ready]')` resolved, but
+the page's text (like "Why Give?") wasn't in the DOM yet.
+
+**How we fixed it**: Removed the `[data-content-ready]` wait from `visitPage()`.
+The pre-warm handles API/D1 warming, and the 30s `EXPECT_TIMEOUT` covers
+rendering latency. The attributes stay in the app layouts (harmless), and the
+prayer page's `data-table-ready` signal is still used by CON-04/26/45 (it's on
+the page component's OWN root element, so there's no parent-before-child race).
+
+**Key rule**: If you set readiness signals in a PARENT component, they fire
+before child content renders. Signals must be on the component that owns the
+async data loading, not a parent.
+
+**Files affected**: `tests/e2e/helpers.js`, `apps/*/src/routes/**/+layout.svelte` (kept, harmless), `apps/consumer/src/routes/[masjid_slug]/prayer/+page.svelte` (kept, used by tests)
+
+### 42. Prayer page fetches 7 days of data outside the layout `load()`
+
+**Pitfall**: The consumer prayer page (`/[slug]/prayer`) has its own
+`loadWeek()` function in `$effect()` that makes 7 sequential API calls (one per
+day of the week). This happens AFTER the layout `load()` completes. Any test
+that visits `/prayer` and only waits for layout data will race against
+`loadWeek()`. The loading spinner is shown during the fetch, and the weekly
+table only renders when all 7 calls complete.
+
+**How we fixed it**: Added `data-table-ready` attribute to the prayer page's
+root div, set reactively when `!loading` (after `loadWeek()` completes). Tests
+CON-04, CON-26, and CON-45 use `gotoPage` + `waitForSelector('[data-table-ready]')`
+before checking table content. The signal is on the PAGE's own root element, so
+there's no parent-before-child race.
+
+**Files affected**: `apps/consumer/src/routes/[masjid_slug]/prayer/+page.svelte`, `tests/e2e/consumer.test.js`
+
+### 43. `collectPage()` does not create `b.missing` — only `visitPage()` does
+
+**Pitfall**: `collectPage(page, cfg)` creates the buckets object with
+`pageErrors`, `consoleErrors`, `failedRequests`, etc. But `b.missing` (the
+array of missing text/selector expectations) is only initialized by
+`visitPage()`. When a test uses `gotoPage()` + manual checks and tries to
+`.push()` onto `b.missing`, it crashes with "Cannot read properties of
+undefined (reading 'push')".
+
+**How we fixed it**: Initialize `b.missing = []` before using it, or use
+`visitPage()` which sets it up automatically. In practice, the prayer page
+tests (CON-04, CON-26, CON-45) no longer use `b.missing` — they just check
+`pageErrors` and `failedRequests`.
+
+**Files affected**: `tests/e2e/helpers.js`, `tests/e2e/consumer.test.js`
+
+### 44. `gotoPage` swallows `expectText` failures silently
+
+**Pitfall**: `gotoPage()`'s `expectText` and `expectSelector` checks use
+`.catch(() => {})` — failures are silently swallowed. The function always
+returns successfully, even if the expected text never appears. The caller must
+separately check the page state afterwards. This caused confusing failures
+where `gotoPage` "succeeded" but subsequent `page.evaluate()` calls found an
+empty body (the page never actually loaded).
+
+**How we fixed it**: Don't rely on `gotoPage`'s optional expectations as the
+sole verification. Use `visitPage()` for one-shot page checks (it returns
+`r.ok`), or follow `gotoPage()` with explicit content waits like
+`waitForSelector('[data-table-ready]')`.
+
+**Key rule**: `gotoPage`'s `expectText`/`expectSelector` are best-effort
+convenience, not assertions. They're useful for speeding up the common case
+(exit early when content appears), but the caller must always verify the page
+state separately.
+
+**Files affected**: `tests/e2e/helpers.js` (`gotoPage` implementation)
+
+### 45. The SPA `data-hydrated` signal fires before layout `load()` completes
+
+**Pitfall**: `visitPage()` waits for `data-hydrated` (set by the root layout's
+`$effect()` when the SPA boots). But layout `load()` (which fetches API data)
+runs AFTER hydration, in the SvelteKit client-side navigation lifecycle. The
+text checks in `visitPage()` run concurrently with `load()`. This is why tests
+worked with longer timeouts — the text checks just waited for `load()` to
+complete, and the timeout needed to be long enough.
+
+**How we fixed it**: The pre-warm (lesson 38) ensures the API is fast, and the
+30s `EXPECT_TIMEOUT` provides enough margin for `load()` to complete even on
+a cold start. The pre-warm visits all test URLs before the suite runs, so
+layout `load()` API calls hit a warm worker.
+
+**Key rule**: In static SPA mode, `load()` is a CLIENT-SIDE function that runs
+after hydration. Any test that checks page content must account for `load()`
+latency. Pre-warming the API is more effective than adding arbitrary delays.
+
+### 46. Suite retry in `run.js` only helps CDN chunk-404 issues
+
+**Pitfall**: `run.js` retries the entire suite once on failure. This was meant
+to absorb CDN edge inconsistencies (stale chunk 404s). But it also retried
+tests that failed for real reasons (API 503, slow `load()`), wasting CI time
+and making debugging harder — a real failure takes 2× as long to surface.
+
+**How we fixed it**: Kept the suite retry (it's useful for genuine CDN edge
+issues), but made individual tests self-healing where possible:
+- API tests retry on 503 (lesson 36)
+- Prayer page tests wait for `data-table-ready` (lesson 42)
+- Pre-warm warms the API before tests (lesson 38)
+- `EXPECT_TIMEOUT` at 30s (lesson 39)
+
+This means the suite retry only triggers for actual CDN edge inconsistency,
+not for timing issues.
+
+**Files affected**: `tests/e2e/run.js`
