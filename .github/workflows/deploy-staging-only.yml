@@ -1,0 +1,89 @@
+name: Deploy Staging Only (No Tests)
+
+# Fast staging deploy: worker + pages + reseed, NO E2E.
+# Manual trigger only — use when you need speed and have already
+# verified the change by other means.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging-only
+  cancel-in-progress: true
+
+jobs:
+  deploy-worker-staging:
+    runs-on: ubuntu-latest
+    environment: Staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_D1_STAGING_ID: ${{ vars.CLOUDFLARE_D1_STAGING_ID || secrets.CLOUDFLARE_D1_STAGING_ID }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SQUARE_ACCESS_TOKEN: ${{ secrets.SQUARE_ACCESS_TOKEN }}
+      SQUARE_APP_ID: ${{ secrets.SQUARE_APP_ID }}
+      SQUARE_LOCATION_ID: ${{ secrets.SQUARE_LOCATION_ID }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Lesson-18 guard: fail the deploy BEFORE anything ships if
+      # schema.sql and the Drizzle schema have drifted.
+      - name: Schema drift check
+        run: npm run check-schema
+
+      # Live-D1 guard: fail BEFORE the worker ships if the target
+      # database is missing tables/columns the code needs.
+      - name: Live D1 drift check
+        run: npx tsx tooling/check-d1-drift.ts masjid-db-staging
+
+      - name: Build API worker
+        run: npm run build --workspace=@masjid/api
+
+      - name: Inject staging D1 database ID
+        run: sed -i "s/placeholder-staging-db-id/$CLOUDFLARE_D1_STAGING_ID/g" apps/api/wrangler.toml
+
+      - name: Deploy API worker (staging)
+        run: |
+          VAR_ARGS=()
+          for v in JWT_SECRET SQUARE_ACCESS_TOKEN SQUARE_APP_ID SQUARE_LOCATION_ID BREVO_API_KEY LLM_API_KEY; do
+            val="${!v}"; [ -n "$val" ] && VAR_ARGS+=(--var "$v:$val")
+          done
+          npx wrangler@latest deploy --env staging --keep-vars --var ENVIRONMENT:staging "${VAR_ARGS[@]}"
+        working-directory: apps/api
+
+      - name: Reseed staging D1
+        run: |
+          npx tsx tooling/dump-seed-sql.ts /tmp/staging-seed.sql
+          npx wrangler@latest d1 execute masjid-db-staging --remote --file=/tmp/staging-seed.sql
+
+  deploy-pages-staging:
+    runs-on: ubuntu-latest
+    environment: Staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      VITE_API_URL: https://mapi-staging.mr-thack.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build & merge all page apps
+        run: node tooling/merge-pages.js
+
+      - name: Deploy staging Pages project
+        run: npx wrangler@latest pages deploy .merged --project-name=masjid-staging --branch=master
