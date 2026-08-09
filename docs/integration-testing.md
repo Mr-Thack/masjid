@@ -268,6 +268,40 @@ with a bare stack trace. The reworked rules:
    a fresh no-store deploy is otherwise slow enough to trip 15s expectation
    ceilings and the suite watchdog (staging run 31070131044).
 
+**Determinism restructure (2026-08-09 — docs/e2e-determinism.md).** The
+remaining flake sources were cross-job shared-state races and non-transactional
+cleanup, not readiness. The rules added:
+
+8. **Transient gateway codes are warnings, not failures.** Responses with
+   status 502/503/520/521/522/523/524 from our origins land in `warnings`, not
+   `failedRequests` (post-deploy propagation / burst protection is infra noise).
+   A 503 that actually breaks a page still fails via `missing` expectations;
+   500/404/4xx remain hard failures.
+9. **Mutations are hermetic.** Each mutation test is its OWN `testCase` (one
+   throw can't abandon another test's restore). Created entities use unique
+   per-run names (no UNIQUE-slug collisions on suite retry; no leftover-driven
+   false positives). Creates go through the UI (the thing under test);
+   **restores/cleanup go through `tests/e2e/api-client.js` in `finally`**
+   (direct API calls, cached login, 503-retried) — they run even when the body
+   throws. Field restores snapshot via API BEFORE touching the UI
+   (`snapshotProfileFields`) and PUT back after (`restoreProfileFields`).
+10. **The staging DB is reseeded on every staging deploy**
+    (`tooling/dump-seed-sql.ts` → `wrangler d1 execute --file`), so no run
+    inherits state from a previous one. WRK-03's `e2e-smoke-*` masjids are
+    wiped by the next deploy's reseed.
+11. **The readiness probe covers the API worker too.**
+    `wait-for-deploy.js api` polls `/api/v1/status` for 200 AND
+    `build_id == GITHUB_SHA` (a 200 from a mid-propagation old worker is not
+    readiness); the `e2e-api` job runs it before the api+worker suites.
+12. **Enroll pages use `waitUntil: 'domcontentloaded'`** everywhere (Square
+    SDK iframes can stall the `load` event), and CON-46 asserts the
+    enrollment-open PRECONDITION via the public API first — a closed flag
+    fails fast with "staging DB drift; reseed" instead of a cryptic iframe
+    count.
+13. **Login has one retry** (`loginAdminWithRetry(context, cfg)`, used with
+    context-level request listeners): cold-worker bcrypt can blow the 45s
+    ceiling exactly once per suite.
+
 ## 6. Test catalog
 
 **`docs/integration-test-cases.md` is the authoritative list**: ~50 cases

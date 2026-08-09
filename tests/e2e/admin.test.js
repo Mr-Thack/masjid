@@ -20,13 +20,23 @@ import {
   explain,
   newContext,
   testCase,
-  loginAdmin,
+  loginAdminWithRetry,
   gotoPage,
   settlePage,
   waitForHydration,
   prewarm,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B } from './targets.js';
+import {
+  apiLogin,
+  apiGet,
+  snapshotProfileFields,
+  restoreProfileFields,
+  restoreEnrollmentOpen,
+  deleteAnnouncementsByPrefix,
+  deletePrayerRulesByPrefix,
+  deleteJumuahByPrefix,
+} from './api-client.js';
 
 const cfg = targets();
 const t = createReporter(`Admin [${cfg.env}] → ${cfg.admin}`);
@@ -105,12 +115,11 @@ if (!cfg.adminEmail) {
   // ADM-03 — login flow lands on dashboard (THE one real login of this suite)
   await testCase(t, 'ADM-03..05,07', async () => {
     const context = await newContext(browser);
-    const page = await context.newPage();
-    const b = collectPage(page, cfg);
 
-    // Track Authorization headers on API requests
+    // Track Authorization headers on API requests — attached at the CONTEXT
+    // level so it covers whichever page the (possibly retried) login used.
     const authHeaders = [];
-    page.on('request', (req) => {
+    context.on('request', (req) => {
       try {
         const u = new URL(req.url());
         if (u.pathname.startsWith('/api/')) {
@@ -119,7 +128,8 @@ if (!cfg.adminEmail) {
       } catch { /* ignore */ }
     });
 
-    await loginAdmin(page, cfg);
+    const page = await loginAdminWithRetry(context, cfg);
+    const b = collectPage(page, cfg);
     authState = await context.storageState();
 
     const onDashboard = page.url().includes(`/admin/${SLUG_A}`);
@@ -404,273 +414,264 @@ if (!cfg.adminEmail || !authState) {
 }
 
 // ---------------------------------------------------------------------------
-// Settings page mutation tests — verify SAVE actually works
-// Guarded by cfg.writes (local + staging only; PROD IS READ-ONLY)
-// All mutations restore original values or delete created test data.
+// Settings page mutation tests — verify SAVE actually works through the UI.
+// Guarded by cfg.writes (local + staging only; PROD IS READ-ONLY).
+//
+// Mutation discipline (2026-08-09 restructure — docs/e2e-determinism.md):
+//   - Each mutation is its OWN testCase: one failure can't abandon another
+//     test's restore (the old single ADM-16..22 block could).
+//   - Created entities use UNIQUE per-run names — a suite retry never hits a
+//     UNIQUE constraint, and leftovers never produce false-positive passes.
+//   - Creates happen through the UI (the thing under test); RESTORES and
+//     CLEANUPS happen via direct API calls in `finally` — they run even when
+//     the test body throws, and they never depend on a save button being
+//     enabled at the right moment (the enrollment_open self-locking bug).
 // ---------------------------------------------------------------------------
+
+// Click a save button only when it is ENABLED — waits up to 5s for the form
+// to mark it dirty / finish in-flight revalidation. A still-disabled button
+// after that means the change never registered → returns false (callers
+// assert on it where a save is mandatory).
+async function saveIfEnabled(page, b, selector) {
+  const btn = page.locator(selector).first();
+  if (!(await btn.isVisible().catch(() => false))) return false;
+  const deadline = Date.now() + 5000;
+  let enabled = false;
+  while (Date.now() < deadline) {
+    enabled = await btn.isEnabled().catch(() => false);
+    if (enabled) break;
+    await page.waitForTimeout(100);
+  }
+  if (!enabled) return false;
+  await btn.click();
+  await settlePage(page, b, 3000);
+  return true;
+}
 
 if (!cfg.writes || !cfg.adminEmail || !authState) {
   for (const id of ['ADM-16', 'ADM-17', 'ADM-18', 'ADM-19', 'ADM-20', 'ADM-21', 'ADM-22']) {
     t.skip(id, 'read-only env or no credentials');
   }
 } else {
-  await testCase(t, 'ADM-16..22', async () => {
-    // Shared authed context for all mutation tests
+
+  // ADM-16 — Profile: change city via UI, verify via API read-back, restore via API
+  await testCase(t, 'ADM-16', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const snapshot = await snapshotProfileFields(cfg, masjidId, ['city']);
     const context = await authedContext();
     const page = await context.newPage();
     const b = collectPage(page, cfg);
-
-    async function verifyToast(expectedText) {
-      // svelte-sonner renders toasts in [data-sonner-toaster]
-      return page.waitForFunction(
-        (txt) => document.body.innerText.includes(txt), expectedText, { timeout: 10000 },
-      ).then(() => true).catch(() => false);
-    }
-
-    // Click a save button only when it is ENABLED. A disabled save button
-    // means "nothing to save" (form pristine / value restored to saved
-    // state) — clicking would wait out the actionability timeout for no
-    // reason. Returns whether a save actually happened.
-    async function saveIfEnabled(selector) {
-      const btn = page.locator(selector).first();
-      if (!(await btn.isVisible().catch(() => false))) return false;
-      if (await btn.isDisabled().catch(() => true)) return false;
-      await btn.click();
-      await settlePage(page, b, 3000);
-      return true;
-    }
-
-    // ADM-16 — Profile: change city, save, restore
-    {
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/profile`);
-      // Find city input
       const cityInput = page.locator('input[id="city"]');
-      const hasCity = await cityInput.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false);
-      if (hasCity) {
-        const originalCity = await cityInput.inputValue();
-        await cityInput.fill('E2E-Test-City');
-        const saved = await saveIfEnabled('button:has-text("Save Changes")');
-        t.assert(originalCity.length > 0 || true,
-          `ADM-16 profile city was "${originalCity}" (saved: ${saved})`);
-        // Restore original
-        await cityInput.fill(originalCity);
-        await saveIfEnabled('button:has-text("Save Changes")');
-      }
+      await cityInput.waitFor({ state: 'visible', timeout: 10000 });
+      const originalCity = await cityInput.inputValue();
+      await cityInput.fill('E2E-Test-City');
+      const saved = await saveIfEnabled(page, b, 'button:has-text("Save Changes")');
+      t.assert(saved, `ADM-16 profile save button clicked (was "${originalCity}")`);
+      // Read-back: the save must have actually persisted (not just toasted).
+      const after = await snapshotProfileFields(cfg, masjidId, ['city']);
+      t.assert(after?.city === 'E2E-Test-City', `ADM-16 city persisted via API (got "${after?.city}")`);
       t.assert(b.pageErrors.length === 0, `ADM-16 profile save no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const ok = await restoreProfileFields(cfg, masjidId, snapshot);
+      if (!ok) console.warn(`  ADM-16 API restore FAILED — snapshot: ${JSON.stringify(snapshot)}`);
+      await context.close();
     }
+  });
 
-    // ADM-17 — Theme: toggle time_format, save, restore
-    {
+  // ADM-17 — Theme: toggle time_format via UI, verify via API, restore via API
+  await testCase(t, 'ADM-17', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const snapshot = await snapshotProfileFields(cfg, masjidId, ['time_format']);
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`);
-      // Find time_format toggle buttons (12h / 24h)
-      const timeBtn12 = page.locator('button:has-text("12h")');
-      const timeBtn24 = page.locator('button:has-text("24h")');
+      // Buttons read "12-hour (1:30 PM)" / "24-hour (13:30)"; the active one
+      // carries border-accent.
+      const timeBtn12 = page.locator('button:has-text("12-hour")');
+      const timeBtn24 = page.locator('button:has-text("24-hour")');
       const has12 = await timeBtn12.isVisible().catch(() => false);
       const has24 = await timeBtn24.isVisible().catch(() => false);
-      if (has12 || has24) {
+      t.assert(has12 && has24, `ADM-17 time format toggle present (12h: ${has12}, 24h: ${has24})`);
+      if (has12 && has24) {
         // Click whichever is NOT currently active to toggle
-        const is12Active = await timeBtn12.evaluate((el) => el.classList.contains('border-amber-400') || el.classList.contains('border-blue-400')).catch(() => false);
-        if (is12Active && has24) {
-          await timeBtn24.click();
-        } else if (!is12Active && has12) {
-          await timeBtn12.click();
-        }
-        await saveIfEnabled('button:has-text("Save Changes")');
-        // Toggle back
-        if (is12Active && has24) {
-          await timeBtn12.click();
-        } else if (!is12Active && has12) {
-          await timeBtn24.click();
-        }
-        await saveIfEnabled('button:has-text("Save Changes")');
+        const is12Active = await timeBtn12.evaluate((el) => el.classList.contains('border-accent')).catch(() => false);
+        const expected = is12Active ? '24h' : '12h';
+        if (is12Active) await timeBtn24.click();
+        else await timeBtn12.click();
+        const saved = await saveIfEnabled(page, b, 'button:has-text("Save Changes")');
+        t.assert(saved, `ADM-17 theme save button clicked`);
+        const after = await snapshotProfileFields(cfg, masjidId, ['time_format']);
+        t.assert(after?.time_format === expected,
+          `ADM-17 time_format persisted as ${expected} (got "${after?.time_format}")`);
       }
       t.assert(b.pageErrors.length === 0, `ADM-17 theme time_format toggle no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const ok = await restoreProfileFields(cfg, masjidId, snapshot);
+      if (!ok) console.warn(`  ADM-17 API restore FAILED — snapshot: ${JSON.stringify(snapshot)}`);
+      await context.close();
     }
+  });
 
-    // ADM-18 — Prayer: create a rule, verify it appears, then delete it
-    {
+  // ADM-18 — Prayer: create a rule via UI (unique per-run name), API cleanup
+  await testCase(t, 'ADM-18', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const ruleName = `E2E Rule ${Math.random().toString(36).slice(2, 8)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/prayer`);
-      // Find "Rule name" input in the create form
-      const ruleNameInput = page.locator('input[placeholder*="Weekday"]');
-      const hasCreateForm = await ruleNameInput.isVisible().catch(() => false);
-      if (hasCreateForm) {
-        await ruleNameInput.fill('E2E Test Rule Delete Me');
-        // Click "Add" button
-        await page.click('button:has-text("Add"):not(:has-text("Child"))');
+      // The create form lives behind a per-prayer "Add Rule" button — the
+      // previous version of this test never clicked it and silently no-op'd.
+      const addRuleBtn = page.locator('button:has-text("Add Rule")').first();
+      await addRuleBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await addRuleBtn.click();
+      const nameInput = page.locator('#rule-name');
+      await nameInput.waitFor({ state: 'visible', timeout: 10000 });
+      await nameInput.fill(ruleName);
+      // Submit the RuleForm (its own <form>, submit label "Add")
+      await page.locator('form:has(#rule-name) button[type="submit"]').click();
 
-        // Verify the rule appeared (condition-based — resolves on API round trip)
-        const ruleCreated = await page.waitForFunction(
-          () => document.body.innerText.includes('E2E Test Rule Delete Me'),
-          { timeout: 10000 },
-        ).then(() => true).catch(() => false);
-        t.assert(ruleCreated, `ADM-18 prayer rule created: ${ruleCreated}`);
-
-        // Delete the test rule
-        if (ruleCreated) {
-          await page.evaluate(() => {
-            const rows = [...document.querySelectorAll('tr, .flex, .bg-surface')];
-            for (const row of rows) {
-              if (row.textContent?.includes('E2E Test Rule Delete Me')) {
-                const btns = row.querySelectorAll('button');
-                for (const btn of btns) {
-                  if (btn.querySelector('svg') || btn.innerHTML.includes('trash')) {
-                    btn.click();
-                    return true;
-                  }
-                }
-              }
-            }
-            return false;
-          });
-          // Confirm dialog may appear
-          const confirmBtn = page.locator('button:has-text("Confirm")');
-          if (await confirmBtn.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
-            await confirmBtn.click();
-          }
-          // Wait for the rule to actually disappear (delete round trip done)
-          await page.waitForFunction(
-            () => !document.body.innerText.includes('E2E Test Rule Delete Me'),
-            { timeout: 10000 },
-          ).catch(() => {});
-        }
-      }
-      t.assert(b.pageErrors.length === 0, `ADM-18 prayer rule create/delete no errors — ${JSON.stringify(b.pageErrors)}`);
+      // Verify the rule appeared (condition-based — resolves on API round trip)
+      const ruleCreated = await page.waitForFunction(
+        (name) => document.body.innerText.includes(name), ruleName,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(ruleCreated, `ADM-18 prayer rule created: ${ruleCreated}`);
+      t.assert(b.pageErrors.length === 0, `ADM-18 prayer rule create no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const deleted = await deletePrayerRulesByPrefix(cfg, masjidId, 'E2E Rule');
+      if (deleted === 0) console.warn('  ADM-18 API cleanup found no E2E Rule leftovers');
+      await context.close();
     }
+  });
 
-    // ADM-19 — Jumuah: create a session, verify it appears, then delete it
-    {
+  // ADM-19 — Jumuah: create a session via UI (unique per-run label), API cleanup
+  await testCase(t, 'ADM-19', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const label = `E2E Session ${Math.random().toString(36).slice(2, 8)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/jumuah`);
-      const labelInput = page.locator('input').first();
-      const hasCreateForm = await labelInput.isVisible().catch(() => false);
-      if (hasCreateForm) {
-        // Fill create form
-        await labelInput.fill('E2E Test Session');
-        // Fill time field (type="time")
-        const timeInput = page.locator('input[type="time"]');
-        if (await timeInput.isVisible().catch(() => false)) {
-          await timeInput.fill('14:00');
-        }
-        // Click "Add Session" or the Add button
-        const addBtn = page.locator('button:has-text("Add")');
-        if (await addBtn.isVisible().catch(() => false)) {
-          await addBtn.click();
-        }
+      // The create form lives behind the "Add Session" toggle — the previous
+      // version grabbed `input.first()` (an invisible row checkbox) and
+      // silently no-op'd.
+      const addBtn = page.locator('button:has-text("Add Session")');
+      await addBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await addBtn.click();
+      const labelInput = page.locator('form input[placeholder*="English"]');
+      await labelInput.waitFor({ state: 'visible', timeout: 10000 });
+      await labelInput.fill(label);
+      await page.locator('form input[type="time"]').fill('14:00');
+      await page.locator('form:has(input[placeholder*="English"]) button[type="submit"]').click();
 
-        const created = await page.waitForFunction(
-          () => document.body.innerText.includes('E2E Test Session'),
-          { timeout: 10000 },
-        ).then(() => true).catch(() => false);
-        t.assert(created, `ADM-19 jumuah session created: ${created}`);
-
-        // Delete the test session
-        await page.evaluate(() => {
-          const rows = [...document.querySelectorAll('tr, .bg-surface')];
-          for (const row of rows) {
-            if (row.textContent?.includes('E2E Test Session')) {
-              const btns = row.querySelectorAll('button');
-              for (const btn of btns) {
-                if (btn.querySelector('svg') || btn.innerHTML.includes('trash')) {
-                  btn.click();
-                  return true;
-                }
-              }
-            }
-          }
-          return false;
-        });
-        const confirmBtn = page.locator('button:has-text("Confirm")');
-        if (await confirmBtn.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
-          await confirmBtn.click();
-        }
-        await page.waitForFunction(
-          () => !document.body.innerText.includes('E2E Test Session'),
-          { timeout: 10000 },
-        ).catch(() => {});
-      }
-      t.assert(b.pageErrors.length === 0, `ADM-19 jumuah create/delete no errors — ${JSON.stringify(b.pageErrors)}`);
+      const created = await page.waitForFunction(
+        (txt) => document.body.innerText.includes(txt), label,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(created, `ADM-19 jumuah session created: ${created}`);
+      t.assert(b.pageErrors.length === 0, `ADM-19 jumuah create no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const deleted = await deleteJumuahByPrefix(cfg, masjidId, 'E2E Session');
+      if (deleted === 0) console.warn('  ADM-19 API cleanup found no E2E Session leftovers');
+      await context.close();
     }
+  });
 
-    // ADM-20 — Announcements: create, verify, archive
-    {
+  // ADM-20 — Announcements: create via UI (unique per-run title), API cleanup.
+  // The unique title matters: slugify produces no unique suffix and the table
+  // has UNIQUE(masjid_id, slug) — a fixed title meant a leftover from any
+  // interrupted run turned every later create into a masked 500.
+  await testCase(t, 'ADM-20', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const title = `E2E Announcement ${Math.random().toString(36).slice(2, 8)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/announcements`);
       // Click "New" to open the create form
       const newBtn = page.locator('button:has-text("New")');
-      if (await newBtn.isVisible().catch(() => false)) {
-        await newBtn.click();
-        // Wait for the create form to render (only after loading=false)
-        await page.waitForSelector('form input[type="text"]', { state: 'visible', timeout: 25000 }).catch(() => {});
-      }
+      await newBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await newBtn.click();
+      // Wait for the create form to render (only after loading=false)
       const titleInput = page.locator('form input[type="text"]').first();
-      const hasCreateForm = await titleInput.isVisible().catch(() => false);
-      if (hasCreateForm) {
-        await titleInput.fill('E2E Test Announcement');
-        // Content textarea
-        const contentArea = page.locator('textarea:enabled').first();
-        if (await contentArea.isVisible().catch(() => false)) {
-          await contentArea.fill('Test content for E2E mutation test.');
-        }
-        // Click "Create" button
-        const createBtn = page.locator('button:has-text("Create")');
-        if (await createBtn.isVisible().catch(() => false)) {
-          await createBtn.click();
-        }
-
-        const created = await page.waitForFunction(
-          () => document.body.innerText.includes('E2E Test Announcement'),
-          { timeout: 25000 },
-        ).then(() => true).catch(() => false);
-        t.assert(created, `ADM-20 announcement created: ${created}`);
-
-        // Archive/delete it (find trash icon near the announcement title)
-        await page.evaluate(() => {
-          const rows = [...document.querySelectorAll('tr, .flex, .bg-surface, li')];
-          for (const row of rows) {
-            if (row.textContent?.includes('E2E Test Announcement')) {
-              const btns = row.querySelectorAll('button');
-              for (const btn of btns) {
-                if (btn.querySelector('svg') || btn.textContent?.includes('Delete')) {
-                  btn.click();
-                  return true;
-                }
-              }
-            }
-          }
-          return false;
-        });
-        const confirmBtn = page.locator('button:has-text("Confirm"), button:has-text("Delete")');
-        if (await confirmBtn.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
-          await confirmBtn.click();
-        }
-        await page.waitForFunction(
-          () => !document.body.innerText.includes('E2E Test Announcement'),
-          { timeout: 10000 },
-        ).catch(() => {});
+      await titleInput.waitFor({ state: 'visible', timeout: 25000 });
+      await titleInput.fill(title);
+      const contentArea = page.locator('textarea:enabled').first();
+      if (await contentArea.isVisible().catch(() => false)) {
+        await contentArea.fill('Test content for E2E mutation test.');
       }
-      t.assert(b.pageErrors.length === 0, `ADM-20 announcements create/delete no errors — ${JSON.stringify(b.pageErrors)}`);
-    }
+      const createBtn = page.locator('button:has-text("Create")');
+      if (await createBtn.isVisible().catch(() => false)) {
+        await createBtn.click();
+      }
 
-    // ADM-21 — Maktab: toggle enrollment_open, save, restore
-    {
+      const created = await page.waitForFunction(
+        (txt) => document.body.innerText.includes(txt), title,
+        { timeout: 25000 },
+      ).then(() => true).catch(() => false);
+      t.assert(created, `ADM-20 announcement created: ${created}`);
+      t.assert(b.pageErrors.length === 0, `ADM-20 announcements create no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const deleted = await deleteAnnouncementsByPrefix(cfg, masjidId, 'E2E Announcement');
+      if (deleted === 0) console.warn('  ADM-20 API cleanup found no E2E Announcement leftovers');
+      await context.close();
+    }
+  });
+
+  // ADM-21 — Maktab: toggle enrollment_open via UI, restore via API in finally.
+  // This is the test that raced CON-46 (parallel consumer job) and could lock
+  // the staging DB closed: the old UI-driven restore silently skipped when the
+  // save button was still disabled. The API restore below runs even if the
+  // test body throws, and reseeding (P5) makes any residue impossible.
+  await testCase(t, 'ADM-21', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    // The original value comes from the API, not the checkbox — the checkbox
+    // reflects the page load, the API is the source of truth.
+    const before = await apiGet(cfg, `/api/v1/admin/masjids/${masjidId}/maktab/settings`);
+    const wasOpen = before.status === 200 ? !!before.json?.enrollment_open : null;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/maktab`);
-      // Find the enrollment_open checkbox and note its current state
       const checkbox = page.locator('input[type="checkbox"]').first();
-      const hasCheckbox = await checkbox.isVisible().catch(() => false);
-      if (hasCheckbox) {
-        const wasChecked = await checkbox.isChecked();
-        await checkbox.click(); // toggle
-        // Click save button
-        await saveIfEnabled('button:has-text("Save Settings")');
-        // Restore original state
-        if (wasChecked !== await checkbox.isChecked().catch(() => wasChecked)) {
-          await checkbox.click();
-          await saveIfEnabled('button:has-text("Save Settings")');
-        }
-      }
+      await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+      const uiWasChecked = await checkbox.isChecked();
+      await checkbox.click(); // toggle
+      const saved = await saveIfEnabled(page, b, 'button:has-text("Save Settings")');
+      t.assert(saved, 'ADM-21 maktab settings save button clicked');
+      // Read-back: the toggle must have actually persisted.
+      const mid = await apiGet(cfg, `/api/v1/admin/masjids/${masjidId}/maktab/settings`);
+      t.assert(
+        mid.status === 200 && !!mid.json?.enrollment_open === !uiWasChecked,
+        `ADM-21 enrollment_open persisted as ${!uiWasChecked} (got ${mid.json?.enrollment_open})`,
+      );
       t.assert(b.pageErrors.length === 0, `ADM-21 maktab enrollment toggle no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      if (wasOpen !== null) {
+        const ok = await restoreEnrollmentOpen(cfg, masjidId, wasOpen);
+        if (!ok) console.warn(`  ADM-21 API restore FAILED — enrollment_open may be stuck (was ${wasOpen})`);
+      }
+      await context.close();
     }
+  });
 
-    // ADM-22 — Theme labels: change label_sunrise, save, restore
-    {
+  // ADM-22 — Theme labels: change label_sunrise via UI, restore via API
+  await testCase(t, 'ADM-22', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const snapshot = await snapshotProfileFields(cfg, masjidId, ['label_sunrise']);
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
       await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`);
       // Scroll down to find the label_sunrise input
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.5));
@@ -690,22 +691,22 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
           break;
         }
       }
-      if (sunriseIndex >= 0 && sunriseValue !== null) {
-        const originalValue = sunriseValue || 'Sunrise';
+      t.assert(sunriseIndex >= 0, 'ADM-22 label_sunrise input found');
+      if (sunriseIndex >= 0) {
         await allInputs.nth(sunriseIndex).fill('E2E-Sun');
-        // Scroll back to find Save button
         await page.evaluate(() => window.scrollTo(0, 0));
-        await saveIfEnabled('button:has-text("Save Changes")');
-        // Restore
-        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.5));
-        await allInputs.nth(sunriseIndex).fill(originalValue);
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await saveIfEnabled('button:has-text("Save Changes")');
+        const saved = await saveIfEnabled(page, b, 'button:has-text("Save Changes")');
+        t.assert(saved, 'ADM-22 theme save button clicked');
+        const after = await snapshotProfileFields(cfg, masjidId, ['label_sunrise']);
+        t.assert(after?.label_sunrise === 'E2E-Sun',
+          `ADM-22 label_sunrise persisted (got "${after?.label_sunrise}", was "${sunriseValue}")`);
       }
       t.assert(b.pageErrors.length === 0, `ADM-22 theme label_sunrise no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const ok = await restoreProfileFields(cfg, masjidId, snapshot);
+      if (!ok) console.warn(`  ADM-22 API restore FAILED — snapshot: ${JSON.stringify(snapshot)}`);
+      await context.close();
     }
-
-    await context.close();
   });
 }
 

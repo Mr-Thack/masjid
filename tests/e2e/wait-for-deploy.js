@@ -18,7 +18,7 @@
 //   4. the API /status endpoint answers 200 (warms a cold worker)
 // Two consecutive clean rounds = ready. Exits non-zero on timeout.
 //
-// Usage: node tests/e2e/wait-for-deploy.js <consumer|tv|admin> [path]
+// Usage: node tests/e2e/wait-for-deploy.js <consumer|tv|admin|api> [path]
 // Env:   E2E_ENV (via targets.js), GITHUB_SHA (CI), E2E_PROBE_MAX_MS (240s),
 //        E2E_PROBE_CLEAN_ROUNDS (2)
 // ---------------------------------------------------------------------------
@@ -29,6 +29,7 @@ const APP_PATHS = {
   consumer: `/${SLUG_A}`,
   tv: `/display/${SLUG_A}`,
   admin: '/login',
+  api: null, // api mode: no page checks — worker /status + build_id only
 };
 
 const MAX_MS = Number(process.env.E2E_PROBE_MAX_MS || 240_000);
@@ -43,7 +44,8 @@ if (!app || !APP_PATHS[app]) {
 }
 
 const cfg = targets();
-const pageUrl = `${cfg[app]}${explicitPath || APP_PATHS[app]}`;
+const isApiMode = app === 'api';
+const pageUrl = isApiMode ? null : `${cfg[app]}${explicitPath || APP_PATHS[app]}`;
 const expectedBuild = process.env.GITHUB_SHA || '';
 
 async function get(url) {
@@ -55,41 +57,63 @@ async function get(url) {
   }
 }
 
+// The worker's /status returns build_id (git short hash injected at build
+// time). A 200 from a mid-propagation OLD worker is NOT readiness — when
+// GITHUB_SHA is known, the build_id must match it. This was the probe gap
+// that let browser suites run against a mixed-version backend.
+function checkApiBuildId(problems, statusJson) {
+  if (!expectedBuild || !statusJson) return;
+  const id = statusJson.build_id;
+  if (!id || String(id).includes('__')) return; // unreplaced dev placeholder
+  if (!expectedBuild.startsWith(String(id)) && !String(id).startsWith(expectedBuild.slice(0, 12))) {
+    problems.push(`api build_id ${id} ≠ GITHUB_SHA ${expectedBuild.slice(0, 12)}… (old worker still serving)`);
+  }
+}
+
 async function round(n) {
   const problems = [];
 
-  // 1. the page itself
-  const page = await get(`${pageUrl}?probe=${n}-${Date.now()}`);
-  if (!page.ok || page.status !== 200 || !page.ct.includes('text/html')) {
-    problems.push(`page ${pageUrl} → ${page.status} ${page.ct}${page.err ? ` (${page.err})` : ''}`);
-    return problems; // no HTML → nothing else to extract this round
-  }
-
-  // 2. build-id matches the commit under test (when knowable)
-  const meta = page.text.match(/<meta name="build-id" content="([^"]+)"/);
-  if (expectedBuild && meta) {
-    if (!expectedBuild.startsWith(meta[1])) {
-      problems.push(`build-id ${meta[1]} ≠ GITHUB_SHA ${expectedBuild.slice(0, 12)}… (old deployment still serving)`);
+  if (!isApiMode) {
+    // 1. the page itself
+    const page = await get(`${pageUrl}?probe=${n}-${Date.now()}`);
+    if (!page.ok || page.status !== 200 || !page.ct.includes('text/html')) {
+      problems.push(`page ${pageUrl} → ${page.status} ${page.ct}${page.err ? ` (${page.err})` : ''}`);
+      return problems; // no HTML → nothing else to extract this round
     }
-  } else if (expectedBuild && !meta) {
-    if (n === 1) console.log('  probe: no build-id meta in shell — version check skipped');
-  }
 
-  // 3. referenced immutable chunks must be real assets, not 404 / SPA shell
-  const assets = [...new Set([...page.text.matchAll(/\/(_app\/immutable\/[^"'\s]+\.(?:js|css))/g)].map((m) => m[1]))].slice(0, 8);
-  const origin = new URL(pageUrl).origin;
-  const assetResults = await Promise.all(assets.map((a) => get(`${origin}/${a}`)));
-  for (let i = 0; i < assets.length; i++) {
-    const r = assetResults[i];
-    if (!r.ok || r.status !== 200 || r.ct.includes('text/html')) {
-      problems.push(`chunk /${assets[i]} → ${r.status} ${r.ct}`);
+    // 2. build-id matches the commit under test (when knowable)
+    const meta = page.text.match(/<meta name="build-id" content="([^"]+)"/);
+    if (expectedBuild && meta) {
+      if (!expectedBuild.startsWith(meta[1])) {
+        problems.push(`build-id ${meta[1]} ≠ GITHUB_SHA ${expectedBuild.slice(0, 12)}… (old deployment still serving)`);
+      }
+    } else if (expectedBuild && !meta) {
+      if (n === 1) console.log('  probe: no build-id meta in shell — version check skipped');
+    }
+
+    // 3. referenced immutable chunks must be real assets, not 404 / SPA shell
+    const assets = [...new Set([...page.text.matchAll(/\/(_app\/immutable\/[^"'\s]+\.(?:js|css))/g)].map((m) => m[1]))].slice(0, 8);
+    const origin = new URL(pageUrl).origin;
+    const assetResults = await Promise.all(assets.map((a) => get(`${origin}/${a}`)));
+    for (let i = 0; i < assets.length; i++) {
+      const r = assetResults[i];
+      if (!r.ok || r.status !== 200 || r.ct.includes('text/html')) {
+        problems.push(`chunk /${assets[i]} → ${r.status} ${r.ct}`);
+      }
     }
   }
 
-  // 4. API worker is awake (page loads will hit it immediately)
+  // 4. API worker is awake AND serving THIS commit (page loads will hit it
+  // immediately). In api mode this is the only check.
   const api = await get(`${cfg.api}/api/v1/status`);
   if (!api.ok || api.status !== 200) {
     problems.push(`api /api/v1/status → ${api.status}${api.err ? ` (${api.err})` : ''}`);
+  } else {
+    try {
+      checkApiBuildId(problems, JSON.parse(api.text));
+    } catch {
+      problems.push('api /api/v1/status → 200 but non-JSON body');
+    }
   }
 
   return problems;
@@ -98,7 +122,11 @@ async function round(n) {
 const start = Date.now();
 let clean = 0;
 let n = 0;
-console.log(`\n  probe: waiting for ${pageUrl} to serve the fresh deploy (max ${Math.round(MAX_MS / 1000)}s)`);
+console.log(
+  isApiMode
+    ? `\n  probe: waiting for ${cfg.api} to serve the fresh worker (max ${Math.round(MAX_MS / 1000)}s)`
+    : `\n  probe: waiting for ${pageUrl} to serve the fresh deploy (max ${Math.round(MAX_MS / 1000)}s)`,
+);
 
 while (Date.now() - start < MAX_MS) {
   n++;

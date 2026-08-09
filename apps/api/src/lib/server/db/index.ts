@@ -10,7 +10,11 @@ import { masjidThemes } from './schema';
 const PROJECT_ROOT = typeof import.meta.dirname !== 'undefined'
   ? path.resolve(import.meta.dirname, '../../../../../..')
   : '/dummy';
-const LOCAL_DB_PATH = path.resolve(PROJECT_ROOT, '.masjid/local.db');
+// Env override exists so tooling (e.g. tooling/dump-seed-sql.ts) can point the
+// local dev DB at a throwaway file. Never set in production.
+const LOCAL_DB_PATH = process.env.MASJID_DB_PATH
+  ? path.resolve(process.env.MASJID_DB_PATH)
+  : path.resolve(PROJECT_ROOT, '.masjid/local.db');
 
 let localDb: ReturnType<typeof drizzleSqlite> | null = null;
 
@@ -138,7 +142,6 @@ function ensureTables(sqlite: Database.Database) {
       youtube_url TEXT,
       instagram_url TEXT,
       website_url TEXT,
-      external_donation_url TEXT,
       about_markdown TEXT,
       donation_links TEXT,
       admin_email TEXT,

@@ -188,7 +188,11 @@ export function collectPage(page, cfg) {
     }
     // Third-party failures (fonts etc.) are warnings, not failures.
     if (origin === pageOrigin || origin === new URL(cfg.api).origin || cfg.allowedApiOrigins.includes(origin)) {
-      buckets.failedRequests.push(`${status} ${url}`);
+      // Transient gateway codes on OUR origins are infra noise (post-deploy
+      // propagation / burst protection), demoted to warnings. The page's own
+      // expectations decide whether it actually broke.
+      if (TRANSIENT_STATUSES.has(status)) buckets.warnings.push(`transient ${status} ${url}`);
+      else buckets.failedRequests.push(`${status} ${url}`);
     } else {
       buckets.warnings.push(`third-party ${status} ${url}`);
     }
@@ -219,6 +223,13 @@ function bust(url, cfg) {
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}cb=${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// Cloudflare edge/origin gateway codes seen during the post-deploy propagation
+// window (lesson 36) or under burst load. These are INFRA noise, not product
+// bugs — a 503 that actually breaks a page still fails via missing
+// expectations, while 500/404/4xx stay hard failures (lesson-35 500s,
+// lesson-34 chunk 404s).
+const TRANSIENT_STATUSES = new Set([502, 503, 520, 521, 522, 523, 524]);
 
 // --- condition-based waits (use these, never bare waitForTimeout) -------------
 
@@ -320,6 +331,31 @@ export async function loginAdmin(page, cfg) {
   // The admin shell renders after the profile fetch — wait for its <main>.
   await page.waitForSelector('main', { state: 'visible', timeout: EXPECT_TIMEOUT }).catch(() => {});
   await waitForContent(page).catch(() => {});
+}
+
+// loginAdmin with ONE retry on a fresh page. Cold-worker bcrypt + 2 API round
+// trips + SPA navigation can exceed LOGIN_TIMEOUT exactly once per suite; a
+// single retry absorbs that without masking a genuinely broken login (the
+// second attempt fails fast on the error banner).
+// Attach listeners at the CONTEXT level (context.on('request', …)) so they
+// cover whichever page the successful attempt used.
+export async function loginAdminWithRetry(context, cfg) {
+  const attempt = async () => {
+    const page = await context.newPage();
+    try {
+      await loginAdmin(page, cfg);
+      return page;
+    } catch (err) {
+      await page.close().catch(() => {});
+      throw err;
+    }
+  };
+  try {
+    return await attempt();
+  } catch (firstErr) {
+    console.warn(`  loginAdmin first attempt failed (${String(firstErr?.message ?? firstErr).split('\n')[0]}) — retrying once`);
+    return attempt();
+  }
 }
 
 // Case wrapper: turns a thrown timeout/error into a FAIL line so the rest of

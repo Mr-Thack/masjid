@@ -19,6 +19,7 @@ The project is a fully implemented monorepo with:
 - **E2E hydration signal (2026-08-05)**: each root layout sets `document.documentElement.dataset.hydrated="true"` in `$effect()`. The `visitPage()` helper waits for `html[data-hydrated]` before checking `expectText`/`expectSelector`. Tests use `waitUntil: 'load'` (never `networkidle` — breaks on Square SDK/polling pages).
 - **E2E determinism rework (2026-08-05)**: the harness (`tests/e2e/helpers.js`) is condition-based, not sleep-based. Key rules: (1) every case runs inside `testCase(t, id, fn)` — a thrown timeout becomes a FAIL line, never a process-killing uncaught exception; (2) `loginAdmin()` logs in ONCE per admin run (hydration awaited before touching the form — a pre-hydration submit click triggers a NATIVE form submit, which was the `waitForURL('**/admin/**')` CI flake — and `waitForURL` is registered before the click); the navigation is raced against the app's error banner so a 500ing login API fails FAST with the real message; later authed cases reuse `context.storageState()` (JWT lives in localStorage); (3) fixed `waitForTimeout` only for stress pacing, never readiness — use `gotoPage`/`settlePage` (adaptive network-quiet settle); (4) ceilings: nav 30s, expectation 15s, login 45s, settle ≤2s; visitPage expectations run concurrently; (5) suite watchdog `E2E_SUITE_WATCHDOG_MS` (default 8min) aborts stuck suites with the in-flight case name; (6) all non-browser fetches use `AbortSignal.timeout` and return `status: 0` on failure; (7) `run.js` honors multiple `--suite=` flags and prints per-suite timings; (8) CI browser/deploy jobs run `tests/e2e/wait-for-deploy.js <app>` first — a readiness probe that polls until the edge serves the fresh deploy (build-id meta == `GITHUB_SHA`, chunks are real assets) and warms it, replacing the blind `sleep 30` (mixed-version edge serving flaked consumer/tv for minutes post-deploy, 2026-08-06). Full local run ≈ 3.5 min; CI splits suites across parallel jobs. See `docs/integration-testing.md` §5.2.
 - **D1 column-order fix (2026-08-05)**: `fetchThemeRow()` in `apps/api/src/lib/server/db/index.ts` bypasses Drizzle's position-based `.raw()` mapping by using raw D1 binding (`.all()` → named objects) in production, falling back to Drizzle locally. The Drizzle schema column order now matches `schema.sql` migration order. Do NOT insert new columns in the middle of `masjidThemes` — always append them (D1's `ALTER TABLE ADD COLUMN` puts them at the end).
+- **E2E determinism restructure (2026-08-09)**: the post-lessons-36-46 flakes were shared-STATE races, not readiness. Fixes (full rationale: `docs/e2e-determinism.md`): (1) transient gateway codes 502/503/520-524 from our origins are `warnings`, not `failedRequests` — a 503 that breaks a page still fails via missing expectations; (2) mutation tests are hermetic — one `testCase` per mutation, unique per-run entity names, UI creates but **API restores/cleanup in `finally`** via `tests/e2e/api-client.js` (`snapshotProfileFields`/`restoreProfileFields`, `restoreEnrollmentOpen`, `delete*ByPrefix`); ADM-16..22 are separate cases, ADM-18/19 now really open the create forms (they were silently dead); (3) **staging D1 is reseeded on every staging deploy** (`tooling/dump-seed-sql.ts` → `wrangler d1 execute --file`) — no run inherits drift; (4) `wait-for-deploy.js api` mode gates the `e2e-api` job and checks the worker's `build_id` == `GITHUB_SHA` (a 200 from a mid-propagation old worker is not readiness); (5) ALL `/maktab/enroll` loads use `waitUntil: 'domcontentloaded'` (Square iframes stall `load`); CON-46 asserts the enrollment-open precondition via API first; (6) `loginAdminWithRetry` retries once (cold bcrypt) — attach request listeners at CONTEXT level so they survive the retry. Two latent app bugs found and fixed along the way: admin profile/theme pages rendered saveable default forms when the initial GET failed (now a load-error state), and `ensureTables` still created the dropped `external_donation_url` column locally. Note: the announcement DELETE endpoint ARCHIVES (soft delete) — API cleanup means "archived", residue rows are wiped by the staging reseed.
 
 ## First-time setup (fresh clone or worktree)
 
@@ -1181,3 +1182,56 @@ This means the suite retry only triggers for actual CDN edge inconsistency,
 not for timing issues.
 
 **Files affected**: `tests/e2e/run.js`
+
+### 47. Parallel E2E jobs race on shared mutable state — and best-effort restores make it PERMANENT (2026-08-09)
+
+**Pitfall**: `e2e-consumer` and `e2e-admin` run in parallel against the same
+staging DB. ADM-21 toggled `enrollment_open` off on `masjid-al-noor` while
+CON-46 needed it open (Square iframes assertion) — the ~4–6-min windows
+overlapped routinely. Worse, the restore was UI-driven: `saveIfEnabled`
+silently skipped when the save button was `disabled={saving}` (in-flight PUT),
+so one slow request left `enrollment_open=false` in the never-reseeded staging
+DB — and the NEXT run "restored" to its own observed (flipped) state.
+Self-perpetuating: CON-46 failed on every run until a manual reseed.
+
+**How we fixed it**: (a) restores/cleanup moved to direct API calls in
+`finally` blocks (`tests/e2e/api-client.js`) — they run even when the test
+body throws and never depend on button state; (b) the staging DB is reseeded
+on every deploy (`tooling/dump-seed-sql.ts` → `wrangler d1 execute --file`);
+(c) CON-46 asserts the enrollment-open precondition via the public API and
+fails fast with a drift diagnosis; (d) transient gateway codes
+(502/503/520-524) became warnings, not case failures.
+
+**Key rule**: UI is for proving the mutation works; the API is for restoring
+state. Never restore through the same fragile UI path you just tested.
+
+### 48. A gated mutation test that can't find its form is a DEAD test (2026-08-09)
+
+**Pitfall**: ADM-18/ADM-19 looked for create forms that only render AFTER
+clicking "Add Rule"/"Add Session" — the tests never clicked, so they silently
+no-op'd for weeks while claiming coverage. Same for ADM-17: the theme page's
+time-format buttons changed text ("12h" → "12-hour (1:30 PM)"), and the
+`if (has12 || has24)` guard turned the staleness invisible. CON-19 kept
+expecting "Contact & Location" after the info page redesign (8f18085 fixed
+CON-09's copy but missed the SLUG_B twin).
+
+**How we fixed it**: mutation tests now assert their preconditions (form
+opened, button found) as FAIL-worthy conditions, and read-back assertions via
+API prove the save persisted. If you guard a test body with `isVisible()`,
+also assert the guard was true — otherwise you're running a skip disguised as
+a pass.
+
+**Files affected**: `tests/e2e/admin.test.js`, `tests/e2e/consumer.test.js`
+
+### 49. Admin forms rendered saveable defaults when the initial GET failed (2026-08-09)
+
+**Pitfall**: The profile and theme settings pages caught a load error into
+`error` but STILL rendered the form with default values (empty name, zero
+coordinates, default Sakeenah theme). A save in that state would clobber real
+data — and a mutation test running during an API hiccup would "restore"
+garbage over the seed row.
+
+**How we fixed it**: load errors go to a separate `loadError` state that
+renders an error card with Retry instead of the form. Save errors keep using
+`error`. The maktab settings page already had this guard (`if (!settings)
+return` + ErrorCard) — profile/theme now match.

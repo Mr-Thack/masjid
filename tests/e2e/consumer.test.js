@@ -23,6 +23,7 @@ import {
   prewarm,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
+import { getPublicMaktab } from './api-client.js';
 
 const cfg = targets();
 const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
@@ -123,7 +124,7 @@ await testCase(t, 'CON-05', async () => {
 
 // CON-06 — embed mode hides the consumer chrome
 await testCase(t, 'CON-06', async () => {
-  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`);
+  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'domcontentloaded' });
   t.assert(r.pageErrors.length === 0, `CON-06 enroll?embed=1 no uncaught exceptions — ${explain(r)}`);
   t.assert(r.failedRequests.length === 0, `CON-06 no failed requests — ${explain(r)}`);
 });
@@ -170,7 +171,7 @@ await testCase(t, 'CON-11', async () => {
 
 // CON-12 — maktab enroll form (non-embed) renders without crashes
 await testCase(t, 'CON-12', async () => {
-  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
   t.assert(r.pageErrors.length === 0, `CON-12 enroll form no uncaught exceptions — ${explain(r)}`);
 });
 
@@ -179,7 +180,7 @@ await testCase(t, 'CON-13', async () => {
   const context = await newContext(browser);
   const page = await context.newPage();
   const nonEmbed = collectPage(page, cfg);
-  await gotoPage(page, nonEmbed, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, nonEmbed, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
   const nonEmbedNavCount = await page.locator('nav').count();
   t.assert(nonEmbedNavCount >= 1, `CON-13a non-embed has ${nonEmbedNavCount} nav element(s) (expected >= 1)`);
   t.assert(nonEmbed.pageErrors.length === 0, `CON-13a non-embed no page errors`);
@@ -188,7 +189,7 @@ await testCase(t, 'CON-13', async () => {
   const context2 = await newContext(browser);
   const page2 = await context2.newPage();
   const embed = collectPage(page2, cfg);
-  await gotoPage(page2, embed, `${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`);
+  await gotoPage(page2, embed, `${cfg.consumer}/${SLUG_A}/maktab/enroll?embed=1`, { waitUntil: 'domcontentloaded' });
   const embedNavCount = await page2.locator('nav').count();
   t.assert(embedNavCount === 0, `CON-13b embed has 0 nav elements (got ${embedNavCount})`);
   t.assert(embed.pageErrors.length === 0, `CON-13b embed no page errors`);
@@ -379,7 +380,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   ['CON-17', SLUG_B, 'announcements', 'Announcements', {}],
   // CON-18 — jumuah page deferred (not linked in nav; will be revisited later)
   // ['CON-18', SLUG_B, 'jumuah', "Jumu'ah", {}],
-  ['CON-19', SLUG_B, 'info', 'Contact & Location', {}],
+  ['CON-19', SLUG_B, 'info', 'About', {}],
   ['CON-20', SLUG_B, 'donate', 'Why Give?', { expectTimeout: 30_000 }],
   ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', { expectTimeout: 25_000 }],
 ]) {
@@ -394,7 +395,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
 
 // CON-22 — SLUG_B maktab enroll form (non-embed)
 await testCase(t, 'CON-22', async () => {
-  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_B}/maktab/enroll`);
+  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_B}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
   t.assert(r.pageErrors.length === 0, `CON-22 SLUG_B enroll form no crashes — ${explain(r)}`);
 });
 
@@ -545,14 +546,14 @@ await testCase(t, 'CON-31', async () => {
     await settlePage(page, b, 1500);
   } else {
     // Enrollment might be closed — navigate directly
-    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
   }
 
   // Back to maktab
   await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab`);
 
   // Back to enroll
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   t.assert(b.pageErrors.length === 0, `CON-31 maktab↔enroll nav loop no page errors — ${JSON.stringify(b.pageErrors)}`);
   t.assert(b.failedRequests.length === 0, `CON-31 maktab↔enroll nav loop no failed requests — ${JSON.stringify(b.failedRequests)}`);
@@ -565,7 +566,7 @@ await testCase(t, 'CON-32', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   // Type into every text/email/tel field — exercise input bindings
   const fields = [
@@ -629,7 +630,7 @@ await testCase(t, 'CON-33', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   // Click "Add Child" up to 3 more times
   for (let i = 0; i < 3; i++) {
@@ -668,7 +669,7 @@ await testCase(t, 'CON-34', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   // Type into the card holder name field — this triggers the 500ms-debounced
   // verify-code API call. Must not crash or produce uncaught exceptions.
@@ -709,7 +710,7 @@ await testCase(t, 'CON-36', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   // Type long strings, special chars into parent name fields
   const nameFields = page.locator('input[type="text"]');
@@ -747,7 +748,7 @@ await testCase(t, 'CON-37', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { settleMs: 3000 });
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { settleMs: 3000, waitUntil: 'domcontentloaded' });
 
   const hasCardContainer = await page.locator('#card-container').count();
   const hasSquareScript = await page.evaluate(() =>
@@ -768,6 +769,7 @@ await testCase(t, 'CON-37', async () => {
 await testCase(t, 'CON-38', async () => {
   const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_B}/maktab/enroll`, {
     settleMs: 3000,
+    waitUntil: 'domcontentloaded',
   });
   t.assert(r.pageErrors.length === 0, `CON-38 SLUG_B enroll no page errors — ${explain(r)}`);
 });
@@ -778,7 +780,7 @@ await testCase(t, 'CON-39', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
   // Scroll to bottom, then top, then middle — exercise any lazy-render paths
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -911,6 +913,20 @@ if (!cfg.writes) {
   t.skip('CON-46', 'payment enrollment write test skipped — readonly env');
 } else {
   await testCase(t, 'CON-46', async () => {
+    // PRECONDITION via API (not the UI): enrollment must be open on SLUG_A.
+    // If this fails, the cause is staging-DB state (a stuck enrollment_open
+    // flag), NOT a product bug — fail fast with that diagnosis instead of the
+    // cryptic "Square iframes detected (total frames: 1)" downstream.
+    const mk = await getPublicMaktab(cfg, SLUG_A);
+    const mkOpen = mk.status === 200 && mk.json?.open === true;
+    if (!mkOpen) {
+      t.assert(
+        false,
+        `CON-46 PRECONDITION: maktab enrollment open on ${SLUG_A} (got status ${mk.status}, open=${mk.json?.open}, term=${mk.json?.term ? 'yes' : 'NO'}) — staging DB drift; reseed masjid-db-staging`,
+      );
+      return;
+    }
+
     const context = await newContext(browser);
     const page = await context.newPage();
     const b = collectPage(page, cfg);
@@ -1030,7 +1046,7 @@ if (!cfg.writes) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
 
-    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`);
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/maktab/enroll`, { waitUntil: 'domcontentloaded' });
 
     // Click submit with empty fields — should trigger client-side validation
     const submitBtn = page.getByRole('button', { name: /Complete Enrollment|Submit Enrollment/i });
@@ -1065,7 +1081,7 @@ await testCase(t, 'CON-48', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_B}/maktab/enroll`, { settleMs: 3000 });
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_B}/maktab/enroll`, { settleMs: 3000, waitUntil: 'domcontentloaded' });
 
   // Check if the enrollment form is present (term exists & enrollment is open)
   const hasCardHolder = await page.locator('input[autocomplete="cc-name"]').count();

@@ -71,6 +71,15 @@ jobs:
           npx wrangler@latest deploy --env staging --keep-vars --var ENVIRONMENT:staging "${VAR_ARGS[@]}"
         working-directory: apps/api
 
+      # Hermetic E2E state: wipe + reseed the disposable staging DB on every
+      # deploy (docs/e2e-determinism.md §P5). Resets enrollment_open, clears
+      # e2e-smoke-* masjids and any mutation-test residue, so no run can
+      # inherit drift from a previous one.
+      - name: Reseed staging D1
+        run: |
+          npx tsx tooling/dump-seed-sql.ts /tmp/staging-seed.sql
+          npx wrangler@latest d1 execute masjid-db-staging --remote --file=/tmp/staging-seed.sql
+
   deploy-pages-staging:
     runs-on: ubuntu-latest
     environment: Staging
@@ -107,7 +116,12 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: API + worker smoke (no browser)
-        run: E2E_ENV=staging node tests/e2e/run.js --suite=api --suite=worker
+        # Probe first: waits out the post-deploy 503 window AND verifies the
+        # worker serves THIS commit (build_id == GITHUB_SHA). This job
+        # historically ran ungated inside the propagation window.
+        run: |
+          E2E_ENV=staging node tests/e2e/wait-for-deploy.js api
+          E2E_ENV=staging node tests/e2e/run.js --suite=api --suite=worker
 
   e2e-deploy:
     needs: [deploy-worker-staging, deploy-pages-staging, e2e-api]
@@ -186,4 +200,8 @@ jobs:
           echo "## Staging Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "API worker: ${{ needs.deploy-worker-staging.result }}" >> $GITHUB_STEP_SUMMARY
           echo "Pages: ${{ needs.deploy-pages-staging.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "E2E gate: ${{ needs.e2e-staging.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E api: ${{ needs.e2e-api.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E deploy: ${{ needs.e2e-deploy.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E consumer: ${{ needs.e2e-consumer.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E tv: ${{ needs.e2e-tv.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "E2E admin: ${{ needs.e2e-admin.result }}" >> $GITHUB_STEP_SUMMARY

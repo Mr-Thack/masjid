@@ -11,6 +11,10 @@
   let loading = $state(true);
   let saving = $state(false);
   let error = $state<string | null>(null);
+  // Load failure is tracked separately from save errors: when the initial GET
+  // fails the form must NOT render — its default values (empty name, zero
+  // coordinates) would be saved over real data on the next Save click.
+  let loadError = $state<string | null>(null);
   let dirty = $state(false);
 
   let form = $state({
@@ -129,7 +133,7 @@
       form.latitude = profile.latitude || 0;
       form.longitude = profile.longitude || 0;
     } catch (e: unknown) {
-      error = e instanceof Error ? e.message : 'Failed to load profile';
+      loadError = e instanceof Error ? e.message : 'Failed to load profile';
     } finally {
       loading = false;
     }
@@ -192,6 +196,17 @@
 
   {#if loading}
     <SkeletonForm />
+  {:else if loadError}
+    <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
+      <p class="text-red-400 text-sm mb-1">Failed to load profile</p>
+      <p class="text-red-400/70 text-xs mb-4">{loadError}</p>
+      <button
+        class="btn-secondary text-sm"
+        onclick={() => { loadError = null; loading = true; loadProfile(); }}
+      >
+        Retry
+      </button>
+    </div>
   {:else}
     <form onsubmit={handleSave}>
       <div class="bg-surface border border-border rounded-xl p-6 space-y-4">

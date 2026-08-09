@@ -10,6 +10,9 @@
   let loading = $state(true);
   let saving = $state(false);
   let error = $state<string | null>(null);
+  // Separate from save errors: a failed initial GET must not render a
+  // saveable form full of default values (they'd clobber the real theme).
+  let loadError = $state<string | null>(null);
   let dirty = $state(false);
 
   let form = $state({
@@ -210,7 +213,7 @@
         form.label_speech = t.label_speech || '';
       }
     } catch (e: unknown) {
-      error = e instanceof Error ? e.message : 'Failed to load theme';
+      loadError = e instanceof Error ? e.message : 'Failed to load theme';
     } finally {
       loading = false;
     }
@@ -271,6 +274,17 @@
 
   {#if loading}
     <SkeletonForm fields={8} />
+  {:else if loadError}
+    <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
+      <p class="text-red-400 text-sm mb-1">Failed to load theme</p>
+      <p class="text-red-400/70 text-xs mb-4">{loadError}</p>
+      <button
+        class="btn-secondary text-sm"
+        onclick={() => { loadError = null; loading = true; loadTheme(); }}
+      >
+        Retry
+      </button>
+    </div>
   {:else}
     <form onsubmit={handleSave}>
       <div class="space-y-6">

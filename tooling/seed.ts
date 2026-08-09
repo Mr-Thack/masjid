@@ -608,4 +608,11 @@ async function seed() {
   console.log(`    http://localhost:5175/${JABAL_SLUG}`);
 }
 
-seed().catch(console.error);
+// Exported so tooling/dump-seed-sql.ts can await completion before reading
+// the database (the CLI behavior is unchanged: errors print and exit non-zero).
+export const seedPromise: Promise<void> = seed();
+
+seedPromise.catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

@@ -20,8 +20,13 @@ const cfg = targets();
 const t = createReporter(`Worker/API runtime [${cfg.env}] → ${cfg.api}`);
 
 // Bounded fetch: a hung worker becomes a FAIL line (status 0), never a hung
-// CI job or an uncaught exception.
-async function req(method, path, { body, token } = {}) {
+// CI job or an uncaught exception. 502/503/52x responses trigger up to 2
+// retries with a 5s delay — the same Cloudflare edge-propagation allowance
+// api.test.js has (lesson 36). This suite runs FIRST after a deploy (the
+// e2e-api job has historically run inside the 503 window), so it needs the
+// retry most.
+const RETRYABLE = new Set([502, 503, 520, 521, 522, 523, 524]);
+async function req(method, path, { body, token } = {}, attempt = 0) {
   try {
     const resp = await fetch(`${cfg.api}${path}`, {
       method,
@@ -32,6 +37,10 @@ async function req(method, path, { body, token } = {}) {
       body: body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(15000),
     });
+    if (RETRYABLE.has(resp.status) && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 5000));
+      return req(method, path, { body, token }, attempt + 1);
+    }
     const text = await resp.text();
     let json = null;
     try {
