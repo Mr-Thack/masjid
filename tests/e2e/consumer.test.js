@@ -147,7 +147,7 @@ await testCase(t, 'CON-08', async () => {
 // CON-09 — info page renders
 await testCase(t, 'CON-09', async () => {
   const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/info`, {
-    expectText: 'Contact & Location',
+    expectText: 'About',
   });
   t.assert(r.ok, `CON-09 info page renders clean ${r.ok ? '' : '— ' + explain(r)}`);
 });
