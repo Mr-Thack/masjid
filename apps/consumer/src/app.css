@@ -468,6 +468,13 @@ html[data-style-system='mishkaat'] .c-app[data-ambient-phase='midday']  { backgr
 html[data-style-system='mishkaat'] .c-app[data-ambient-phase='amber']   { background-color: #1c1106; }
 html[data-style-system='mishkaat'] .c-app[data-ambient-phase='night']   { background-color: #0e0a06; }
 
+/* Light-mode ambient palette: warm parchment tones that respect --color-bg. */
+html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='predawn'] { background-color: #e8e4db; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='sunrise'] { background-color: #f2e8d4; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='midday']  { background-color: #f9f5ed; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='amber']   { background-color: #f4e6cc; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='night']   { background-color: #e0dbd0; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
