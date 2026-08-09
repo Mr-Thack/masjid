@@ -156,15 +156,13 @@ jobs:
 
       # Read-only smoke vs production. The deploy is already live at this
       # point — a red result pages a human; it does not roll back.
-      # (whatsapp/agent vitest suites intentionally not run — currently red.)
-      # Probe replaces blind sleep: waits for the fresh deploy to propagate.
-      # Only run API + deploy + TV suites on prod — consumer/admin browser
-      # suites are too flaky on the live CDN (lesson 36-46 in AGENTS.md).
-      # Full suite runs on staging where we control warmup/serialization.
-      - name: E2E smoke vs prod (read-only)
+      # Staging already ran the full suite against this exact code.
+      # Production only verifies the deploy shipped correctly: chunks
+      # hash-match, headers correct, routing works.
+      - name: Deploy integrity check (prod)
         run: |
           E2E_ENV=prod node tests/e2e/wait-for-deploy.js consumer
-          E2E_ENV=prod E2E_WARMUP_SECONDS=30 node tests/e2e/run.js --suite=api --suite=worker --suite=deploy --suite=tv
+          E2E_ENV=prod node tests/e2e/run.js --suite=deploy
 
   summary:
     needs: [d1-drift-check, deploy-workers, deploy-pages, e2e-prod]
