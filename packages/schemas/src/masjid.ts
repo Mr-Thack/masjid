@@ -100,7 +100,8 @@ export const UpdateMasjidSchema = z.object({
   youtube_url: z.string().url().max(500).optional().nullable(),
   instagram_url: z.string().url().max(500).optional().nullable(),
   website_url: z.string().url().max(500).optional().nullable(),
-  external_donation_url: z.string().url().max(500).optional().nullable(),
+  about_markdown: z.string().max(10000).optional().nullable(),
+  donation_links: z.string().max(5000).optional().nullable(),
   calculation_method: CalculationMethod.optional(),
   asr_madhab: AsrMadhab.optional(),
   high_latitude_rule: HighLatitudeRule.optional(),
@@ -175,7 +176,8 @@ export const MasjidProfileSchema = z.object({
   youtube_url: z.string().nullable(),
   instagram_url: z.string().nullable(),
   website_url: z.string().nullable(),
-  external_donation_url: z.string().nullable(),
+  about_markdown: z.string().nullable(),
+  donation_links: z.string().nullable(),
   created_at: z.string(),
   theme: ThemeSchema.nullable(),
 });
@@ -196,6 +198,7 @@ export const MasjidPublicSchema = z.object({
   youtube_url: z.string().nullable(),
   instagram_url: z.string().nullable(),
   website_url: z.string().nullable(),
-  external_donation_url: z.string().nullable(),
+  about_markdown: z.string().nullable(),
+  donation_links: z.string().nullable(),
 });
 export type MasjidPublic = z.infer<typeof MasjidPublicSchema>;

@@ -1,6 +1,6 @@
 import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb, fetchThemeRow } from '$lib/server/db';
-import { masjids, jumuahSessions, announcements } from '$lib/server/db/schema';
+import { masjids, jumuahSessions, announcements, customDomains } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah, type ComputedTimes } from '$lib/server/prayer/engine';
 import { parseStyleOptionsJson } from '$lib/server/style-options';
@@ -43,6 +43,20 @@ export const GET: RequestHandler = async ({ params, platform }) => {
       )
       .orderBy(desc(announcements.publishedAt))
       .limit(20);
+
+    const customDomain = await db
+      .select({ domain: customDomains.domain })
+      .from(customDomains)
+      .where(eq(customDomains.masjidId, masjid.id))
+      .get();
+
+    const consumerBase = customDomain?.domain
+      ? `https://${customDomain.domain}`
+      : platform?.env?.CONSUMER_BASE_URL
+        || (typeof process !== 'undefined' ? process.env?.CONSUMER_BASE_URL : undefined)
+        || 'http://localhost:5175';
+
+    const donatePageUrl = `${consumerBase}/${masjid.slug}/donate`;
 
     const masjidConfig = {
       id: masjid.id,
@@ -114,7 +128,8 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         city: masjid.city,
         state: masjid.state,
         asr_madhab: masjid.asrMadhab ?? 'shafi',
-        external_donation_url: masjid.externalDonationUrl,
+        donation_links: masjid.donationLinks,
+        donate_page_url: donatePageUrl,
       },
       theme: {
         style_system: theme?.style_system ?? 'sakeenah',

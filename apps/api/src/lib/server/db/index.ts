@@ -99,6 +99,9 @@ const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
   ['masjids', 'adjust_isha', 'INTEGER NOT NULL DEFAULT 0'],
   // prayer_rules
   ['prayer_rules', 'enabled', 'INTEGER NOT NULL DEFAULT 1'],
+  // about_markdown and donation_links (2026-08-09)
+  ['masjids', 'about_markdown', 'TEXT'],
+  ['masjids', 'donation_links', 'TEXT'],
 ];
 
 function ensureTables(sqlite: Database.Database) {
@@ -136,6 +139,8 @@ function ensureTables(sqlite: Database.Database) {
       instagram_url TEXT,
       website_url TEXT,
       external_donation_url TEXT,
+      about_markdown TEXT,
+      donation_links TEXT,
       admin_email TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );

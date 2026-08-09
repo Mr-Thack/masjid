@@ -65,7 +65,8 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       youtube_url: masjid.youtubeUrl,
       instagram_url: masjid.instagramUrl,
       website_url: masjid.websiteUrl,
-      external_donation_url: masjid.externalDonationUrl,
+      about_markdown: masjid.aboutMarkdown,
+      donation_links: masjid.donationLinks,
       created_at: masjid.createdAt,
       theme: theme
         ? {
@@ -134,7 +135,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.youtube_url !== undefined) masjidData.youtubeUrl = masjidUpdate.youtube_url;
     if (masjidUpdate.instagram_url !== undefined) masjidData.instagramUrl = masjidUpdate.instagram_url;
     if (masjidUpdate.website_url !== undefined) masjidData.websiteUrl = masjidUpdate.website_url;
-    if (masjidUpdate.external_donation_url !== undefined) masjidData.externalDonationUrl = masjidUpdate.external_donation_url;
+    if (masjidUpdate.about_markdown !== undefined) masjidData.aboutMarkdown = masjidUpdate.about_markdown;
+    if (masjidUpdate.donation_links !== undefined) masjidData.donationLinks = masjidUpdate.donation_links;
     if (masjidUpdate.calculation_method !== undefined) masjidData.calculationMethod = masjidUpdate.calculation_method;
     if (masjidUpdate.asr_madhab !== undefined) masjidData.asrMadhab = masjidUpdate.asr_madhab;
     if (masjidUpdate.high_latitude_rule !== undefined) masjidData.highLatitudeRule = masjidUpdate.high_latitude_rule;
@@ -227,7 +229,8 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       youtube_url: updated?.youtubeUrl,
       instagram_url: updated?.instagramUrl,
       website_url: updated?.websiteUrl,
-      external_donation_url: updated?.externalDonationUrl,
+      about_markdown: updated?.aboutMarkdown,
+      donation_links: updated?.donationLinks,
       created_at: updated?.createdAt,
       theme: updatedTheme
         ? {

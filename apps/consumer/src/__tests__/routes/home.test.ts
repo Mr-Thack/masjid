@@ -17,7 +17,9 @@ type MasjidData = {
   name: string;
   city?: string;
   state?: string;
-  external_donation_url?: string;
+  slug?: string;
+  asr_madhab?: string;
+  donation_links?: string;
 };
 
 type PrayerTimes = Record<string, { adhaan: string; iqaamah: string } | string>;
@@ -97,7 +99,8 @@ describe('homepage', () => {
         name: 'Masjid Al-Noor',
         city: 'Dallas',
         state: 'TX',
-        external_donation_url: 'https://donate.example.com',
+        slug: 'masjid-al-noor',
+        donation_links: JSON.stringify([{ label: 'Donate', url: 'https://donate.example.com' }]),
       },
       prayer_times: {
         fajr: { adhaan: '05:00', iqaamah: '05:15' },
@@ -167,7 +170,7 @@ describe('homepage', () => {
 
     expect(
       screen.getByRole('link', { name: /Support This Masjid/ }),
-    ).toHaveAttribute('href', 'https://donate.example.com');
+    ).toHaveAttribute('href', '/masjid-al-noor/donate');
   });
 
   it('renders minimal data without optional sections', () => {

@@ -1,10 +1,26 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import DonateButton from '$lib/components/DonateButton.svelte';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
+
+  let donationLinks = $derived.by(() => {
+    const raw = masjid?.donation_links;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.filter((l: { label?: string; url?: string }) => l.url);
+      } catch { /* invalid JSON */ }
+    }
+    return [];
+  });
+
+  let hasLinks = $derived(donationLinks.length > 0);
 </script>
+
+<svelte:head>
+  <title>Donate — {masjid?.name ?? 'Masjid'}</title>
+</svelte:head>
 
 <div class="space-y-6">
   <div class="relative overflow-hidden rounded-2xl">
@@ -27,9 +43,25 @@
         </p>
       </div>
 
-      {#if masjid?.external_donation_url}
-        <div>
-          <DonateButton url={masjid.external_donation_url} />
+      {#if hasLinks}
+        <div class="flex flex-col items-center gap-3">
+          {#each donationLinks as link}
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 bg-accent shadow-lg w-full max-w-xs justify-center"
+              style="text-shadow: 0 1px 2px rgba(0,0,0,0.2);"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              {link.label || 'Donate'}
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" class="h-3.5 w-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          {/each}
         </div>
       {:else}
         <div class="glass-card inline-flex items-center gap-3 px-6 py-4">
@@ -43,7 +75,7 @@
   </div>
 
   <div class="glass-card p-6 space-y-4">
-    <h2 class="text-lg font-semibold font-heading" style="color: #e5e7eb;">Why Give?</h2>
+    <h2 class="text-lg font-semibold font-heading" style="color: var(--color-text);">Why Give?</h2>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div class="text-center p-4">
         <div class="text-2xl mb-2">🕌</div>

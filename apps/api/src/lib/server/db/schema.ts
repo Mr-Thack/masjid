@@ -37,7 +37,8 @@ export const masjids = sqliteTable('masjids', {
   youtubeUrl: text('youtube_url'),
   instagramUrl: text('instagram_url'),
   websiteUrl: text('website_url'),
-  externalDonationUrl: text('external_donation_url'),
+  aboutMarkdown: text('about_markdown'),
+  donationLinks: text('donation_links'),
   adminEmail: text('admin_email'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });

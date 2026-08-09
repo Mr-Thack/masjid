@@ -264,11 +264,13 @@
   });
 
   // --- Soul column frames (§7.5) -----------------------------------------
+  let donatePageUrl = $derived(payload.masjid.donate_page_url ?? null);
+
   let framesList = $derived(
     buildFrames({
       jumuahSessionCount: formattedJumuahSessions.length,
       announcementCount: payload.recent_announcements?.length ?? 0,
-      donationUrl: payload.masjid.external_donation_url,
+      donatePageUrl,
       dayOfWeek: now.getDay(),
       enabledFrames: styleOptions.frames,
     }),
@@ -440,8 +442,7 @@
             jumuahLabel={theme.label_jumuah}
             speechLabel={theme.label_speech}
             announcements={announcementsForFrames}
-            donationUrl={payload.masjid.external_donation_url}
-            appeal={styleOptions.donateAppeal}
+            {donatePageUrl}
           />
         </aside>
 
