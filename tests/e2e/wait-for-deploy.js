@@ -38,7 +38,7 @@ const INTERVAL_MS = 4_000;
 
 const app = process.argv[2];
 const explicitPath = process.argv[3];
-if (!app || !APP_PATHS[app]) {
+if (!app || !(app in APP_PATHS)) {
   console.error(`Usage: node tests/e2e/wait-for-deploy.js <${Object.keys(APP_PATHS).join('|')}> [path]`);
   process.exit(2);
 }
