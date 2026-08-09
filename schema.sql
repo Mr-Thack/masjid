@@ -43,7 +43,6 @@ CREATE TABLE masjids (
     website_url TEXT,
 
     -- Donation & admin
-    external_donation_url TEXT,                     -- Direct outbound passthrough (Mohid, PayPal, etc.)
     about_markdown TEXT,                            -- About Us / history / story markdown content
     donation_links TEXT,                            -- JSON array of {label, url} for multiple donation links
     admin_email TEXT,                               -- Authenticated identity for email-based ingestion
