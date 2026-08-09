@@ -11,10 +11,15 @@ const t = createReporter(`API smoke [${cfg.env}] → ${cfg.api}`);
 
 // Every fetch is bounded (15s) and failures return status 0 instead of
 // throwing — a hung/unreachable API becomes a FAIL line, never a hung CI job
-// or an uncaught exception.
-async function getJson(path, headers = {}) {
+// or an uncaught exception. 503 responses trigger up to 2 retries with a 5s
+// delay (Cloudflare edge propagation after deploy can take ~30s).
+async function getJson(path, headers = {}, attempt = 0) {
   try {
     const resp = await fetch(`${cfg.api}${path}`, { headers, signal: AbortSignal.timeout(15000) });
+    if (resp.status === 503 && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 5000));
+      return getJson(path, headers, attempt + 1);
+    }
     const text = await resp.text();
     let body = null;
     try {
@@ -28,7 +33,7 @@ async function getJson(path, headers = {}) {
   }
 }
 
-async function postJson(path, payload) {
+async function postJson(path, payload, attempt = 0) {
   try {
     const resp = await fetch(`${cfg.api}${path}`, {
       method: 'POST',
@@ -36,6 +41,10 @@ async function postJson(path, payload) {
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(15000),
     });
+    if (resp.status === 503 && attempt < 2) {
+      await new Promise((r) => setTimeout(r, 5000));
+      return postJson(path, payload, attempt + 1);
+    }
     const text = await resp.text();
     let body = null;
     try { body = JSON.parse(text); } catch { /* body stays null */ }

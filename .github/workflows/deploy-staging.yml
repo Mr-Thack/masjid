@@ -110,7 +110,7 @@ jobs:
         run: E2E_ENV=staging node tests/e2e/run.js --suite=api --suite=worker
 
   e2e-deploy:
-    needs: [deploy-worker-staging, deploy-pages-staging]
+    needs: [deploy-worker-staging, deploy-pages-staging, e2e-api]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
           E2E_ENV=staging node tests/e2e/run.js --suite=deploy
 
   e2e-consumer:
-    needs: [deploy-worker-staging, deploy-pages-staging]
+    needs: [deploy-worker-staging, deploy-pages-staging, e2e-api]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -144,7 +144,7 @@ jobs:
           E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD || '' }}
 
   e2e-tv:
-    needs: [deploy-worker-staging, deploy-pages-staging]
+    needs: [deploy-worker-staging, deploy-pages-staging, e2e-api]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -159,7 +159,7 @@ jobs:
           E2E_ENV=staging E2E_WARMUP_SECONDS=30 node tests/e2e/run.js --suite=tv
 
   e2e-admin:
-    needs: [deploy-worker-staging, deploy-pages-staging]
+    needs: [deploy-worker-staging, deploy-pages-staging, e2e-api]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
