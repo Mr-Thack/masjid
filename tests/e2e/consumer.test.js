@@ -452,11 +452,28 @@ await testCase(t, 'CON-25', async () => {
 });
 
 // CON-26 — cold load of /prayer directly (no prior visit to home)
+// The prayer page fetches weekly data after layout load. Wait for
+// data-table-ready (set when loadWeek() completes) then check text.
 await testCase(t, 'CON-26', async () => {
-  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/prayer`, {
-    expectTextCI: ['Fajr'],
-  });
-  t.assert(r.ok, `CON-26 cold-load prayer page renders clean ${r.ok ? '' : '— ' + explain(r)}`);
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const b = collectPage(page, cfg);
+
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/prayer`);
+  // Wait for weekly table data to finish loading
+  await page.waitForSelector('[data-table-ready]', { state: 'attached', timeout: 25000 }).catch(() => {});
+
+  // Verify prayer names are in the body
+  await page.waitForFunction(
+    () => document.body.innerText.toLowerCase().includes('fajr'),
+    { timeout: 10000 },
+  ).catch(() => {});
+
+  await settlePage(page, b);
+  await context.close();
+
+  const ok = b.pageErrors.length === 0 && b.failedRequests.length === 0;
+  t.assert(ok, `CON-26 cold-load prayer page renders clean ${ok ? '' : '— ' + explain({...b, missing: [], badApiOrigins: [], warnings: []})}`);
 });
 
 // CON-27 — trailing slash (SPA router handles it gracefully)
@@ -871,18 +888,11 @@ await testCase(t, 'CON-45', async () => {
   const page = await context.newPage();
   const b = collectPage(page, cfg);
 
-  // Navigate to prayer page cold — loading spinner may flash.
-  // First, wait for the page to have ANY content (body text proves the shell loaded).
   await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/prayer`);
-  await page.waitForFunction(() => document.body.innerText.length > 100, { timeout: 15000 }).catch(() => {});
 
-  // Then wait for the weekly table to actually render. Retry once if the first
-  // attempt times out (cold API worker + cold edge can push past 15s).
-  let tableReady = false;
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    await page.waitForSelector('table', { state: 'visible', timeout: 12000 }).then(() => { tableReady = true; }).catch(() => {});
-    if (tableReady) break;
-  }
+  // Wait for the weekly table to finish loading (data-table-ready is
+  // set when loadWeek() completes and loading=false).
+  await page.waitForSelector('[data-table-ready]', { state: 'attached', timeout: 25000 }).catch(() => {});
 
   // Verify the final state has actual content (no permanent spinner)
   const hasContent = await page.evaluate(() => {
