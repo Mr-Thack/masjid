@@ -4,16 +4,18 @@
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
 
-  let donationLinks = $derived.by(() => {
-    const raw = masjid?.donation_links;
-    if (raw) {
+  let donationLinks = $derived(
+    (() => {
+      const raw = masjid?.donation_links;
+      if (!raw) return [];
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed.filter((l: { label?: string; url?: string }) => l.url);
-      } catch { /* invalid JSON */ }
-    }
-    return [];
-  });
+        return Array.isArray(parsed) ? parsed.filter((l: { label?: string; url?: string }) => l && l.url) : [];
+      } catch {
+        return [];
+      }
+    })(),
+  );
 
   let hasLinks = $derived(donationLinks.length > 0);
 </script>

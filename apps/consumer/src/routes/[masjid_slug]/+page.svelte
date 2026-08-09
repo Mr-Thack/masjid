@@ -20,16 +20,18 @@
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
-  let donationLinks = $derived.by(() => {
-    const raw = masjid?.donation_links;
-    if (raw) {
+  let hasDonationLinks = $derived(
+    (() => {
+      const raw = masjid?.donation_links;
+      if (!raw) return false;
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed.filter((l: { url?: string }) => l.url);
-      } catch { /* invalid JSON */ }
-    }
-    return [];
-  });
+        return Array.isArray(parsed) && parsed.some((l: { url?: string }) => l && l.url);
+      } catch {
+        return false;
+      }
+    })(),
+  );
   let prayerTimes = $derived(data.prayer_times);
   let jumuah = $derived(data.jumuah);
   let pinnedAnnouncement = $derived(data.pinned_announcement);
@@ -471,7 +473,7 @@
       {@render jumuahSection()}
     {/if}
 
-    {#if donationLinks.length > 0}
+    {#if hasDonationLinks}
       <section class="text-center">
         <a
           href="/{masjid?.slug}/donate"
