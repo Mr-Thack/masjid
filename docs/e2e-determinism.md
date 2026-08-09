@@ -2,9 +2,8 @@
 
 > Status: **implemented & locally verified (2026-08-09)** — full local E2E run
 > green on first pass (consumer 82/82, admin 75/75, api/worker/tv/deploy green);
-> unit suites green (API 670, admin 230, tooling 23). Staging validation
-> happens on the next staging deploy (remote-only paths: probe, 503 windows,
-> reseed step).
+> unit suites green (API 670, admin 230, tooling 23).
+> **Staging validation is BLOCKED on an infra issue — see §7 handoff.**
 
 ## 1. Root causes (what the investigation found)
 
@@ -164,3 +163,90 @@ seed data" catastrophic path. Files: `apps/admin/src/routes/admin/[slug]/setting
 6. **`PUT maktab/settings` is a full-row upsert** — omitting
    `active_term_id` nulls it. The E2E restore helper reads the row first and
    PUTs it back whole; any future caller must do the same.
+
+## 7. Handoff — where we stopped (2026-08-09 evening)
+
+### What's shipped and verified
+
+- All P1–P5 work is on `master` (`5eea220`, `ec5725c`) and `staging`
+  (`227bda9`, `fd2f7dc`). Both pushed. **Do not push to staging again until
+  the hang below is understood — staging pushes burn CF quota.**
+- Staging run 31339626631 (restructured pipeline): deploys ✓, **staging D1
+  reseed worked** ✓, `e2e-api` behind the new api-mode probe ✓ (1m2s),
+  `e2e-deploy` ✓, `e2e-tv` ✓, `e2e-admin` ✓ (3m8s — the restructured
+  mutation tests, API restores and all, passed on staging first try).
+  Only `e2e-consumer` failed — and it failed on infra, not test logic.
+
+### The open issue: staging worker intermittently HANGS requests
+
+**Evidence.** During/after that run, ~25% of requests to
+`mapi-staging.mr-thack.workers.dev` never return (curl gave up at 40s);
+the rest answer in ~500ms. Measured 2026-08-09 ~23:00 UTC from a dev
+machine, against BOTH `/api/v1/masjids/masjid-al-noor` AND the trivial
+`/api/v1/status` (which only does `SELECT 1` on D1). **Prod `mapi` does not
+hang** (6/6 fast). The failing E2E cases match this exactly: pages render
+*nothing* (body innerText 0 chars) with **no pageErrors, no failedRequests,
+no warnings** — the layout `load()`'s fetch stays pending until the context
+closes, so the buckets see nothing.
+
+**What this rules out:** test-harness bugs (reproduced with raw curl, no
+Playwright involved), page-specific bugs (different cases fail each run),
+CDN/Pages (the SPA shell and chunks load fine — it's the API call that
+hangs), and the consumer app itself (unchanged in this deploy).
+
+**Prime suspects, in order:**
+
+1. **CF account daily-limit exhaustion / throttling.** The failures began
+   late in a day full of staging deploys + E2E runs (every remote page load
+   is cache-busted, so all traffic hits the worker). The "heals over time,
+   relapses under load" shape fits account-level limiting. Check: CF
+   dashboard → account usage page for 2026-08-09.
+2. **Staging D1 in a bad state after the first-ever reseed.** The hangs
+   started with the deploy that introduced the reseed step. `SELECT 1`
+   hanging points below the query layer — connection/session handling on a
+   freshly-rewritten DB. Check: D1 metrics for `masjid-db-staging`
+   (query latency/errors), and whether hangs correlate with `build_id`.
+3. **Worker CPU-time limiting on the free tier** (10ms default) — the page
+   payload computes prayer times. But `/status` is cheap and also hangs, so
+   this alone doesn't explain it.
+4. Mixed-version propagation serving a sick old version — the api-mode probe
+   says no (build_id matched), but hung requests never return a build_id, so
+   it can't be fully excluded without per-request logs.
+
+**What we need tomorrow:** the user can expose CF request logs (Workers
+Observability is enabled on the workers — `[observability] enabled = true`)
+or paste dashboard output. Specifically: (a) Workers Logs for `mapi-staging`
+during a hang window — does the request reach the worker at all, or is it
+shed before invocation? (b) D1 metrics for `masjid-db-staging`;
+(c) account-level usage/limits page. If logs show requests never arriving,
+it's account limiting; if they arrive and stall at the D1 call, it's (2).
+
+**Repro (takes 1 min):**
+```bash
+for i in $(seq 1 12); do
+  start=$(date +%s%N)
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 40 \
+    "https://mapi-staging.mr-thack.workers.dev/api/v1/status?cb=$i-$RANDOM")
+  echo "$code in $(( ($(date +%s%N)-start)/1000000 ))ms"
+done
+```
+000 = hang. If tomorrow this returns 12×200, it was quota/limits — re-run
+the staging pipeline (workflow_dispatch) and it should go green.
+
+### Remaining work, in order
+
+1. **Resolve the staging hang** (above). If it was quota: nothing to fix in
+   code; consider trimming E2E request volume later (e.g. fewer prewarm
+   URLs) if the daily limit is a recurring constraint. Also consider
+   disabling the `run.js` whole-suite retry on staging — it doubles quota
+   burn on real failures and only helps genuine CDN chunk-404 edge cases
+   (lesson 46).
+2. **Re-run the staging pipeline** (`workflow_dispatch` on
+   `deploy-staging.yml`, no push needed) and confirm all six jobs green —
+   that completes the acceptance criteria in §4.
+3. **Only then** consider master → staging merges for other work, and much
+   later a prod promotion (manual `Deploy to Cloudflare`).
+4. Optional follow-ups (not blocking): fix the rollback route's
+   `externalDonationUrl` write (§6.5); decide whether DEP-02 should run in
+   CI; the `mkt_settings.assistance_code` local-vs-D1 column-order note
+   (cosmetic, verified safe per lesson 35 tooling).
