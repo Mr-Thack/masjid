@@ -4,9 +4,10 @@
   import type { Snippet } from 'svelte';
   import { applyTheme } from '$lib/theme/context.svelte.ts';
   import { ambientPhaseFor } from '$lib/ambient';
+  import { deviceThemePref } from '$lib/theme/device-pref.svelte.ts';
   import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
   import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
-  import { resolveStyleSystem, resolveStyleOptions, parseStyleOptions } from '@masjid/ui-utils';
+  import { resolveStyleSystem, resolveStyleOptions, parseStyleOptions, type ThemeInput } from '@masjid/ui-utils';
 
   let { children }: { children: Snippet } = $props();
 
@@ -32,11 +33,33 @@
   let masjid = $derived($page.data.masjid);
   let theme = $derived($page.data.theme);
 
+  let devicePref = $derived(deviceThemePref.current);
+  let adminMode = $derived((resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null))).themeMode);
+  let effectiveMode = $derived(deviceThemePref.resolve(adminMode));
+
+  let effectiveTheme = $derived<ThemeInput | null>(() => {
+    if (!theme) return null;
+    let rawOpts = theme.style_options;
+    let parsed = typeof rawOpts === 'string'
+      ? rawOpts
+      : (rawOpts && typeof rawOpts === 'object' ? structuredClone(rawOpts) : {});
+    if (typeof parsed === 'object' && parsed !== null) {
+      (parsed as Record<string, unknown>).themeMode = effectiveMode;
+    } else {
+      parsed = { themeMode: effectiveMode };
+    }
+    return {
+      ...theme,
+      style_options: typeof parsed === 'string' ? parsed : JSON.stringify(parsed),
+    };
+  });
+
   $effect(() => {
-    applyTheme(theme);
-    if (typeof document !== 'undefined' && resolveStyleSystem(theme) === 'mishkaat') {
-      const options = resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null));
-      document.documentElement.setAttribute('data-theme-mode', options.themeMode);
+    if (effectiveTheme) {
+      applyTheme(effectiveTheme);
+      if (typeof document !== 'undefined' && resolveStyleSystem(theme) === 'mishkaat') {
+        document.documentElement.setAttribute('data-theme-mode', effectiveMode);
+      }
     }
   });
 
@@ -97,6 +120,12 @@
   function navHref(segment: string): string {
     return `/${masjid?.slug ?? ''}${segment ? `/${segment}` : ''}`;
   }
+
+  const themeIcons: Record<string, string> = {
+    light: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
+    dark: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z',
+    auto: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
+  };
 </script>
 
 <svelte:head>
@@ -151,6 +180,18 @@
           </a>
         {/each}
       </nav>
+
+      <button
+        class="shrink-0 p-2 rounded-lg transition-colors hover:bg-white/5"
+        style="color: var(--color-text-muted);"
+        onclick={() => deviceThemePref.next()}
+        title="Toggle light/dark mode ({devicePref})"
+        aria-label="Toggle light/dark mode"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={themeIcons[devicePref] ?? themeIcons.auto} />
+        </svg>
+      </button>
     </div>
     {#if mishkaat}
       <div class="c-starband-strip" aria-hidden="true">
