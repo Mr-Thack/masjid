@@ -597,11 +597,10 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
       const newBtn = page.locator('button:has-text("New")');
       if (await newBtn.isVisible().catch(() => false)) {
         await newBtn.click();
-        // The create form only renders once load() finishes (loading=false).
-        // Wait for the form's title input to appear before interacting.
-        await page.locator('input[type="text"]').first().waitFor({ state: 'visible', timeout: 25000 }).catch(() => {});
+        // Wait for the create form to render (only after loading=false)
+        await page.waitForSelector('form input[type="text"]', { state: 'visible', timeout: 25000 }).catch(() => {});
       }
-      const titleInput = page.locator('input:enabled').first();
+      const titleInput = page.locator('form input[type="text"]').first();
       const hasCreateForm = await titleInput.isVisible().catch(() => false);
       if (hasCreateForm) {
         await titleInput.fill('E2E Test Announcement');
@@ -760,6 +759,9 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
 
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/domain`, { expectText: 'Domain' });
+
+    // Domain form renders after the layout's profile API call completes.
+    await page.locator('input[placeholder*="prayer"], button:has-text("Add Domain")').first().waitFor({ state: 'visible', timeout: 25000 }).catch(() => {});
 
     const hasInput = await page.locator('input[placeholder*="prayer"]').count();
     const hasAddBtn = await page.locator('button:has-text("Add Domain")').count();
