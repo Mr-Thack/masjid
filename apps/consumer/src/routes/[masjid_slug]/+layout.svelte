@@ -6,7 +6,7 @@
   import { ambientPhaseFor } from '$lib/ambient';
   import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
   import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
-  import { resolveStyleSystem } from '@masjid/ui-utils';
+  import { resolveStyleSystem, resolveStyleOptions, parseStyleOptions } from '@masjid/ui-utils';
 
   let { children }: { children: Snippet } = $props();
 
@@ -34,6 +34,10 @@
 
   $effect(() => {
     applyTheme(theme);
+    if (typeof document !== 'undefined' && resolveStyleSystem(theme) === 'mishkaat') {
+      const options = resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null));
+      document.documentElement.setAttribute('data-theme-mode', options.themeMode);
+    }
   });
 
   let embed = $derived($page.url.searchParams.has('embed'));

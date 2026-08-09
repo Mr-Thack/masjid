@@ -22,6 +22,7 @@
   let confirmReset = $state(false);
   let editingLabelId = $state<string | null>(null);
   let editLabelValue = $state('');
+  let hasSeeded = $state(false);
 
   let newRoute = $state({ route_segment: '', label: '', icon: '' });
   let newLink = $state({ external_url: '', label: '', icon: '' });
@@ -57,10 +58,33 @@
       ]);
       navItems = navRes.nav_items || [];
       allPages = pagesRes.pages || [];
+
+      if (navItems.length === 0 && !hasSeeded) {
+        hasSeeded = true;
+        await seedDefaults();
+        const [navRes2, pagesRes2] = await Promise.all([
+          api.getNavItems(auth.admin!.masjid_id),
+          api.getPages(auth.admin!.masjid_id),
+        ]);
+        navItems = navRes2.nav_items || [];
+        allPages = pagesRes2.pages || [];
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load');
     } finally {
       loading = false;
+    }
+  }
+
+  async function seedDefaults() {
+    const defaults = [
+      { kind: 'route', route_segment: 'prayer', label: 'Times', icon: 'Clock', is_highlighted: true },
+      { kind: 'route', route_segment: 'news', label: 'News', icon: 'Newspaper' },
+      { kind: 'route', route_segment: 'info', label: 'Info', icon: 'Info' },
+      { kind: 'route', route_segment: 'maktab', label: 'Maktab', icon: 'GraduationCap' },
+    ];
+    for (const d of defaults) {
+      await api.createNavItem(auth.admin!.masjid_id, d);
     }
   }
 

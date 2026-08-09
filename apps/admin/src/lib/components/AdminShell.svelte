@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import {
     LayoutDashboard, Sparkles, Building2, Palette, Clock, Users, Megaphone,
-    Globe, History, UserCog, BookOpen, Menu, X, LogOut, ChevronDown, Newspaper
+    Globe, History, UserCog, BookOpen, Menu, X, LogOut, ChevronDown, Newspaper, Compass
   } from 'lucide-svelte';
   import { auth } from '$lib/auth.svelte';
   import type { Snippet } from 'svelte';
@@ -19,6 +19,7 @@
     { type: 'section' as const, label: 'Settings' },
     { href: `/admin/${masjidSlug}/settings/profile`, label: 'Profile', icon: Building2 },
     { href: `/admin/${masjidSlug}/settings/theme`, label: 'Theme', icon: Palette },
+    { href: `/admin/${masjidSlug}/settings/navigation`, label: 'Navigation', icon: Compass },
     { href: `/admin/${masjidSlug}/settings/prayer`, label: 'Prayer Rules', icon: Clock },
     { href: `/admin/${masjidSlug}/settings/jumuah`, label: "Jumu'ah", icon: Users },
     { href: `/admin/${masjidSlug}/settings/maktab`, label: 'Maktab', icon: BookOpen },
