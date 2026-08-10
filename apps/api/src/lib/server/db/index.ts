@@ -17,6 +17,7 @@ const LOCAL_DB_PATH = process.env.MASJID_DB_PATH
   : path.resolve(PROJECT_ROOT, '.masjid/local.db');
 
 let localDb: ReturnType<typeof drizzleSqlite> | null = null;
+let localSqlite: Database.Database | null = null;
 
 function getLocalDb() {
   if (localDb) return localDb;
@@ -26,8 +27,14 @@ function getLocalDb() {
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
   ensureTables(sqlite);
+  localSqlite = sqlite;
   localDb = drizzleSqlite(sqlite, { schema });
   return localDb;
+}
+
+function getLocalSqlite(): Database.Database {
+  getLocalDb(); // ensure initialized
+  return localSqlite!;
 }
 
 function addColumnIfMissing(
@@ -109,7 +116,7 @@ const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
   ['masjids', 'show_donate_qr', 'INTEGER NOT NULL DEFAULT 1'],
 ];
 
-function ensureTables(sqlite: Database.Database) {
+export function ensureTables(sqlite: Database.Database) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS masjids (
       id TEXT PRIMARY KEY,
@@ -558,3 +565,108 @@ export async function fetchThemeRow(
 }
 
 export type Db = ReturnType<typeof getDb>;
+
+// ── D1 shim for local dev ───────────────────────────────────────────────────
+// Agent session functions require D1Database. In local vite dev we don't have
+// a real D1 binding, so we wrap the shared better-sqlite3 connection as a
+// D1-compatible interface.
+
+interface D1Result<T = unknown> {
+  results: T[];
+  success: boolean;
+  meta: Record<string, unknown>;
+}
+
+interface D1Stmt {
+  bind(...values: unknown[]): D1Stmt;
+  first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<D1Result<T>>;
+  run(): Promise<D1Result>;
+  raw<T = unknown>(): Promise<T[]>;
+}
+
+let _d1Shim: D1Database | null = null;
+
+export function getD1Shim(): D1Database {
+  if (_d1Shim) return _d1Shim;
+
+  const sqlite = getLocalSqlite();
+
+  const db = {
+    prepare(sql: string): D1Stmt {
+      // Lazy: defer SQL compilation to execution time (D1 behaviour).
+      // better-sqlite3 compiles eagerly — table-missing errors would fire
+      // at prepare() instead of first()/all()/run().
+      let params: unknown[] = [];
+
+      function getStmt() {
+        return sqlite.prepare(sql);
+      }
+
+      return {
+        bind(...values: unknown[]) {
+          params = values;
+          return this;
+        },
+        async first<T>() {
+          try {
+            const stmt = getStmt();
+            stmt.bind(params);
+            return (stmt.get() as T | undefined) ?? null;
+          } catch (e) {
+            console.error('D1 shim first() error:', e instanceof Error ? e.message : e);
+            return null;
+          }
+        },
+        async all<T>() {
+          try {
+            const stmt = getStmt();
+            stmt.bind(params);
+            return { results: stmt.all() as T[], success: true, meta: {} };
+          } catch (e) {
+            console.error('D1 shim all() error:', e instanceof Error ? e.message : e);
+            return { results: [], success: false, meta: {} };
+          }
+        },
+        async run() {
+          try {
+            const stmt = getStmt();
+            stmt.bind(params);
+            stmt.run();
+            return { results: [], success: true, meta: {} };
+          } catch (e) {
+            console.error('D1 shim run() error:', e instanceof Error ? e.message : e);
+            return { results: [], success: false, meta: {} };
+          }
+        },
+        async raw<T>() {
+          try {
+            const stmt = getStmt();
+            stmt.bind(params);
+            return stmt.all() as T[];
+          } catch (e) {
+            console.error('D1 shim raw() error:', e instanceof Error ? e.message : e);
+            return [];
+          }
+        },
+      };
+    },
+    batch() { throw new Error('D1 batch() not supported in local shim'); },
+    exec() { throw new Error('D1 exec() not supported in local shim'); },
+    dump() { throw new Error('D1 dump() not supported in local shim'); },
+  } as unknown as D1Database;
+
+  _d1Shim = db;
+  return db;
+}
+
+export function getAgentDb(platformDb: D1Database | undefined): D1Database {
+  // In local Node.js dev, bypass the adapter's mock D1 (same as getDb() does).
+  // The mock D1 points to a different SQLite file than our .masjid/local.db.
+  const isWorker = typeof caches !== 'undefined' && typeof caches.default !== 'undefined';
+  if (!isWorker && typeof process !== 'undefined') {
+    return getD1Shim();
+  }
+  if (platformDb) return platformDb;
+  return getD1Shim();
+}
