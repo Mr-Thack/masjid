@@ -583,9 +583,10 @@ Students table with filtering:
 | `GET` | `/admin/masjids/[id]/maktab/registrations` | List registrations (filter by term, status) |
 
 ### Agent Coverage
-Maktab has **zero agent tools**. Enrollment, terms, pricing, and registrations are
-manual UI only. This is intentional — payment configuration is out of scope for
-the AI agent. See `docs/admin-ai-capabilities.md` §11.3.
+The AI agent can read maktab settings, update program info (goal, schedule, curriculum,
+FAQs), toggle enrollment open/close, set status messages and assistance codes, list terms,
+and activate existing terms. It **cannot** create new terms (Square plan creation is
+payment-sensitive). Registrations are read-only PII — view them in the admin UI.
 
 ---
 

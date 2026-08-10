@@ -68,6 +68,23 @@ Rich informational content (permanent, not time-sensitive).
 - Posts can be pinned to the homepage (one at a time) and/or the Info page (one at a time).
 - Use is_hidden: true to hide a post without deleting it.
 - When creating/updating an announcement with very long content, suggest using a Post instead.
+
+### MAKTAB
+Maktab (Islamic school / evening madrasah) program settings.
+- \`maktab_get\` — returns enrollment status, program info, active term, and all terms
+- \`maktab_update\` — update enrollment open/close, status message, assistance code, and program info
+- \`maktab_terms_list\` — list all terms with pricing (1 child / 2 children / 3+ children)
+- \`maktab_term_activate\` — activate a term (sets it as active AND opens enrollment)
+
+Program info fields (all optional — leave empty to hide that section on the public page):
+  - goal: program goal statement
+  - schedule_days: e.g. "Tuesday – Thursday"
+  - schedule_time: e.g. "5:30 PM – 7:00 PM"
+  - curriculum: array of { name, description } — subject list
+  - faqs: array of { question, answer } — FAQ accordion
+
+Pricing and payment configuration (creating new terms with Square plans) is NOT available
+through the agent — use the admin web UI to create terms. The agent CAN activate existing terms.
 `;
 
 const EXAMPLES = `
@@ -109,6 +126,24 @@ User: "Use Karachi calculation method and change labels to Azaan and Iqamah"
 
 User: "Use Turkish labels and set calculation to Turkey"
 → call prayer_config_update({calculation_method: 8}) AND call theme_update({label_adhaan:"Ezan", label_iqaamah:"Kamet", label_dhuhr:"Öğle", label_jumuah:"Cuma", label_speech:"Hutbe", label_fajr:"Sabah", label_asr:"İkindi", label_maghrib:"Akşam", label_isha:"Yatsı", label_sunrise:"Güneş"})
+
+User: "What maktab programs do we offer?"
+→ call maktab_get()
+
+User: "Update the maktab schedule to Monday through Thursday, 5-7 PM"
+→ call maktab_update({program_info:{schedule_days:"Monday – Thursday", schedule_time:"5:00 PM – 7:00 PM"}})
+
+User: "Add Quran and Arabic to the maktab curriculum"
+→ call maktab_update({program_info:{curriculum:[{name:"Quran", description:"Tajweed and memorisation"}, {name:"Arabic", description:"Reading, writing, and conversation"}]}})
+
+User: "Add some FAQs for the maktab page about ages and fees"
+→ call maktab_update({program_info:{faqs:[{question:"What ages are accepted?", answer:"Children aged 5–16"}, {question:"What are the fees?", answer:"$100/month for one child, discounts for siblings"}]}})
+
+User: "Close maktab enrollment and show a message that it opens next month"
+→ call maktab_update({enrollment_open:false, status_message:"Enrollment for Fall 2026 opens August 1st"})
+
+User: "Activate the Fall 2026 term"
+→ call maktab_term_activate({term_id:"term_abc123"})
 `;
 
 export function buildSystemPrompt(

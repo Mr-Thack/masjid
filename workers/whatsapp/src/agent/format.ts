@@ -10,6 +10,7 @@ const DOMAIN_LABELS: Record<string, string> = {
   ANNOUNCEMENTS: 'Announcements',
 POSTS: 'Posts',
   TIMETABLE_IMPORT: 'Timetable Import',
+  MAKTAB: 'Maktab',
 };
 
 function truncate(s: string, max: number): string {

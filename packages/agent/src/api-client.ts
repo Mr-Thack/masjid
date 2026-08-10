@@ -294,3 +294,31 @@ export async function importTimetable(
 
   return { created: created.length, deleted: deletedCount, rules: created };
 }
+
+// ── Maktab ──────────────────────────────────────────────────────────────────
+
+export async function getMaktabSettings(config: ApiClientConfig): Promise<Record<string, unknown>> {
+  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/maktab/settings`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function updateMaktabSettings(
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/maktab/settings`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function getMaktabTerms(config: ApiClientConfig): Promise<Record<string, unknown>> {
+  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function activateMaktabTerm(
+  termId: string,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms/${termId}/activate`, {}, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}

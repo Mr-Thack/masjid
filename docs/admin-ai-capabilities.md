@@ -549,6 +549,8 @@ manual admin settings UI. It is the **canonical reference** for agent scope.
 | Rule traces (`rules_explain`) | ✓ | — | Agent-only diagnostic |
 | Rule validation (`rules_validate`) | ✓ | — | Agent-only diagnostic |
 | Timetable bulk import | ✓ | — | Agent-only (vision extraction) |
+| Maktab settings & program info | ✓ | ✓ | Enrollment controls, program info (goal, schedule, curriculum, FAQs) |
+| Maktab term activation | ✓ | ✓ | Activate existing terms (term creation with Square plans is UI-only) |
 
 ### 11.3 What the Agent CANNOT Do (Manual UI Only)
 
@@ -560,7 +562,8 @@ manual settings pages.
 | **Navigation items** (add/remove/reorder links, desktop/mobile visibility, highlight) | No navigation tools exist in `@masjid/agent` |
 | **Custom domains** (add/delete domain, SSL status) | Security-sensitive; DNS + SSL management out of scope |
 | **Account password** (change password) | Security boundary — agent should never handle credentials |
-| **Maktab** (terms, pricing, enrollment open/close, registrations) | Payment configuration out of scope |
+| **Maktab term creation** (Square plan creation) | Payment integration; terms must be created in the admin UI |
+| **Maktab registrations** (student list) | Read-only PII; view in the admin UI |
 | **Style options** (`style_system`, `style_options` JSON: metal, motif, arch, ambient phases, frames, emblem) | These are advanced visual options not yet exposed in any interface (UI or agent) |
 
 ### 11.4 Condition & Action Types for Prayer Rules

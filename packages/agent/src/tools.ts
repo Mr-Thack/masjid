@@ -29,6 +29,10 @@ import {
   rollbackRestore,
   explainPrayerRules,
   importTimetable,
+  getMaktabSettings,
+  updateMaktabSettings,
+  getMaktabTerms,
+  activateMaktabTerm,
 } from './api-client';
 import { explainAllPrayers, validateRules } from './rules-engine';
 import type { RuleWithDb, ConditionEval, RuleTrace, PrayerTrace } from './rules-engine';
@@ -79,6 +83,10 @@ case 'POSTS':
     case 'TIMETABLE_IMPORT':
       if (action === 'IMPORT') return `Import timetable rules`;
       return 'Timetable change';
+    case 'MAKTAB':
+      if (action === 'UPSERT') return 'Update maktab settings';
+      if (action === 'ACTIVATE') return `Activate maktab term`;
+      return 'Maktab change';
     default:
       return `${domain} ${action}: ${truncate(args)}`;
   }
@@ -842,6 +850,118 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
         const data = await importTimetable(rules, replaceExisting, ctx);
         const summary = describeMutation('TIMETABLE_IMPORT', 'IMPORT', { count: data.created, deleted: data.deleted });
         await storeMutation(ctx.branchId, 'TIMETABLE_IMPORT', 'IMPORT', 'timetable', { rules, replace_existing: replaceExisting }, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    // ── Maktab ──────────────────────────────────────────────────────────────
+    {
+      name: 'maktab_get',
+      description: 'Get current maktab (Islamic school) settings: enrollment open/close, status message, program info (goal, schedule, curriculum, FAQs), active term with pricing, and all available terms.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const [settings, terms] = await Promise.all([
+          getMaktabSettings(ctx),
+          getMaktabTerms(ctx),
+        ]);
+        return { success: true, data: { ...(settings as Record<string, unknown>), ...(terms as Record<string, unknown>) } };
+      },
+    },
+    {
+      name: 'maktab_update',
+      description: `Update maktab settings and program info. Only include fields you want to change.
+
+Enrollment controls:
+  - enrollment_open: boolean — open/close enrollment
+  - status_message: string or null — shown on public page when enrollment is closed
+  - assistance_code: string or null — discount code for financial aid
+
+Program info (all optional — leave empty to hide that section on the public page):
+  - program_info.goal: string — e.g. "To provide structured Islamic education"
+  - program_info.schedule_days: string — e.g. "Tuesday – Thursday"
+  - program_info.schedule_time: string — e.g. "5:30 PM – 7:00 PM"
+  - program_info.curriculum: [{ name: string, description: string }] — subject list
+  - program_info.faqs: [{ question: string, answer: string }] — FAQ accordion`,
+      parameters: {
+        type: 'object',
+        properties: {
+          enrollment_open: boolProp('Whether public enrollment is currently open'),
+          status_message: stringProp('Message shown on the public maktab page (e.g. "Registration opens August 1st"). Set to null to clear.'),
+          assistance_code: stringProp('Discount code for financial aid applicants. Set to null to clear.'),
+          program_info: {
+            type: 'object',
+            description: 'Program information shown on the public maktab page',
+            properties: {
+              goal: stringProp('Program goal statement'),
+              schedule_days: stringProp('Days of the week (e.g. "Tuesday – Thursday")'),
+              schedule_time: stringProp('Time of day (e.g. "5:30 PM – 7:00 PM")'),
+              curriculum: {
+                type: 'array',
+                description: 'List of subjects',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: stringProp('Subject name (e.g. "Quran")'),
+                    description: stringProp('Subject description (e.g. "Tajweed, memorisation, tafsir")'),
+                  },
+                  required: ['name', 'description'],
+                },
+              },
+              faqs: {
+                type: 'array',
+                description: 'Frequently asked questions',
+                items: {
+                  type: 'object',
+                  properties: {
+                    question: stringProp('The question'),
+                    answer: stringProp('The answer'),
+                  },
+                  required: ['question', 'answer'],
+                },
+              },
+            },
+          },
+        },
+        required: [],
+      },
+      handler: async (args, ctx) => {
+        const body: Record<string, unknown> = { ...args };
+        const data = await updateMaktabSettings(body, ctx);
+        const summary = describeMutation('MAKTAB', 'UPSERT', args);
+        await storeMutation(ctx.branchId, 'MAKTAB', 'UPSERT', 'maktab_settings', args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'maktab_terms_list',
+      description: 'List all maktab program terms with their pricing (1 child / 2 children / 3+ children). Each term has an id, name, length in months, billing months, and prices in cents.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const data = await getMaktabTerms(ctx);
+        return { success: true, data };
+      },
+    },
+    {
+      name: 'maktab_term_activate',
+      description: 'Activate a maktab term. This sets it as the active term AND opens enrollment. Provide the term ID from maktab_terms_list.',
+      parameters: {
+        type: 'object',
+        properties: {
+          term_id: stringProp('ID of the term to activate (from maktab_terms_list)'),
+        },
+        required: ['term_id'],
+      },
+      handler: async (args, ctx) => {
+        const data = await activateMaktabTerm(args.term_id as string, ctx);
+        const summary = describeMutation('MAKTAB', 'ACTIVATE', { term_id: args.term_id });
+        await storeMutation(ctx.branchId, 'MAKTAB', 'ACTIVATE', `term:${args.term_id}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
       },
     },
