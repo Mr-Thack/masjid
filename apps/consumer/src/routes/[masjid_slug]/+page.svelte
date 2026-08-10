@@ -3,20 +3,18 @@
   import PrayerTable from '$lib/components/PrayerTable.svelte';
   import HeroNiche from '$lib/components/HeroNiche.svelte';
   import HadithCard from '$lib/components/HadithCard.svelte';
-  import { fetchPrayerTimes, type PrayerTimes } from '$lib/api';
-  import { formatTime } from '$lib/time';
-  import {
-    computeCeremony,
-    findNearestIqaamahChanges,
-    getHadithOfTheDay,
-    getHijriPartsCached,
-    parseStyleOptions,
-    resolveStyleOptions,
-    resolveStyleSystem,
-    type PrayerKey,
-    type PrayerWindow,
-  } from '@masjid/ui-utils';
-  import type { DailyTimes } from '@masjid/schemas';
+import { fetchWeeklyPrayerTimes } from '$lib/api';
+import { formatTime } from '$lib/time';
+import {
+  computeCeremony,
+  getHadithOfTheDay,
+  getHijriPartsCached,
+  parseStyleOptions,
+  resolveStyleOptions,
+  resolveStyleSystem,
+  type PrayerKey,
+  type PrayerWindow,
+} from '@masjid/ui-utils';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
@@ -244,50 +242,19 @@
   let loadingChanges = $state(false);
   let changesError = $state('');
 
-  function addDays(date: Date, days: number): Date {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-
-  function formatDate(date: Date): string {
-    return date.toISOString().split('T')[0]!;
-  }
-
   function formatDateLabel(date: Date): string {
     return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
-  async function loadUpcomingChanges(reference: Date = new Date()) {
+  async function loadUpcomingChanges() {
     if (!masjid?.slug || !prayerTimes) return;
     loadingChanges = true;
     changesError = '';
 
     try {
-      const baseIqaamahs: Record<string, { iqaamah: string }> = {};
-      for (const name of prayerNames) {
-        baseIqaamahs[name] = { iqaamah: prayerTimes[name]?.iqaamah ?? '--:--' };
-      }
+      const result = await fetchWeeklyPrayerTimes(masjid.slug);
 
-      const futureDays: Array<{ date: string; times: Record<string, { iqaamah: string }> }> = [];
-
-      for (let offset = 1; offset <= 6; offset++) {
-        const date = addDays(reference, offset);
-        const iso = formatDate(date);
-        const result: DailyTimes = await fetchPrayerTimes(masjid.slug, iso);
-        const dayTimes = result.times as unknown as PrayerTimes;
-
-        const timesByName: Record<string, { iqaamah: string }> = {};
-        for (const name of prayerNames) {
-          timesByName[name] = { iqaamah: dayTimes[name]?.iqaamah ?? '--:--' };
-        }
-        futureDays.push({ date: iso, times: timesByName });
-      }
-
-      const rawChanges = findNearestIqaamahChanges(baseIqaamahs, futureDays, [...prayerNames]);
-
-      upcomingChanges = rawChanges.map((change) => ({
+      upcomingChanges = result.changes.map((change) => ({
         date: new Date(change.date + 'T12:00:00'),
         prayerKey: change.prayer,
         prayerLabel: prayerLabels[change.prayer] ?? change.prayer,

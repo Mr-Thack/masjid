@@ -164,6 +164,34 @@ export async function fetchJumuah(
   return res.json();
 }
 
+export interface WeeklyPrayerTimes {
+  start_date: string;
+  base_date: string;
+  masjid: { slug: string; name: string };
+  days: Array<{
+    date: string;
+    times: PrayerTimes | null;
+    error?: string;
+  }>;
+  changes: Array<{
+    date: string;
+    prayer: string;
+    from: string;
+    to: string;
+  }>;
+}
+
+export async function fetchWeeklyPrayerTimes(
+  slug: string,
+  startDate?: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<WeeklyPrayerTimes> {
+  const params = startDate ? `?start=${startDate}` : '';
+  const res = await customFetch(`${BASE}/${slug}/prayer/weekly${params}`);
+  if (!res.ok) throw new Error(`Failed to fetch weekly prayer times: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchMaktabInfo(
   slug: string,
   customFetch: typeof fetch = globalThis.fetch,
