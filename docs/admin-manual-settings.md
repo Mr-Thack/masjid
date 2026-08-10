@@ -523,13 +523,16 @@ THEME
 
 ### Section: Program Info
 
+Stored as a JSON object (`mkt_settings.program_info`). Every field is optional —
+leave empty/skip to hide that section on the public page.
+
 | Field | Input Type | Notes |
 |-------|-----------|-------|
-| Program Goal | text | e.g. "To provide structured Islamic education" |
-| Schedule Days | text | e.g. "Monday–Thursday" |
-| Schedule Time | text | e.g. "5:00 PM – 7:00 PM" |
-| Curriculum | repeatable text rows | List of subjects (e.g. "Quran", "Arabic", "Islamic Studies") |
-| FAQs | repeatable `{question, answer}` pair rows | Shown on the public maktab page |
+| Program Goal | textarea (3 rows) | e.g. "To provide structured Islamic education rooted in Quran and Sunnah" |
+| Schedule Days | text | e.g. "Tuesday – Thursday" |
+| Schedule Time | text | e.g. "5:30 PM – 7:00 PM" |
+| Curriculum | repeatable `{ name, description }` row pairs | Each row: **Subject Name** + **Description**. e.g. "Quran" / "Tajweed, memorisation, tafsir" |
+| FAQs | repeatable `{ question, answer }` row pairs | Each row: **Question** + **Answer** (textarea). Rendered on the public page as an accordion |
 
 All program info fields are stored as a JSON object in `mkt_settings.program_info`.
 

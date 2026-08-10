@@ -131,7 +131,7 @@ The worker is responsible for ensuring these tables exist in D1. In local API de
 
 #### `GET /api/v1/masjids/:slug/maktab`
 
-Returns active term + open status.
+Returns active term, program info, and enrollment status.
 
 ```json
 {
@@ -140,9 +140,23 @@ Returns active term + open status.
     "id": "term_...",
     "name": "AY 2025–2026",
     "length_months": 6,
+    "billing_months": 6,
     "prices": { "1": 10000, "2": 16000, "3plus": 20000 }
   },
   "status_message": null,
+  "program_info": {
+    "goal": "To provide structured Islamic education rooted in Quran and Sunnah",
+    "schedule_days": "Tuesday – Thursday",
+    "schedule_time": "5:30 PM – 7:00 PM",
+    "curriculum": [
+      { "name": "Quran", "description": "Tajweed, memorisation, tafsir" },
+      { "name": "Arabic", "description": "Reading, writing, conversation" }
+    ],
+    "faqs": [
+      { "question": "What ages are accepted?", "answer": "5–16 years old" },
+      { "question": "Where are classes held?", "answer": "Main prayer hall" }
+    ]
+  },
   "square_config": {
     "app_id": "sq0id-...",
     "location_id": "L...",
@@ -150,6 +164,13 @@ Returns active term + open status.
   }
 }
 ```
+
+Each `program_info` section is optional — if a field is empty or its array is empty,
+the consumer page hides that section. The consumer renders:
+- **goal** → `<h2>Goal</h2>` + paragraph
+- **schedule** → `<h2>Schedule</h2>` + "{days} — {time}"
+- **curriculum** → `<h2>Curriculum</h2>` + two-column table (Subject / Description)
+- **faqs** → `<h2>FAQs</h2>` + collapsible `<details>` accordion
 
 #### `POST /api/v1/masjids/:slug/maktab/enroll`
 
