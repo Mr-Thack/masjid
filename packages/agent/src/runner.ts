@@ -55,6 +55,8 @@ async function callLLM(
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error('LLM API error status:', response.status);
+    console.error('LLM API error body:', errorText.slice(0, 500));
     throw new Error(`LLM API error (${response.status}): ${errorText.slice(0, 200)}`);
   }
 
@@ -222,7 +224,9 @@ export async function runAgent(
   try {
     const existingMutations = await getMutationCount(ctx.branchId, ctx.db);
 
+    console.error('Agent: fetching profile...');
     const profileData = await getMasjidProfile(ctx);
+    console.error('Agent: profile fetched ok');
     const state = profileData as Record<string, unknown>;
 
     const tools = getToolDefinitions();
@@ -252,7 +256,9 @@ export async function runAgent(
     const toolMap = new Map(tools.map(t => [t.name, t]));
 
     for (let iteration = 0; iteration < 5; iteration++) {
+      console.error(`Agent: LLM call iteration ${iteration}, model=${llmConfig.model}, hasKey=${!!llmConfig.key}, tools=${toolSchemas.length}`);
       const response = await callLLM(messages, toolSchemas, llmConfig);
+      console.error(`Agent: LLM call ok, tool_calls=${response.tool_calls.length}`);
 
       if (response.tool_calls.length === 0) {
         const mutationCount = await getMutationCount(ctx.branchId, ctx.db);
@@ -317,15 +323,21 @@ export async function runAgent(
       diffReceipt: buildNoChangesResult(),
     };
   } catch (err) {
-    console.error('Agent error:', err);
-    const message = err instanceof Error ? err.message : String(err);
+    const errName = err instanceof Error ? err.name : 'Unknown';
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errCause = err instanceof Error ? (err.cause as Error | undefined)?.message ?? String(err.cause ?? 'none') : 'none';
+    const errStack = err instanceof Error ? (err.stack ?? '') : '';
+    console.error('Agent error name:', errName);
+    console.error('Agent error message:', errMsg);
+    console.error('Agent error cause:', errCause);
+    console.error('Agent error stack:', errStack.slice(0, 1000));
 
-    if (message.includes('LLM_API_KEY not configured')) {
+    if (errMsg.includes('LLM_API_KEY not configured')) {
       return buildFallbackResponse(ctx);
     }
 
     return {
-      textResponse: 'Something went wrong. I encountered an error while processing your request.',
+      textResponse: `Error: ${errMsg}`,
       diffReceipt: null,
     };
   }

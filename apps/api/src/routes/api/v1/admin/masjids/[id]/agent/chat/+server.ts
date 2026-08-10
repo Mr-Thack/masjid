@@ -94,9 +94,13 @@ export const POST: RequestHandler = async ({ params, request, locals, platform, 
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    const stack = e instanceof Error ? e.stack : '';
-    console.error('Agent chat error:', msg);
-    console.error('Agent chat stack:', stack);
+    const name = e instanceof Error ? e.name : 'Unknown';
+    const stack = e instanceof Error ? (e.stack ?? '') : '';
+    const cause = e instanceof Error ? (e.cause ? String(e.cause) : 'none') : 'none';
+    console.error('Agent chat error name:', name);
+    console.error('Agent chat error message:', msg);
+    console.error('Agent chat error cause:', cause);
+    console.error('Agent chat error stack:', stack.slice(0, 1000));
     if (e instanceof Error && e.name === 'ZodError') {
       return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
     }
