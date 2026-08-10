@@ -1235,3 +1235,86 @@ garbage over the seed row.
 renders an error card with Retry instead of the form. Save errors keep using
 `error`. The maktab settings page already had this guard (`if (!settings)
 return` + ErrorCard) — profile/theme now match.
+
+### 50. `$state` writes inside module-level getters consumed by `$derived` → `state_unsafe_mutation` in prod builds (2026-08-09)
+
+**Pitfall**: A `.svelte.ts` rune module exported a getter-based API:
+
+```ts
+let _pref = $state<DevicePreference>('auto');
+function load() { _pref = localStorage.getItem(KEY); } // writes $state
+export const deviceThemePref = {
+  get current() { load(); return _pref; },  // getter calls load()
+};
+```
+
+The layout consumed the getter inside `$derived`:
+```svelte
+let devicePref = $derived(deviceThemePref.current);
+```
+
+This worked in local dev but threw `state_unsafe_mutation` in production
+builds. The production signal implementation enforces that `$state` must
+not be written during `$derived` computation — the getter's internal
+`load()` call writes to `_pref` while Svelte is tracking the `$derived`.
+
+**How we fixed it**: Call the side-effect function eagerly at module-init
+time, not lazily inside the getter:
+
+```ts
+function load() { /* ... */ }
+load(); // runs before any component mounts — no $derived context exists yet
+
+export const deviceThemePref = {
+  get current() { return _pref; }, // read-only now
+};
+```
+
+**Key rule**: A getter consumed inside `$derived` must be a pure read.
+Never write to `$state` (or call a function that does) from inside a
+getter that will be read from a `$derived` expression. If you need
+lazy initialization, do it at module-init time or in `$effect`.
+
+**Files affected**: `apps/consumer/src/lib/theme/device-pref.svelte.ts`
+
+### 51. Diagnosing production-only Svelte 5 runtime errors without a browser (2026-08-09)
+
+**When you have**: a production-only Svelte 5 runtime error (e.g. `state_unsafe_mutation`,
+`state_referenced_locally`, `effect_update_depth_exceeded`) that cannot be
+reproduced locally.
+
+**Step-by-step diagnosis**:
+
+1. **Map the minified chunk back to source**. The stack trace contains chunk
+   names like `2.DL87jp6e.js`. In the `merge-pages.js` build output (or CI
+   build log), the Vite manifest names the chunks. Cross-reference with the
+   server build output — e.g. `_masjid_slug_/_page.svelte.js` (30.23 kB) in
+   the consumer SSR output maps to client chunk `nodes/2`. This tells you
+   which `.svelte` file the error originates from.
+
+2. **Read the error URL**. Svelte 5 errors include a URL like
+   `https://svelte.dev/e/state_unsafe_mutation`. This IS the canonical
+   documentation — open it.
+
+3. **Search imports of the suspect file**. The error may originate from a file
+   *imported by* the chunk, not the chunk itself. Grep all imports from the
+   suspect page/layout. In this case, `+layout.svelte` imported
+   `device-pref.svelte.ts` — the bug lived there.
+
+4. **Understand why prod-only**. The local dev build uses Proxy-based
+   reactivity; the production build uses compiled signals. The prod build
+   enforces rules that dev proxies are lenient about. Pair with what the
+   error means (`state_unsafe_mutation` = `$state` write during
+   `$derived`/template effect) and scan every `$state` in the
+   import chain for writes in reactive contexts.
+
+5. **Test fix locally, verify with staging**. After fixing, push to master
+   and trigger the `deploy-staging-only.yml` workflow (no E2E) to verify
+   the fix on real infrastructure. E2E tests run separately from the full
+   `deploy-staging.yml` on push to `staging`.
+
+6. **For future debugging**: if you have the Browsermcp tool, you can
+   navigate to the staging URL, open the browser console, and capture the
+   full error. Otherwise, reproduce by building locally
+   (`npm run build --workspace=@masjid/consumer`) and serving the static
+   output — the production build will surface the same error.
