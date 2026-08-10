@@ -789,6 +789,15 @@ html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='midday']  { back
 html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='amber']   { background-color: #1c1106; }
 html[data-style-system='mishkaat'] .tv-page[data-ambient-phase='night']   { background-color: #0e0a06; }
 
+/* Light-mode ambient palette: warm parchment tones that respect --color-bg.
+   Same values as the consumer app (§7.11); without these the dark phases
+   above override the cream light-mode base and the page renders dark-on-dark. */
+html[data-style-system='mishkaat'][data-theme-mode='light'] .tv-page[data-ambient-phase='predawn'] { background-color: #ece5d6; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .tv-page[data-ambient-phase='sunrise'] { background-color: #f2e8d4; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .tv-page[data-ambient-phase='midday']  { background-color: #f9f5ed; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .tv-page[data-ambient-phase='amber']   { background-color: #f4e6cc; }
+html[data-style-system='mishkaat'][data-theme-mode='light'] .tv-page[data-ambient-phase='night']   { background-color: #eae1cf; }
+
 /* ============================================================
    Friday / Ramadan / Eid touches (§7.6.6–7.6.8)
    ============================================================ */

@@ -11,6 +11,7 @@ function prop(name: string): string {
 
 beforeEach(() => {
   document.documentElement.removeAttribute('data-style-system');
+  document.documentElement.removeAttribute('data-theme-mode');
   document.documentElement.style.cssText = '';
 });
 
@@ -266,5 +267,39 @@ describe('applyTheme — Mishkaat light/dark mode', () => {
     applyTheme({ style_system: 'mishkaat', style_options: '{"themeMode":"light","metal":"rose"}' });
     expect(prop('--color-bg')).toBe(presetTokens['mishkaat-light']['--color-bg']);
     expect(prop('--color-primary')).toBe(metalPalettes.rose.primary);
+  });
+});
+
+describe('applyTheme — data-theme-mode attribute', () => {
+  // The ambient palettes in app.css branch on
+  // html[data-style-system='mishkaat'][data-theme-mode='light'] — without the
+  // attribute, light-mode masjids get the dark ambient phases (dark-on-dark).
+
+  it('sets data-theme-mode="light" when themeMode is light', () => {
+    applyTheme({ style_system: 'mishkaat', style_options: { themeMode: 'light' } });
+    expect(document.documentElement.getAttribute('data-theme-mode')).toBe('light');
+  });
+
+  it('sets data-theme-mode="dark" by default', () => {
+    applyTheme({ style_system: 'mishkaat' });
+    expect(document.documentElement.getAttribute('data-theme-mode')).toBe('dark');
+  });
+
+  it('sets data-theme-mode="dark" when themeMode is explicitly dark', () => {
+    applyTheme({ style_system: 'mishkaat', style_options: { themeMode: 'dark' } });
+    expect(document.documentElement.getAttribute('data-theme-mode')).toBe('dark');
+  });
+
+  it('removes data-theme-mode for Sakeenah', () => {
+    applyTheme({ style_system: 'mishkaat', style_options: { themeMode: 'light' } });
+    expect(document.documentElement.getAttribute('data-theme-mode')).toBe('light');
+    applyTheme({ style_system: 'sakeenah' });
+    expect(document.documentElement.getAttribute('data-theme-mode')).toBeNull();
+  });
+
+  it('removes data-theme-mode for an empty theme', () => {
+    applyTheme({ style_system: 'mishkaat', style_options: { themeMode: 'light' } });
+    applyTheme(null);
+    expect(document.documentElement.getAttribute('data-theme-mode')).toBeNull();
   });
 });

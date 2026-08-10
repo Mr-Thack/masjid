@@ -107,6 +107,15 @@ export function applyTheme(theme: ThemeInput | null | undefined): void {
   const styleSystem = resolveStyleSystem(theme);
   root.setAttribute('data-style-system', styleSystem);
 
+  // Mishkaat light/dark mode: CSS branches (e.g. the ambient palette) key
+  // off data-theme-mode. Sakeenah carries no mode attribute.
+  if (styleSystem === 'mishkaat') {
+    const mode = resolveStyleOptions(parseStyleOptions(theme?.style_options)).themeMode;
+    root.setAttribute('data-theme-mode', mode);
+  } else {
+    root.removeAttribute('data-theme-mode');
+  }
+
   const vars = buildThemeVars(theme);
   for (const [key, value] of Object.entries(vars)) {
     root.style.setProperty(key, value);
