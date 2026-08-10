@@ -1,42 +1,35 @@
 const KEY = 'masjid-device-theme';
 
-export type DevicePreference = 'auto' | 'light' | 'dark';
+export type DevicePreference = 'light' | 'dark';
 
-let _pref = $state<DevicePreference>('auto');
-let _loaded = false;
+let _pref = $state<DevicePreference | null>(null);
 
-function load() {
-  if (_loaded || typeof localStorage === 'undefined') return;
-  _loaded = true;
+// Read persisted preference at module init, before any reactive context exists.
+// This runs on both server (no-op — no localStorage) and client, but on the
+// client it executes before components mount, so the $state write is safe.
+if (typeof localStorage !== 'undefined') {
   const stored = localStorage.getItem(KEY);
   if (stored === 'light' || stored === 'dark') _pref = stored;
 }
 
-load();
-
 export const deviceThemePref = {
-  get current(): DevicePreference {
-    load();
+  get current(): DevicePreference | null {
     return _pref;
   },
   set current(val: DevicePreference) {
-    load();
     _pref = val;
     try {
-      if (val === 'auto') localStorage.removeItem(KEY);
-      else localStorage.setItem(KEY, val);
+      localStorage.setItem(KEY, val);
     } catch { /* quota exceeded, ignore */ }
   },
-  next(): DevicePreference {
-    const cycle: DevicePreference[] = ['auto', 'light', 'dark'];
-    const idx = cycle.indexOf(this.current);
-    const next = cycle[(idx + 1) % cycle.length];
+  /** Toggle between light and dark, persisting the choice. */
+  toggle(): DevicePreference {
+    const next = _pref === 'light' ? 'dark' : 'light';
     this.current = next;
     return next;
   },
-  /** Resolve the effective mode: auto → admin setting, light/dark → override. */
+  /** Resolve the effective mode: user choice overrides admin default. */
   resolve(adminMode: 'dark' | 'light'): 'dark' | 'light' {
-    load();
-    return _pref === 'auto' ? adminMode : _pref;
+    return _pref ?? adminMode;
   },
 };
