@@ -68,12 +68,13 @@ async function callLLM(
   }
 
   const rawText = await response.text();
+  console.error('LLM resp body start:', rawText.slice(0, 300));
   let data: Record<string, unknown>;
   try {
     data = JSON.parse(rawText) as Record<string, unknown>;
   } catch {
     console.error('LLM API returned non-JSON response:', rawText.slice(0, 500));
-    throw new Error(`LLM API returned non-JSON (HTTP ${response.status}): ${rawText.slice(0, 200)}`);
+    throw new Error(`[v2] LLM non-JSON HTTP ${response.status} ct=${ct} body=${rawText.slice(0, 300)}`);
   }
 
   const choices = data.choices as Array<Record<string, unknown>> | undefined;
@@ -361,7 +362,7 @@ export async function runAgent(
 async function buildFallbackResponse(ctx: BotContext): Promise<AgentResult> {
   return {
     textResponse: [
-      'Message received. I\'ve noted your request. LLM-powered processing is not yet configured (LLM_API_KEY not set).',
+      '[build 28113c2] Message received. I\'ve noted your request. LLM-powered processing is not yet configured (LLM_API_KEY not set).',
       '',
       'Available commands: /help, /status, /cancel',
     ].join('\n'),
