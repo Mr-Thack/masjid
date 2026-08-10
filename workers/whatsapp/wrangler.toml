@@ -1,5 +1,9 @@
 name = "mwa"
 compatibility_date = "2024-12-01"
+# global_fetch_strictly_public: this worker calls the mapi worker via its public
+# URL (API_URL). Without the flag, Cloudflare blocks same-zone Worker→Worker
+# subrequests with error 1042. (Named environments inherit compatibility flags.)
+compatibility_flags = ["global_fetch_strictly_public"]
 main = "src/index.ts"
 
 [observability]

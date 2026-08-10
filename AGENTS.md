@@ -290,7 +290,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
-> **NOT DEPLOYED (2026-08-06)**: WhatsApp/push workers are disabled until launch and have never been deployed (the account runs `mapi` + `mapi-staging` only). The prod deploy matrix in `deploy.yml` skips them — their entries are commented out with re-add instructions (no-op `build` scripts already in place; wrangler compiles TS at deploy time, no build step needed).
+> **NOT DEPLOYED (2026-08-06)**: WhatsApp/push workers are disabled until launch and have never been deployed (the account runs `mapi` + `mapi-staging` only). The prod deploy matrix in `deploy.yml` skips them — their entries are commented out with re-add instructions (no-op `build` scripts already in place; wrangler compiles TS at deploy time, no build step needed). `wrangler.toml` carries `global_fetch_strictly_public` so its calls to `mapi`'s public URL won't hit CF error 1042 when re-enabled (lesson 54).
 
 Stages 1-3 are complete. The worker handles Meta webhook verification, inbound message parsing,
 phone-to-tenant resolution, branch lifecycle (OPEN/MERGED/ABANDONED), media file handling,
@@ -367,7 +367,7 @@ The core bot logic extracted from WhatsApp worker. Used by both WhatsApp worker 
 | `buildSystemPrompt()` | System prompt builder with domain guides and examples |
 | `buildVisionPrompt()` | Vision-specific system prompt for timetable extraction |
 | `buildDiffReceipt()` | Returns structured `DiffReceipt` data (not rendered) |
-| `api-client.ts` | 18 JWT-authenticated API proxy functions |
+| `api-client.ts` | 18 JWT-authenticated API proxy functions — all responses validated via `apiJson()` (ok-check + JSON parse guard); optional `fetcher` injection (SvelteKit `event.fetch`) avoids CF error 1042 on same-zone calls — see lesson 54 |
 | `session.ts` | Branch/mutation/snapshot lifecycle (no tenant resolution) |
 | `media.ts` | `bufferToDataUri`, `uploadToR2`, `registerAsset` |
 
@@ -1373,3 +1373,37 @@ Also: type declarations (`app.d.ts`) must stay in sync with actual API response
 shapes; stale types cause cascading TS errors that obscure real issues.
 
 **Files affected**: `apps/consumer/src/lib/api.ts`, `apps/consumer/src/routes/[masjid_slug]/+layout.ts`, `apps/consumer/src/routes/[masjid_slug]/+layout.svelte`, `apps/consumer/src/app.d.ts`
+
+### 54. Cloudflare error 1042: same-zone Worker→Worker fetches are blocked (2026-08-10)
+
+**Pitfall**: The admin agent chat worked locally but failed in production on EVERY
+message (even "hi!") with `SyntaxError: Unexpected token 'e', "error code: 1042 "
+is not valid JSON`. The chat route set `apiUrl: url.origin` (the worker's own
+`mapi.mr-thack.workers.dev`) and `@masjid/agent`'s api-client called it with
+global `fetch` — a Worker fetching a Worker on the same zone. Cloudflare blocks
+that with **error 1042** ("Worker tried to fetch from another Worker on the same
+zone") and resolves the subrequest with a plain-text `error code: 1042` body.
+`getMasjidProfile()` then did a blind `res.json()` → SyntaxError. Two earlier
+"fix" commits hardened the LLM-response parsing instead — wrong spot: the raw
+SyntaxError (no `[v2]` prefix, while the deployed build HAD that hardening) was
+the tell that the parse failure lived in the unguarded api-client. Dev never hit
+it because `url.origin` is `http://localhost:5173` — no Cloudflare edge.
+
+**How we fixed it**: (1) `ApiClientConfig` gained an optional `fetcher` — the
+chat route passes SvelteKit's `event.fetch`, so same-origin API calls route
+through the SvelteKit server internally with NO network hop (also skips the JWT
+round-trip latency). (2) Every api-client function now goes through `apiJson()`,
+which checks `res.ok`, reads text first, and throws descriptive errors
+(`Admin API GET ... returned non-JSON response (HTTP 200): error code: 1042`)
+instead of raw SyntaxErrors. (3) The WhatsApp worker's `wrangler.toml` gained
+`compatibility_flags = ["global_fetch_strictly_public"]` — the documented escape
+hatch that lets its cross-worker call to `mapi` use the public fetch path when
+it is eventually deployed.
+
+**Key rule**: A Worker must never call its own (or a same-zone sibling's) public
+URL with global `fetch`. Inside the API app, inject `event.fetch`; across
+workers, use `global_fetch_strictly_public` or a Service Binding. And never
+`.json()` a fetch response without checking `res.ok`/content first — edge
+infrastructure returns plain-text error bodies.
+
+**Files affected**: `packages/agent/src/api-client.ts`, `packages/agent/src/types.ts`, `apps/api/src/routes/api/v1/admin/masjids/[id]/agent/chat/+server.ts`, `workers/whatsapp/wrangler.toml`

@@ -44,51 +44,73 @@ export async function apiCall(
     init.body = JSON.stringify(body);
   }
 
-  return fetch(url, init);
+  const doFetch = config.fetcher ?? fetch;
+  return doFetch(url, init);
+}
+
+/**
+ * apiCall + response validation. The body is always read as text first so that
+ * infrastructure failures surface as descriptive errors instead of cryptic
+ * JSON.parse SyntaxErrors — e.g. Cloudflare blocks same-zone Worker→Worker
+ * subrequests with a plain-text `error code: 1042` body (2026-08-10 incident).
+ */
+async function apiJson(
+  method: string,
+  path: string,
+  body: unknown | null,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall(method, path, body, config);
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`Admin API ${method} ${path} failed (HTTP ${res.status}): ${text.slice(0, 200)}`);
+  }
+  if (!text.trim()) {
+    return {};
+  }
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    throw new Error(`Admin API ${method} ${path} returned non-JSON response (HTTP ${res.status}): ${text.slice(0, 200)}`);
+  }
 }
 
 export async function getMasjidProfile(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}`, null, config);
 }
 
 export async function getPrayerConfig(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/prayer`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/prayer`, null, config);
 }
 
 export async function updateMasjidProfile(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}`, body, config);
 }
 
 export async function getPrayerRules(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/prayer`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/prayer`, null, config);
 }
 
 export async function updatePrayerConfig(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PATCH', `/api/v1/admin/masjids/${config.masjidId}/prayer`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PATCH', `/api/v1/admin/masjids/${config.masjidId}/prayer`, body, config);
 }
 
 export async function getPrayerRulesList(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules`, null, config);
 }
 
 export async function createPrayerRule(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules`, body, config);
 }
 
 export async function updatePrayerRule(
@@ -96,37 +118,32 @@ export async function updatePrayerRule(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules/${ruleId}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules/${ruleId}`, body, config);
 }
 
 export async function deletePrayerRule(
   ruleId: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules/${ruleId}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules/${ruleId}`, null, config);
 }
 
 export async function reorderPrayerRules(
   order: string[],
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules/reorder`, { order }, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/prayer/rules/reorder`, { order }, config);
 }
 
 export async function getJumuahSessions(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/jumuah`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/jumuah`, null, config);
 }
 
 export async function createJumuahSession(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/jumuah`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/jumuah`, body, config);
 }
 
 export async function updateJumuahSession(
@@ -134,29 +151,25 @@ export async function updateJumuahSession(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/jumuah/${sessionId}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/jumuah/${sessionId}`, body, config);
 }
 
 export async function deleteJumuahSession(
   sessionId: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/jumuah/${sessionId}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/jumuah/${sessionId}`, null, config);
 }
 
 export async function getAnnouncements(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/announcements`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/announcements`, null, config);
 }
 
 export async function createAnnouncement(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/announcements`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/announcements`, body, config);
 }
 
 export async function updateAnnouncement(
@@ -164,53 +177,46 @@ export async function updateAnnouncement(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/announcements/${slug}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/announcements/${slug}`, body, config);
 }
 
 export async function deleteAnnouncement(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/announcements/${slug}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/announcements/${slug}`, null, config);
 }
 
 export async function pinAnnouncement(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/announcements/${slug}/pin`, {}, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/announcements/${slug}/pin`, {}, config);
 }
 
 export async function dryRunPrayerTimes(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/prayer/dry-run`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/prayer/dry-run`, body, config);
 }
 
 export async function rollbackRestore(
   snapshotId: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/rollback`, { snapshot_id: snapshotId }, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/rollback`, { snapshot_id: snapshotId }, config);
 }
 
 export async function getPosts(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/posts`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/posts`, null, config);
 }
 
 export async function createPost(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/posts`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/posts`, body, config);
 }
 
 export async function updatePost(
@@ -218,32 +224,28 @@ export async function updatePost(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, body, config);
 }
 
 export async function deletePost(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, null, config);
 }
 
 export async function pinPostHomepage(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/homepage`, {}, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/homepage`, {}, config);
 }
 
 export async function pinPostInfo(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/info`, {}, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/info`, {}, config);
 }
 
 export async function explainPrayerRules(
@@ -298,44 +300,38 @@ export async function importTimetable(
 // ── Maktab ──────────────────────────────────────────────────────────────────
 
 export async function getMaktabSettings(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/maktab/settings`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/maktab/settings`, null, config);
 }
 
 export async function updateMaktabSettings(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/maktab/settings`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/maktab/settings`, body, config);
 }
 
 export async function getMaktabTerms(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms`, null, config);
 }
 
 export async function activateMaktabTerm(
   termId: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms/${termId}/activate`, {}, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms/${termId}/activate`, {}, config);
 }
 
 // ── Navigation ──────────────────────────────────────────────────────────────
 
 export async function getNavItems(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/nav`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/nav`, null, config);
 }
 
 export async function createNavItem(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/nav`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/nav`, body, config);
 }
 
 export async function updateNavItem(
@@ -343,39 +339,34 @@ export async function updateNavItem(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/${itemId}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/${itemId}`, body, config);
 }
 
 export async function deleteNavItem(
   itemId: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/nav/${itemId}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/nav/${itemId}`, null, config);
 }
 
 export async function reorderNavItems(
   itemIds: string[],
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/reorder`, { item_ids: itemIds }, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/reorder`, { item_ids: itemIds }, config);
 }
 
 // ── Custom Pages ────────────────────────────────────────────────────────────
 
 export async function getPages(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/pages`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/pages`, null, config);
 }
 
 export async function createPage(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/pages`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/pages`, body, config);
 }
 
 export async function updatePage(
@@ -383,14 +374,12 @@ export async function updatePage(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, body, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, body, config);
 }
 
 export async function deletePage(
   pageSlug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, null, config);
-  return res.json() as Promise<Record<string, unknown>>;
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, null, config);
 }

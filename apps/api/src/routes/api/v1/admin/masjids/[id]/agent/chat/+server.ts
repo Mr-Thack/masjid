@@ -38,7 +38,7 @@ function toAdminRecord(locals: App.Locals): AdminRecord {
   };
 }
 
-export const POST: RequestHandler = async ({ params, request, locals, platform, url }) => {
+export const POST: RequestHandler = async ({ params, request, locals, platform, url, fetch }) => {
   if (!locals.admin) {
     return ErrorJsonResponse('UNAUTHORIZED', 'Authentication required');
   }
@@ -65,6 +65,10 @@ export const POST: RequestHandler = async ({ params, request, locals, platform, 
       branchName: branch.branch_name,
       db: d1,
       apiUrl: url.origin,
+      // event.fetch routes same-origin requests through the SvelteKit server
+      // internally — no network hop, so no Cloudflare same-zone Worker→Worker
+      // subrequest block (error 1042) when this worker calls its own URL.
+      fetcher: fetch,
       jwtSecret: platform?.env?.JWT_SECRET ?? process.env.JWT_SECRET ?? 'dev-secret',
       llmConfig,
     };

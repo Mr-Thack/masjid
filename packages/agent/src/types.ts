@@ -5,6 +5,13 @@ export interface ApiClientConfig {
   jwtSecret: string;
   adminId: string;
   masjidId: string;
+  /**
+   * Optional fetch implementation for API calls. When the agent runs inside the
+   * API app itself, pass SvelteKit's `event.fetch`: same-origin requests are then
+   * routed internally with no network hop, avoiding Cloudflare's same-zone
+   * Worker→Worker subrequest block (error 1042). Defaults to global `fetch`.
+   */
+  fetcher?: typeof fetch;
 }
 
 export interface BotContext extends ApiClientConfig {
