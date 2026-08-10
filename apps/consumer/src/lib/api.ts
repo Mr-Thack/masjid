@@ -38,6 +38,20 @@ export interface Post {
   updated_at: string;
 }
 
+export interface NavItem {
+  id: string;
+  sort_order: number;
+  kind: 'route' | 'page' | 'link';
+  route_segment: string | null;
+  page_slug: string | null;
+  external_url: string | null;
+  label: string;
+  icon: string | null;
+  is_highlighted: boolean;
+  show_on_desktop_header: boolean;
+  show_on_mobile_bottom: boolean;
+}
+
 export interface PagePayload {
   masjid: {
     slug: string;
@@ -56,6 +70,10 @@ export interface PagePayload {
     youtube_url: string | null;
     instagram_url: string | null;
     external_donation_url: string | null;
+    about_markdown: string | null;
+    about_html: string | null;
+    donation_links: string | null;
+    show_donate_qr: boolean;
   };
   theme: {
     primary_color: string;
@@ -249,4 +267,14 @@ export async function fetchPost(
   const res = await customFetch(`${BASE}/${slug}/posts/${postSlug}`);
   if (!res.ok) throw new Error(`Failed to fetch post: ${res.status}`);
   return res.json();
+}
+
+export async function fetchNavItems(
+  slug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<NavItem[]> {
+  const res = await customFetch(`${BASE}/${slug}/nav`);
+  if (!res.ok) throw new Error(`Failed to fetch nav items: ${res.status}`);
+  const data = await res.json();
+  return data.nav_items ?? [];
 }

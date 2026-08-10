@@ -50,15 +50,9 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     const updateData: Record<string, unknown> = {};
 
     if (body.kind !== undefined) updateData.kind = body.kind;
-    if (body.kind === 'route' && body.route_segment !== undefined) {
-      updateData.routeSegment = body.route_segment;
-    }
-    if (body.kind === 'page' && body.page_slug !== undefined) {
-      updateData.pageSlug = body.page_slug;
-    }
-    if (body.kind === 'link' && body.external_url !== undefined) {
-      updateData.externalUrl = body.external_url;
-    }
+    if (body.route_segment !== undefined) updateData.routeSegment = body.route_segment;
+    if (body.page_slug !== undefined) updateData.pageSlug = body.page_slug;
+    if (body.external_url !== undefined) updateData.externalUrl = body.external_url;
     if (body.label !== undefined) updateData.label = body.label;
     if (body.icon !== undefined) updateData.icon = body.icon;
     if (body.is_highlighted !== undefined) updateData.isHighlighted = body.is_highlighted;

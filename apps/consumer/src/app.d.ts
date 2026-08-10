@@ -1,4 +1,5 @@
-import type { Theme, JumuahSession, Announcement } from '@masjid/schemas';
+import type { JumuahSession, Announcement } from '@masjid/schemas';
+import type { NavItem } from '$lib/api';
 
 interface PrayerTimeEntry {
   adhaan: string;
@@ -15,12 +16,20 @@ interface PrayerTimes {
   isha: PrayerTimeEntry;
 }
 
+interface PostData {
+  title: string;
+  slug: string;
+  compiled_html: string | null;
+  created_at: string;
+}
+
 declare global {
   namespace App {
     interface PageData {
       masjid: {
         slug: string;
         name: string;
+        asr_madhab?: string;
         address_line1: string | null;
         address_line2: string | null;
         city: string | null;
@@ -33,16 +42,20 @@ declare global {
         facebook_url: string | null;
         youtube_url: string | null;
         instagram_url: string | null;
+        external_donation_url: string | null;
         about_markdown: string | null;
         about_html: string | null;
         donation_links: string | null;
         show_donate_qr: boolean;
       };
-      theme: Theme;
+      theme: Record<string, unknown>;
       prayer_times: PrayerTimes | null;
       jumuah: JumuahSession[];
       pinned_announcement: { title: string; compiled_html: string } | null;
       recent_announcements: Announcement[];
+      homepage_post: PostData | null;
+      info_post: PostData | null;
+      nav_items: NavItem[];
     }
   }
 }

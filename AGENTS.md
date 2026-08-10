@@ -1318,3 +1318,56 @@ reproduced locally.
    full error. Otherwise, reproduce by building locally
    (`npm run build --workspace=@masjid/consumer`) and serving the static
    output — the production build will surface the same error.
+
+### 52. Zod `discriminatedUnion` rejects partial updates without the discriminator (2026-08-09)
+
+**Pitfall**: `UpdateNavItemSchema` was defined as `z.discriminatedUnion('kind', [...])`.
+A discriminated union requires the discriminator field (`kind`) in **every** request
+to determine which variant to validate. The admin frontend sent partial updates
+without `kind` — `{ label: 'New Label' }`, `{ show_on_desktop_header: false }`,
+`{ is_highlighted: true }`. Every update request failed with a `ZodError` (400),
+showing a toast error but never actually mutating data. The API integration tests
+passed only because they happened to include `kind` in every test payload. The
+admin frontend tests passed because they mocked the API calls.
+
+**How we fixed it**: Changed the schema from `z.discriminatedUnion('kind', [...])`
+to a flat `z.object({ kind: NavItemKind.optional(), ... })` where ALL fields are
+optional. Removed the `kind`-dependent gating in the PUT handler
+(`if (body.kind === 'route' && ...)`) — any provided field is applied directly.
+
+**Key rule**: Never use `z.discriminatedUnion` for PATCH/update schemas. Use a
+flat partial object instead. Discriminated unions are for creation where the
+discriminator is always known. Tests that mock API calls cannot detect Zod
+validation failures — write integration tests that actually parse the schema.
+
+**Files affected**: `packages/schemas/src/nav.ts`, `apps/api/src/routes/api/v1/admin/masjids/[id]/nav/[itemId]/+server.ts`
+
+### 53. Consumer frontend never fetched nav items from the API (2026-08-09)
+
+**Pitfall**: The admin navigation settings page, API CRUD endpoints, Zod schemas,
+and DB schema were all complete and working. But the consumer frontend
+(`apps/consumer/src/routes/[masjid_slug]/+layout.svelte`) had a hardcoded
+`navItems` array. The pre-built components (`Header.svelte`, `MobileBottomNav.svelte`,
+`MobileTopBar.svelte`, `NavDrawer.svelte`) that could consume API-fetched nav
+items existed but were never imported or wired up. Admin changes appeared to
+"not work" because the consumer — the only place users see the results — ignored
+the API entirely.
+
+**How we fixed it**: Added `NavItem` type + `fetchNavItems()` to `apps/consumer/src/lib/api.ts`,
+added `nav_items` to the layout `load()` function (with graceful fallback — nav
+endpoint failure doesn't crash the page), and replaced the hardcoded `navItems`
+array with a `$derived.by()` block that maps API items to the layout's render format,
+including an icon-name→SVG-path map for all 9 icon names. Desktop/mobile visibility
+toggles (`show_on_desktop_header`, `show_on_mobile_bottom`) are now respected.
+Updated `app.d.ts` and `PagePayload` to include `nav_items` and missing masjid
+fields (`about_html`, `about_markdown`, `donation_links`, `show_donate_qr`,
+`asr_madhab`, `external_donation_url`).
+
+**Key rule**: When building a feature across layers (admin UI → API → consumer),
+verify the **final consumer** reads from the API. A feature is not complete until
+the end user sees the result. Pre-built components that were "ready for integration"
+but were never wired up are a red flag — either wire them in or delete them.
+Also: type declarations (`app.d.ts`) must stay in sync with actual API response
+shapes; stale types cause cascading TS errors that obscure real issues.
+
+**Files affected**: `apps/consumer/src/lib/api.ts`, `apps/consumer/src/routes/[masjid_slug]/+layout.ts`, `apps/consumer/src/routes/[masjid_slug]/+layout.svelte`, `apps/consumer/src/app.d.ts`

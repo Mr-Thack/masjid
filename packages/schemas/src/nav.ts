@@ -46,35 +46,17 @@ export const CreateNavItemSchema = z.discriminatedUnion('kind', [
 
 export type CreateNavItem = z.infer<typeof CreateNavItemSchema>;
 
-export const UpdateNavItemSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('route'),
-    route_segment: RouteSegment.optional(),
-    label: z.string().min(1).max(30).optional(),
-    icon: IconName.optional().nullable(),
-    is_highlighted: z.boolean().optional(),
-    show_on_desktop_header: z.boolean().optional(),
-    show_on_mobile_bottom: z.boolean().optional(),
-  }),
-  z.object({
-    kind: z.literal('page'),
-    page_slug: z.string().min(1).max(50).optional(),
-    label: z.string().min(1).max(30).optional(),
-    icon: IconName.optional().nullable(),
-    is_highlighted: z.boolean().optional(),
-    show_on_desktop_header: z.boolean().optional(),
-    show_on_mobile_bottom: z.boolean().optional(),
-  }),
-  z.object({
-    kind: z.literal('link'),
-    external_url: z.string().url().optional(),
-    label: z.string().min(1).max(30).optional(),
-    icon: IconName.optional().nullable(),
-    is_highlighted: z.boolean().optional(),
-    show_on_desktop_header: z.boolean().optional(),
-    show_on_mobile_bottom: z.boolean().optional(),
-  }),
-]);
+export const UpdateNavItemSchema = z.object({
+  kind: NavItemKind.optional(),
+  route_segment: RouteSegment.optional(),
+  page_slug: z.string().min(1).max(50).optional(),
+  external_url: z.string().url().optional(),
+  label: z.string().min(1).max(30).optional(),
+  icon: IconName.optional().nullable(),
+  is_highlighted: z.boolean().optional(),
+  show_on_desktop_header: z.boolean().optional(),
+  show_on_mobile_bottom: z.boolean().optional(),
+});
 
 export type UpdateNavItem = z.infer<typeof UpdateNavItemSchema>;
 
