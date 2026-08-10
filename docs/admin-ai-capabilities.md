@@ -499,3 +499,125 @@ The `BotChat` component never calls an LLM API directly. It only calls
 - Multiple masjids can share one LLM key (the API route adds the masjid-specific
   system prompt).
 - Admin users can't exhaust the LLM rate limit through client-side abuse.
+
+---
+
+## 11. Agent Capabilities & Limitations
+
+This section documents what the AI agent can and cannot do, mapped against the
+manual admin settings UI. It is the **canonical reference** for agent scope.
+
+### 11.1 Available Agent Tools (32 total)
+
+| Domain | Tools | Description |
+|--------|-------|-------------|
+| THEME | `theme_get`, `theme_update` | Colors (6-digit hex), fonts, time format (12h/24h), and 10 prayer/session labels |
+| PROFILE | `profile_get`, `profile_update` | Name, address, contact info, social links, donation URL, about markdown |
+| PRAYER_CONFIG | `prayer_config_get`, `prayer_config_update` | Calculation method (1–13), asr_madhab, high_latitude_rule, timezone, dual-Asr, angle/manual offsets |
+| PRAYER_RULES | `prayer_rules_{list,create,update,delete,reorder}` | Iqaamah timing rules with 8 condition types and 9 action types |
+| JUMUAH | `jumuah_{list,create,update,delete}` | Friday session label, time, khateeb, location, speech_time, is_active |
+| ANNOUNCEMENTS | `announcements_{list,create,update,delete,pin}` | Content with markdown, status (draft/published/archived), pin, expiry |
+| POSTS | `posts_{list,create,update,delete,pin_homepage,pin_info}` | Rich permanent content, homepage/Info page pins, hidden toggle |
+| DIAGNOSTICS | `timetable_preview`, `rules_explain`, `rules_validate` | Dry-run preview, rule traces per-prayer, rule-set validation |
+| ROLLBACK | `rollback_list_snapshots`, `rollback_restore` | Point-in-time snapshot restore |
+| TIMETABLE | `timetable_import` | Batch import rules from vision-extracted timetables (atomic) |
+
+### 11.2 What the Agent CAN Do (Agent + Manual UI parity)
+
+| Setting domain | Agent | Manual UI | Notes |
+|---------------|:-----:|:---------:|-------|
+| Theme colors, fonts, labels, time format | ✓ | ✓ | Agent also knows transliteration presets (Indo-Pak, Arabic, Turkish, Malay, Bosnian) |
+| Layout preset (Mishkaat / Sakeenah) | ✓ | ✓ | Values: `mishkaat` or `minimal-light` |
+| Masjid profile (name, address, contact) | ✓ | ✓ | |
+| Social media links | ✓ | ✓ | Facebook, YouTube, Instagram, website |
+| Prayer calculation method (1–13) | ✓ | ✓ (1–7) | Agent supports all 13; manual UI shows 7 |
+| Asr madhab (shafi/hanafi) | ✓ | — | Agent-only setting |
+| High latitude rule | ✓ | — | Agent-only setting |
+| Dual Asr display | ✓ | — | Agent-only setting |
+| Fajr/Isha custom angles | ✓ | — | Agent-only setting |
+| Manual prayer offsets (7 prayers) | ✓ | — | Agent-only setting |
+| Prayer rules CRUD | ✓ | ✓ | |
+| Jumu'ah sessions CRUD | ✓ | ✓ | |
+| Announcements CRUD + pin | ✓ | ✓ | |
+| Posts CRUD + pin | ✓ | ✓ | |
+| Snapshots and rollback | ✓ | ✓ | |
+| Dry-run timetable preview | ✓ | ✓ | |
+| Rule traces (`rules_explain`) | ✓ | — | Agent-only diagnostic |
+| Rule validation (`rules_validate`) | ✓ | — | Agent-only diagnostic |
+| Timetable bulk import | ✓ | — | Agent-only (vision extraction) |
+
+### 11.3 What the Agent CANNOT Do (Manual UI Only)
+
+These settings are **not available** through the AI agent. Admins must use the
+manual settings pages.
+
+| Setting | Why not available |
+|---------|-------------------|
+| **Navigation items** (add/remove/reorder links, desktop/mobile visibility, highlight) | No navigation tools exist in `@masjid/agent` |
+| **Custom domains** (add/delete domain, SSL status) | Security-sensitive; DNS + SSL management out of scope |
+| **Account password** (change password) | Security boundary — agent should never handle credentials |
+| **Maktab** (terms, pricing, enrollment open/close, registrations) | Payment configuration out of scope |
+| **Style options** (`style_system`, `style_options` JSON: metal, motif, arch, ambient phases, frames, emblem) | These are advanced visual options not yet exposed in any interface (UI or agent) |
+| **Twitter/X URL** | Missing from `profile_update` tool parameters; only Facebook, YouTube, Instagram, website are supported |
+| **About HTML** (`about_html`) | Not exposed; only `about_markdown` is available |
+
+### 11.4 Condition & Action Types for Prayer Rules
+
+The agent's `prayer_rules_create` tool accepts these types. Both the system prompt
+and the tool JSON schema agree on the full set:
+
+**Condition types** (`conditions_json` array; multiple are ANDed):
+- `always` — always applies
+- `day_of_week` — `{"days":[0-6]}` (0=Sun)
+- `month` — `{"months":[1-12]}` Gregorian
+- `month_day_range` — `{"start_month":N,"start_day":N,"end_month":N,"end_day":N}` (wraps across years)
+- `hijri_month` — `{"months":[1-12]}` (9=Ramadan)
+- `hijri_day_range` — `{"month":N,"start_day":N,"end_day":N}`
+- `date_range` — `{"start":"YYYY-MM-DD","end":"YYYY-MM-DD"}`
+- `time_of_day` — `{"operator":"before|after","threshold":"HH:MM"}`
+
+**Action types** (`action_json` object; exactly one):
+- `add_minutes` — `{"minutes":N}` add N minutes after adhaan
+- `set_fixed_time` — `{"time":"HH:MM"}` exact clock time
+- `set_offset_from_prayer` — `{"prayer":"name","from":"adhaan|iqaamah|sunrise","minutes":N}`
+- `round_up` / `round_down` / `round_nearest` — `{"increment":N}` (N ∈ {1,5,10,15,20,30,60})
+- `cap_min` / `cap_max` — `{"time":"HH:MM"}` floor/ceiling
+- `right_after_adhaan` — iqaamah immediately after adhaan
+
+### 11.5 Calculation Methods Reference
+
+The agent supports all 13 calculation methods. The manual UI only lists 1–7.
+
+| # | Method | asr_madhab |
+|---|--------|-----------|
+| 1 | Shia Ithna-Ashari | — |
+| 2 | ISNA (North America) | Shafi |
+| 3 | Muslim World League | Shafi |
+| 4 | Umm al-Qura (Makkah) | Shafi |
+| 5 | Egyptian General Authority | Shafi |
+| 6 | University of Tehran | Shafi |
+| 7 | University of Karachi | Hanafi |
+| 8 | Turkey (Diyanet) | — |
+| 9 | Singapore (MUIS) | — |
+| 10 | Dubai | — |
+| 11 | Kuwait | — |
+| 12 | Qatar | — |
+| 13 | Moonsighting Committee | — |
+
+### 11.6 Transliteration Presets
+
+The agent knows these language presets for customizing prayer/session labels.
+Tell the agent "use Turkish/Arabic/Indo-Pak labels" and it will set all 10 labels.
+
+| Label | Indo-Pak | Arabic | Turkish | Malay | Bosnian |
+|-------|----------|--------|---------|-------|---------|
+| Adhaan | Azaan | Adhan | Ezan | Azan | Ezan |
+| Iqaamah | Iqamah | Iqama | Kamet | Iqamat | Ikamet |
+| Dhuhr | Zuhr | Dhuhr | Öğle | Zohor | Podne |
+| Jumu'ah | Jummah | Jumu'ah | Cuma | Jumaat | Džuma |
+| Speech | Bayaan | Khutbah | Hutbe | Khutbah | Hutba |
+| Sunrise | Sunrise | Sunrise | Güneş | Sunrise | Sunrise |
+| Fajr | Fajr | Fajr | Sabah | Fajr | Fajr |
+| Asr | Asr | Asr | İkindi | Asar | Ikindija |
+| Maghrib | Maghrib | Maghrib | Akşam | Maghrib | Akšam |
+| Isha | Isha | Isha | Yatsı | Isha | Jacija |

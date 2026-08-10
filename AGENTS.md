@@ -390,6 +390,8 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 | `/admin/[slug]/settings/jumuah` | Jumu'ah sessions management |
 | `/admin/[slug]/settings/maktab` | Maktab term/pricing management + registrations |
 | `/admin/[slug]/settings/announcements` | Announcements with markdown editor |
+| `/admin/[slug]/settings/posts` | Posts with markdown editor + homepage/info pins |
+| `/admin/[slug]/settings/navigation` | Nav items (add/reorder built-in routes, custom pages, external links; desktop/mobile toggles) |
 | `/admin/[slug]/settings/domain` | Custom domain management |
 | `/admin/[slug]/settings/snapshots` | Configuration snapshots + rollback |
 | `/admin/[slug]/settings/account` | Password change |

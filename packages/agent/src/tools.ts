@@ -130,7 +130,7 @@ export function getToolDefinitions(): ToolDefinition[] {
       parameters: {
         type: 'object',
         properties: {
-          layout_preset: stringProp('Layout preset name: "modern_minimal", "glass-dark", or "minimal-light"'),
+          layout_preset: stringProp('Layout preset: "mishkaat" (flagship) or "minimal-light" (Sakeenah)'),
           primary_color: hexProp('Primary brand color hex (e.g. "#1e3a8a")'),
           accent_color: hexProp('Accent color hex (e.g. "#10b981")'),
           font_heading: stringProp('Heading font family (e.g. "Inter", "Amiri")'),
@@ -275,14 +275,20 @@ Conditions (conditions_json array, at least one):
   - {"type":"always"} — always applies
   - {"type":"day_of_week","days":[0-6]} — specific days (0=Sun, 5=Fri)
   - {"type":"month","months":[1-12]} — Gregorian months
-  - {"type":"hijri_month","months":[1-12]} — Hijri months  
+  - {"type":"month_day_range","start_month":N,"start_day":N,"end_month":N,"end_day":N} — recurring annual range (wraps across years)
+  - {"type":"hijri_month","months":[1-12]} — Hijri months
+  - {"type":"hijri_day_range","month":N,"start_day":N,"end_day":N} — day range within a Hijri month
   - {"type":"date_range","start":"YYYY-MM-DD","end":"YYYY-MM-DD"}
+  - {"type":"time_of_day","operator":"before|after","threshold":"HH:MM"} — match based on adhaan time
 Actions (action_json object, exactly one):
   - {"type":"add_minutes","minutes":N} — add N minutes after adhaan
   - {"type":"set_fixed_time","time":"HH:MM"} — set exact time
+  - {"type":"set_offset_from_prayer","prayer":"name","from":"adhaan|iqaamah|sunrise","minutes":N}
   - {"type":"round_up","increment":N} — round up to nearest N
   - {"type":"round_down","increment":N} — round down to nearest N
   - {"type":"round_nearest","increment":N} — round to nearest N
+  - {"type":"cap_min","time":"HH:MM"} — floor constraint
+  - {"type":"cap_max","time":"HH:MM"} — ceiling constraint
   - {"type":"right_after_adhaan"} — iqaamah immediately after adhaan
 Increments for rounding must be: 1, 5, 10, 15, 20, 30, or 60.
 prayer_name must be one of: fajr, dhuhr, asr, maghrib, isha.
