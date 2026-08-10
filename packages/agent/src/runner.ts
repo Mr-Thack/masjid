@@ -25,6 +25,9 @@ async function callLLM(
     throw new Error('LLM_API_KEY not configured. Set LLM_API_KEY in your environment variables.');
   }
 
+  const endpoint = `${config.url}/chat/completions`;
+  console.error('LLM call: url=', endpoint, 'model=', config.model, 'keyLen=', config.key.length);
+
   const body: Record<string, unknown> = {
     model: config.model,
     messages,
@@ -44,14 +47,18 @@ async function callLLM(
     body.tool_choice = 'auto';
   }
 
-  const response = await fetch(`${config.url}/chat/completions`, {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.key}`,
     },
     body: JSON.stringify(body),
+    redirect: 'follow',
   });
+
+  const ct = response.headers.get('content-type') || '';
+  console.error('LLM response: status=', response.status, 'content-type=', ct);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -60,7 +67,15 @@ async function callLLM(
     throw new Error(`LLM API error (${response.status}): ${errorText.slice(0, 200)}`);
   }
 
-  const data = await response.json() as Record<string, unknown>;
+  const rawText = await response.text();
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(rawText) as Record<string, unknown>;
+  } catch {
+    console.error('LLM API returned non-JSON response:', rawText.slice(0, 500));
+    throw new Error(`LLM API returned non-JSON (HTTP ${response.status}): ${rawText.slice(0, 200)}`);
+  }
+
   const choices = data.choices as Array<Record<string, unknown>> | undefined;
 
   if (!choices || choices.length === 0) {

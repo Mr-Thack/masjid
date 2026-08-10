@@ -11,16 +11,19 @@ const ChatSchema = z.object({
 });
 
 function resolveLLMEnv(platform?: App.Platform) {
+  const rawUrl = (platform?.env as Record<string, string> | undefined)?.LLM_API_URL
+    ?? process.env.LLM_API_URL
+    ?? 'https://openrouter.ai/api/v1';
+  const rawKey = (platform?.env as Record<string, string> | undefined)?.LLM_API_KEY
+    ?? process.env.LLM_API_KEY
+    ?? '';
+  const rawModel = (platform?.env as Record<string, string> | undefined)?.LLM_MODEL
+    ?? process.env.LLM_MODEL
+    ?? 'google/gemma-4-31b-it';
   return {
-    url: (platform?.env as Record<string, string> | undefined)?.LLM_API_URL
-      ?? process.env.LLM_API_URL
-      ?? 'https://openrouter.ai/api/v1',
-    key: (platform?.env as Record<string, string> | undefined)?.LLM_API_KEY
-      ?? process.env.LLM_API_KEY
-      ?? '',
-    model: (platform?.env as Record<string, string> | undefined)?.LLM_MODEL
-      ?? process.env.LLM_MODEL
-      ?? 'google/gemma-4-31b-it',
+    url: rawUrl.trim(),
+    key: rawKey.trim(),
+    model: rawModel.trim(),
   };
 }
 
