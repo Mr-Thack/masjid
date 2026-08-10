@@ -14,6 +14,7 @@ function termToPublic(term: typeof mktTerms.$inferSelect) {
     id: term.id,
     name: term.name,
     length_months: term.lengthMonths,
+    billing_months: term.billingMonths,
     prices: {
       '1': term.priceCents1,
       '2': term.priceCents2,
@@ -78,26 +79,42 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       }
     }
 
+    // Fetch current settings so unprovided fields are preserved (partial update)
+    const current = await db
+      .select()
+      .from(mktSettings)
+      .where(eq(mktSettings.masjidId, params.id))
+      .get();
+
+    const setData: Record<string, unknown> = {};
+    if (body.enrollment_open !== undefined) setData.enrollmentOpen = body.enrollment_open;
+    if (body.active_term_id !== undefined) setData.activeTermId = body.active_term_id;
+    if (body.status_message !== undefined) setData.statusMessage = body.status_message;
+    if (body.assistance_code !== undefined) setData.assistanceCode = body.assistance_code;
+    if (body.program_info !== undefined) setData.programInfo = JSON.stringify(body.program_info);
+
+    const now = new Date().toISOString();
+
     await db
       .insert(mktSettings)
       .values({
         masjidId: params.id,
-        activeTermId: body.active_term_id ?? null,
-        enrollmentOpen: body.enrollment_open ?? false,
-        statusMessage: body.status_message ?? null,
-        assistanceCode: body.assistance_code ?? null,
-        programInfo: body.program_info ? JSON.stringify(body.program_info) : '{}',
-        updatedAt: new Date().toISOString(),
+        activeTermId: (setData.activeTermId !== undefined ? setData.activeTermId : current?.activeTermId) ?? null,
+        enrollmentOpen: (setData.enrollmentOpen !== undefined ? setData.enrollmentOpen : current?.enrollmentOpen) ?? false,
+        statusMessage: (setData.statusMessage !== undefined ? setData.statusMessage : current?.statusMessage) ?? null,
+        assistanceCode: (setData.assistanceCode !== undefined ? setData.assistanceCode : current?.assistanceCode) ?? null,
+        programInfo: (setData.programInfo !== undefined ? setData.programInfo : current?.programInfo) ?? '{}',
+        updatedAt: now,
       })
       .onConflictDoUpdate({
         target: mktSettings.masjidId,
         set: {
-          activeTermId: body.active_term_id ?? null,
-          enrollmentOpen: body.enrollment_open ?? false,
-          statusMessage: body.status_message ?? null,
-          assistanceCode: body.assistance_code ?? null,
-          programInfo: body.program_info ? JSON.stringify(body.program_info) : '{}',
-          updatedAt: new Date().toISOString(),
+          activeTermId: (setData.activeTermId !== undefined ? setData.activeTermId : current?.activeTermId) ?? null,
+          enrollmentOpen: (setData.enrollmentOpen !== undefined ? setData.enrollmentOpen : current?.enrollmentOpen) ?? false,
+          statusMessage: (setData.statusMessage !== undefined ? setData.statusMessage : current?.statusMessage) ?? null,
+          assistanceCode: (setData.assistanceCode !== undefined ? setData.assistanceCode : current?.assistanceCode) ?? null,
+          programInfo: (setData.programInfo !== undefined ? setData.programInfo : current?.programInfo) ?? '{}',
+          updatedAt: now,
         },
       });
 
