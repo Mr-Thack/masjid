@@ -34,12 +34,21 @@
   let theme = $derived($page.data.theme);
 
   let devicePref = $derived(deviceThemePref.current);
-  let adminMode = $derived((resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null))).themeMode);
+  // Mishkaat reads light/dark from style_options.themeMode; Sakeenah uses
+  // layout_preset ('minimal-light' vs 'glass-dark').
+  let adminMode = $derived(resolveStyleSystem(theme) === 'mishkaat'
+    ? (resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null))).themeMode
+    : theme?.layout_preset === 'minimal-light' ? 'light' : 'dark');
   let effectiveMode = $derived(deviceThemePref.resolve(adminMode));
 
-  let effectiveTheme = $derived<ThemeInput | null>(() => {
+  let effectiveTheme = $derived.by<ThemeInput | null>(() => {
     if (!theme) return null;
-    let rawOpts = theme.style_options;
+    const result: Record<string, unknown> = {};
+    for (const key of Object.keys(theme)) {
+      result[key] = (theme as Record<string, unknown>)[key];
+    }
+    const effective = Object.keys(result).length > 0 ? result : theme;
+    let rawOpts = effective.style_options;
     let parsed = typeof rawOpts === 'string'
       ? rawOpts
       : (rawOpts && typeof rawOpts === 'object' ? structuredClone(rawOpts) : {});
@@ -48,10 +57,11 @@
     } else {
       parsed = { themeMode: effectiveMode };
     }
-    return {
-      ...theme,
-      style_options: typeof parsed === 'string' ? parsed : JSON.stringify(parsed),
-    };
+    effective.style_options = typeof parsed === 'string' ? parsed : JSON.stringify(parsed);
+    if (resolveStyleSystem(theme as ThemeInput) === 'sakeenah') {
+      effective.layout_preset = effectiveMode === 'light' ? 'minimal-light' : 'glass-dark';
+    }
+    return effective as ThemeInput;
   });
 
   $effect(() => {
@@ -124,7 +134,6 @@
   const themeIcons: Record<string, string> = {
     light: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z',
     dark: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z',
-    auto: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15',
   };
 </script>
 
@@ -184,12 +193,12 @@
       <button
         class="shrink-0 p-2 rounded-lg transition-colors hover:bg-white/5"
         style="color: var(--color-text-muted);"
-        onclick={() => deviceThemePref.next()}
-        title="Toggle light/dark mode ({devicePref})"
+        onclick={() => deviceThemePref.toggle()}
+        title="Toggle light/dark mode ({effectiveMode})"
         aria-label="Toggle light/dark mode"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={themeIcons[devicePref] ?? themeIcons.auto} />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={themeIcons[effectiveMode] ?? themeIcons.dark} />
         </svg>
       </button>
     </div>
