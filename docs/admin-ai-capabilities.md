@@ -551,6 +551,8 @@ manual admin settings UI. It is the **canonical reference** for agent scope.
 | Timetable bulk import | ✓ | — | Agent-only (vision extraction) |
 | Maktab settings & program info | ✓ | ✓ | Enrollment controls, program info (goal, schedule, curriculum, FAQs) |
 | Maktab term activation | ✓ | ✓ | Activate existing terms (term creation with Square plans is UI-only) |
+| Navigation items | ✓ | ✓ | CRUD + reorder: built-in routes, custom pages, external links, visibility toggles, highlight |
+| Custom pages | ✓ | ✓ | CRUD: slug, title, markdown → HTML compilation |
 
 ### 11.3 What the Agent CANNOT Do (Manual UI Only)
 
@@ -559,7 +561,6 @@ manual settings pages.
 
 | Setting | Why not available |
 |---------|-------------------|
-| **Navigation items** (add/remove/reorder links, desktop/mobile visibility, highlight) | No navigation tools exist in `@masjid/agent` |
 | **Custom domains** (add/delete domain, SSL status) | Security-sensitive; DNS + SSL management out of scope |
 | **Account password** (change password) | Security boundary — agent should never handle credentials |
 | **Maktab term creation** (Square plan creation) | Payment integration; terms must be created in the admin UI |

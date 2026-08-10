@@ -322,3 +322,75 @@ export async function activateMaktabTerm(
   const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/maktab/terms/${termId}/activate`, {}, config);
   return res.json() as Promise<Record<string, unknown>>;
 }
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+
+export async function getNavItems(config: ApiClientConfig): Promise<Record<string, unknown>> {
+  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/nav`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function createNavItem(
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/nav`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function updateNavItem(
+  itemId: string,
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/${itemId}`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function deleteNavItem(
+  itemId: string,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/nav/${itemId}`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function reorderNavItems(
+  itemIds: string[],
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/reorder`, { item_ids: itemIds }, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+// ── Custom Pages ────────────────────────────────────────────────────────────
+
+export async function getPages(config: ApiClientConfig): Promise<Record<string, unknown>> {
+  const res = await apiCall('GET', `/api/v1/admin/masjids/${config.masjidId}/pages`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function createPage(
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('POST', `/api/v1/admin/masjids/${config.masjidId}/pages`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function updatePage(
+  pageSlug: string,
+  body: Record<string, unknown>,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('PUT', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, body, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function deletePage(
+  pageSlug: string,
+  config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  const res = await apiCall('DELETE', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, null, config);
+  return res.json() as Promise<Record<string, unknown>>;
+}

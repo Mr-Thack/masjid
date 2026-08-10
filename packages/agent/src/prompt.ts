@@ -85,6 +85,33 @@ Program info fields (all optional — leave empty to hide that section on the pu
 
 Pricing and payment configuration (creating new terms with Square plans) is NOT available
 through the agent — use the admin web UI to create terms. The agent CAN activate existing terms.
+
+### NAV
+Navigation items for the public website header and mobile bottom bar.
+- \`nav_list\` — list all nav items with their kind, label, icon, visibility toggles, and order
+- \`nav_create\` — add a nav item (built-in route, custom page, or external link)
+- \`nav_update\` — update label, icon, desktop/mobile visibility, highlight
+- \`nav_delete\` — remove a nav item
+- \`nav_reorder\` — reorder all items by providing the full ID list
+
+Nav kinds:
+  - route: built-in page (route_segment in prayer/news/info/maktab/donate/jumuah/announcements)
+  - page: custom page (use page_slug from pages_list)
+  - link: external URL (valid URL in external_url)
+
+Icon names: book, calendar, clock, compass, donate, graduation-cap, heart, home, info, megaphone, message-square, palette, users
+Only one item can be highlighted at a time — setting is_highlighted on one removes it from others.
+
+### PAGES
+Custom pages for the masjid website (permanent informational content).
+- \`pages_list\` — list all custom pages
+- \`pages_create\` — create a page with slug, title, and markdown content (auto-compiled to HTML)
+- \`pages_update\` — update title, content, or both
+- \`pages_delete\` — permanently delete a page (also removes its nav items)
+
+Slugs must be URL-safe: lowercase letters, numbers, and hyphens only.
+Pages are a natural fit for an About Us, Services, Programs, or Community Info section.
+You can create a page and then add it to the navigation with nav_create.
 `;
 
 const EXAMPLES = `
@@ -144,6 +171,27 @@ User: "Close maktab enrollment and show a message that it opens next month"
 
 User: "Activate the Fall 2026 term"
 → call maktab_term_activate({term_id:"term_abc123"})
+
+User: "Add a donate button to the bottom navigation"
+→ call nav_create({kind:"route", route_segment:"donate", label:"Donate", icon:"heart"})
+
+User: "Hide the maktab tab from mobile nav but keep it on desktop"
+→ call nav_update({item_id:"nav_abc", show_on_mobile_bottom:false})
+
+User: "Reorder the nav: put prayer times first, then news, then info"
+→ call nav_reorder({item_ids:["id_prayer", "id_news", "id_info", "id_maktab", "id_donate"]})
+
+User: "Create an About Us page with our masjid history"
+→ call pages_create({slug:"about-us", title:"About Us", raw_markdown:"# About Masjid Al-Noor\\n\\nWe were founded in 2010..."})
+
+User: "Update the services page with new food pantry hours"
+→ call pages_update({slug:"services", raw_markdown:"# Our Services\\n\\n## Food Pantry\\nEvery Saturday 10am-2pm..."})
+
+User: "Switch us to the Mishkaat style with gold accents and turn on ambient colors"
+→ call theme_update({style_system:"mishkaat", style_options:{metal:"gold", ambient:true}})
+
+User: "Make the display large-print and use Arabic-Indic numerals"
+→ call theme_update({style_options:{density:"large-print", numerals:"arabic-indic"}})
 `;
 
 export function buildSystemPrompt(

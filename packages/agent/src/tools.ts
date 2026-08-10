@@ -33,6 +33,15 @@ import {
   updateMaktabSettings,
   getMaktabTerms,
   activateMaktabTerm,
+  getNavItems,
+  createNavItem,
+  updateNavItem,
+  deleteNavItem,
+  reorderNavItems,
+  getPages,
+  createPage,
+  updatePage,
+  deletePage,
 } from './api-client';
 import { explainAllPrayers, validateRules } from './rules-engine';
 import type { RuleWithDb, ConditionEval, RuleTrace, PrayerTrace } from './rules-engine';
@@ -87,6 +96,17 @@ case 'POSTS':
       if (action === 'UPSERT') return 'Update maktab settings';
       if (action === 'ACTIVATE') return `Activate maktab term`;
       return 'Maktab change';
+    case 'NAV':
+      if (action === 'CREATE') return `Add nav item "${args.label || 'untitled'}"`;
+      if (action === 'UPDATE') return `Update nav item`;
+      if (action === 'DELETE') return 'Delete nav item';
+      if (action === 'REORDER') return 'Reorder nav items';
+      return 'Nav change';
+    case 'PAGES':
+      if (action === 'CREATE') return `Create page "${args.title || args.slug || 'untitled'}"`;
+      if (action === 'UPDATE') return `Update page "${args.slug || ''}"`;
+      if (action === 'DELETE') return `Delete page "${args.slug || ''}"`;
+      return 'Page change';
     default:
       return `${domain} ${action}: ${truncate(args)}`;
   }
@@ -139,6 +159,36 @@ export function getToolDefinitions(): ToolDefinition[] {
         type: 'object',
         properties: {
           layout_preset: stringProp('Layout preset: "mishkaat" (flagship) or "minimal-light" (Sakeenah)'),
+          style_system: enumProp(['sakeenah', 'mishkaat'], 'Style system: "sakeenah" (minimal) or "mishkaat" (soul-forward with ceremony states, frames, ambient palette)'),
+          style_options: {
+            type: 'object',
+            description: 'Style options (advanced visual settings for the selected style system)',
+            properties: {
+              metal: enumProp(['gold', 'silver', 'copper', 'rose'], 'Accent metal palette (Mishkaat only)'),
+              motif: enumProp(['eight-point-star', 'honeycomb', 'girih', 'arabesque', 'none'], 'Geometric motif pattern (Mishkaat only)'),
+              arch: boolProp('Show mihrab arch niche around the clock (Mishkaat only)'),
+              numerals: enumProp(['western', 'arabic-indic'], 'Numeral style for clock and times'),
+              density: enumProp(['standard', 'large-print'], 'Display density (large-print for accessibility)'),
+              ambient: boolProp('Enable ambient palette that shifts colors through the day'),
+              quietHours: {
+                type: 'object',
+                description: 'Night calm settings',
+                properties: {
+                  enabled: boolProp('Enable quiet hours (dims the display overnight)'),
+                  quietMinutes: { type: 'integer', minimum: 0, maximum: 180, description: 'Minutes of quiet transition (default: 30)' },
+                  sleepAfterIshaMinutes: { type: 'integer', minimum: 0, maximum: 360, description: 'Minutes after Isha iqaamah to enter night calm (default: 90)' },
+                  wakeBeforeFajrMinutes: { type: 'integer', minimum: 0, maximum: 180, description: 'Minutes before Fajr adhaan to wake from night calm (default: 30)' },
+                },
+              },
+              frames: {
+                type: 'array',
+                description: 'Soul-column frames to show: "hadith", "jumuah", "announcements", "donate", "qr", "community"',
+                items: { type: 'string' },
+              },
+              emblem: enumProp(['engraved', 'medallion'], 'Masjid emblem style'),
+              donateAppeal: { type: 'string', maxLength: 80, description: 'Donation appeal text (max 80 chars, shown on donate frame)' },
+            },
+          },
           primary_color: hexProp('Primary brand color hex (e.g. "#1e3a8a")'),
           accent_color: hexProp('Accent color hex (e.g. "#10b981")'),
           font_heading: stringProp('Heading font family (e.g. "Inter", "Amiri")'),
@@ -963,6 +1013,176 @@ Program info (all optional — leave empty to hide that section on the public pa
         const summary = describeMutation('MAKTAB', 'ACTIVATE', { term_id: args.term_id });
         await storeMutation(ctx.branchId, 'MAKTAB', 'ACTIVATE', `term:${args.term_id}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
+      },
+    },
+    // ── Navigation ───────────────────────────────────────────────────────────
+    {
+      name: 'nav_list',
+      description: 'List all navigation items for the masjid\'s public website (header and bottom nav). Each item has a kind (route/page/link), label, icon, visibility toggles (desktop/mobile), highlight flag, and sort order.',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const data = await getNavItems(ctx);
+        return { success: true, data };
+      },
+    },
+    {
+      name: 'nav_create',
+      description: `Add a navigation item to the public website.
+Kind "route" (built-in page): route_segment must be one of "prayer", "news", "info", "maktab", "donate", "jumuah", "announcements".
+Kind "page" (custom page): use page_slug from pages_list.
+Kind "link" (external URL): use external_url (must be valid URL).
+All kinds: label (display text), icon (one of: book, calendar, clock, compass, donate, graduation-cap, heart, home, info, megaphone, message-square, palette, users — optional), show_on_desktop_header (default true), show_on_mobile_bottom (default true), is_highlighted (default false, only one at a time).`,
+      parameters: {
+        type: 'object',
+        properties: {
+          kind: enumProp(['route', 'page', 'link'], 'Nav item kind'),
+          route_segment: enumProp(['prayer', 'news', 'info', 'maktab', 'donate', 'jumuah', 'announcements'], 'Built-in route (only for kind=route)'),
+          page_slug: stringProp('Custom page slug (only for kind=page)'),
+          external_url: stringProp('External URL (only for kind=link)'),
+          label: stringProp('Display text for this nav item'),
+          icon: stringProp('Icon name: book, calendar, clock, compass, donate, graduation-cap, heart, home, info, megaphone, message-square, palette, users'),
+          show_on_desktop_header: boolProp('Show in desktop header nav (default true)'),
+          show_on_mobile_bottom: boolProp('Show in mobile bottom nav (default true)'),
+          is_highlighted: boolProp('Highlight this item (only one at a time; removes highlight from others)'),
+        },
+        required: ['kind', 'label'],
+      },
+      handler: async (args, ctx) => {
+        const data = await createNavItem(args as Record<string, unknown>, ctx);
+        const summary = describeMutation('NAV', 'CREATE', args);
+        await storeMutation(ctx.branchId, 'NAV', 'CREATE', `nav:${(data as Record<string, unknown>).id}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'nav_update',
+      description: 'Update a navigation item. Send only the fields you want to change. All fields are optional.',
+      parameters: {
+        type: 'object',
+        properties: {
+          item_id: stringProp('ID of the nav item to update (from nav_list)'),
+          label: stringProp('New display text'),
+          icon: stringProp('New icon name, or null to remove'),
+          show_on_desktop_header: boolProp('Toggle desktop visibility'),
+          show_on_mobile_bottom: boolProp('Toggle mobile visibility'),
+          is_highlighted: boolProp('Toggle highlight (only one at a time)'),
+        },
+        required: ['item_id'],
+      },
+      handler: async (args, ctx) => {
+        const { item_id, ...body } = args;
+        const data = await updateNavItem(item_id as string, body as Record<string, unknown>, ctx);
+        const summary = describeMutation('NAV', 'UPDATE', args);
+        await storeMutation(ctx.branchId, 'NAV', 'UPDATE', `nav:${item_id}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'nav_delete',
+      description: 'Remove a navigation item from the public website. Provide the item ID from nav_list.',
+      parameters: {
+        type: 'object',
+        properties: {
+          item_id: stringProp('ID of the nav item to delete'),
+        },
+        required: ['item_id'],
+      },
+      handler: async (args, ctx) => {
+        await deleteNavItem(args.item_id as string, ctx);
+        const summary = describeMutation('NAV', 'DELETE', args);
+        await storeMutation(ctx.branchId, 'NAV', 'DELETE', `nav:${args.item_id}`, args, ctx.db);
+        return { success: true, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'nav_reorder',
+      description: 'Reorder all navigation items by providing the full list of item IDs in the desired order.',
+      parameters: {
+        type: 'object',
+        properties: {
+          item_ids: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Array of all nav item IDs in the desired order' },
+        },
+        required: ['item_ids'],
+      },
+      handler: async (args, ctx) => {
+        const data = await reorderNavItems(args.item_ids as string[], ctx);
+        const summary = describeMutation('NAV', 'REORDER', {});
+        await storeMutation(ctx.branchId, 'NAV', 'REORDER', 'nav_order', { item_ids: args.item_ids }, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    // ── Custom Pages ─────────────────────────────────────────────────────────
+    {
+      name: 'pages_list',
+      description: 'List all custom pages. Custom pages are permanent informational content (About Us, Services, Programs, etc.).',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: [],
+      },
+      handler: async (_args, ctx) => {
+        const data = await getPages(ctx);
+        return { success: true, data };
+      },
+    },
+    {
+      name: 'pages_create',
+      description: 'Create a custom page. Provide a URL-safe slug (lowercase, hyphens), a title, and markdown content. The page is compiled to HTML and can be added to the navigation via nav_create.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', description: 'URL-safe slug (lowercase letters, numbers, hyphens). e.g. "about-us", "weekend-school", "food-pantry"' },
+          title: stringProp('Page title (1-200 characters)'),
+          raw_markdown: stringProp('Markdown content (supports headings, bold, italic, links, images, lists)'),
+        },
+        required: ['slug', 'title', 'raw_markdown'],
+      },
+      handler: async (args, ctx) => {
+        const data = await createPage(args as Record<string, unknown>, ctx);
+        const summary = describeMutation('PAGES', 'CREATE', args);
+        await storeMutation(ctx.branchId, 'PAGES', 'CREATE', `page:${args.slug}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'pages_update',
+      description: 'Update a custom page. Send only the fields you want to change. If you change the content, the HTML is recompiled.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: stringProp('Slug of the page to update (from pages_list)'),
+          title: stringProp('New title'),
+          raw_markdown: stringProp('New markdown content'),
+        },
+        required: ['slug'],
+      },
+      handler: async (args, ctx) => {
+        const { slug, ...body } = args;
+        const data = await updatePage(slug as string, body as Record<string, unknown>, ctx);
+        const summary = describeMutation('PAGES', 'UPDATE', args);
+        await storeMutation(ctx.branchId, 'PAGES', 'UPDATE', `page:${slug}`, args, ctx.db);
+        return { success: true, data, mutationSummary: summary };
+      },
+    },
+    {
+      name: 'pages_delete',
+      description: 'Permanently delete a custom page by its slug. This also removes any nav items that reference this page.',
+      parameters: {
+        type: 'object',
+        properties: {
+          slug: stringProp('Slug of the page to delete'),
+        },
+        required: ['slug'],
+      },
+      handler: async (args, ctx) => {
+        await deletePage(args.slug as string, ctx);
+        const summary = describeMutation('PAGES', 'DELETE', args);
+        await storeMutation(ctx.branchId, 'PAGES', 'DELETE', `page:${args.slug}`, args, ctx.db);
+        return { success: true, mutationSummary: summary };
       },
     },
   ];
