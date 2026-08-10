@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import QRCode from 'qrcode';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
@@ -16,6 +17,47 @@
 
   let links = $derived(parseDonationLinks(masjid?.donation_links));
   let hasLinks = $derived(links.length > 0);
+  let showDonateQr = $derived(masjid?.show_donate_qr ?? false);
+
+  let shareOpen = $state(false);
+  let qrSvg = $state('');
+  let copied = $state(false);
+
+  function tokenColor(name: string, fallback: string): string {
+    if (typeof getComputedStyle === 'undefined') return fallback;
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function generateQr() {
+    const url = window.location.href;
+    QRCode.toString(url, {
+      type: 'svg',
+      margin: 1,
+      width: 200,
+      color: {
+        dark: tokenColor('--color-accent', '#10b981'),
+        light: tokenColor('--color-bg', '#0f172a'),
+      },
+    })
+      .then((svg) => { qrSvg = svg; })
+      .catch(() => { qrSvg = ''; });
+  }
+
+  function toggleShare() {
+    shareOpen = !shareOpen;
+    if (shareOpen && !qrSvg) generateQr();
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    } catch {
+      // clipboard not available, ignore
+    }
+  }
 </script>
 
 <svelte:head>
@@ -94,4 +136,62 @@
       </div>
     </div>
   </div>
+
+  {#if showDonateQr}
+    <div class="glass-card p-6 text-center space-y-4">
+      {#if !shareOpen}
+        <button
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 bg-accent shadow-lg"
+          style="text-shadow: 0 1px 2px rgba(0,0,0,0.2);"
+          onclick={toggleShare}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" class="h-4.5 w-4.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          Share
+        </button>
+      {:else}
+        <div class="space-y-4">
+          <button
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
+            style="color: var(--color-text-muted);"
+            onclick={toggleShare}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Close
+          </button>
+
+          {#if qrSvg}
+            <div class="flex justify-center">
+              <div class="p-4 rounded-xl inline-block" style="background: rgba(255,255,255,0.05);">
+                {@html qrSvg}
+              </div>
+            </div>
+          {/if}
+
+          <p class="text-sm" style="color: var(--color-text-muted);">Scan the QR code to open this page on another device</p>
+
+          <button
+            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-105 active:scale-95"
+            style="background: rgba(255,255,255,0.08); color: var(--color-text);"
+            onclick={copyLink}
+          >
+            {#if copied}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Copied!
+            {:else}
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Copy Link
+            {/if}
+          </button>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>

@@ -8,6 +8,7 @@ export const CalculationMethod = z.number().int().min(1).default(2);
 export const AsrMadhab = z.enum(['shafi', 'hanafi']).default('shafi');
 export const HighLatitudeRule = z.enum(['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none']).default('seventh_of_night');
 export const ShowDualAsr = z.boolean().default(false);
+export const ShowDonateQr = z.boolean().default(true);
 export const TwilightAngle = z.number().min(8).max(22).nullable();
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,7 @@ export const CreateMasjidSchema = z.object({
   asr_madhab: AsrMadhab,
   high_latitude_rule: HighLatitudeRule,
   show_dual_asr: ShowDualAsr,
+  show_donate_qr: ShowDonateQr,
   fajr_angle: TwilightAngle.optional(),
   isha_angle: TwilightAngle.optional(),
   adjust_fajr: z.number().int().default(0),
@@ -106,6 +108,7 @@ export const UpdateMasjidSchema = z.object({
   asr_madhab: AsrMadhab.optional(),
   high_latitude_rule: HighLatitudeRule.optional(),
   show_dual_asr: ShowDualAsr.optional(),
+  show_donate_qr: ShowDonateQr.optional(),
   fajr_angle: TwilightAngle.optional(),
   isha_angle: TwilightAngle.optional(),
   adjust_fajr: z.number().int().optional(),
@@ -155,6 +158,7 @@ export const MasjidProfileSchema = z.object({
   asr_madhab: z.string(),
   high_latitude_rule: z.string(),
   show_dual_asr: z.boolean(),
+  show_donate_qr: z.boolean(),
   fajr_angle: z.number().nullable(),
   isha_angle: z.number().nullable(),
   adjust_fajr: z.number().int(),
@@ -200,5 +204,6 @@ export const MasjidPublicSchema = z.object({
   website_url: z.string().nullable(),
   about_markdown: z.string().nullable(),
   donation_links: z.string().nullable(),
+  show_donate_qr: z.boolean(),
 });
 export type MasjidPublic = z.infer<typeof MasjidPublicSchema>;

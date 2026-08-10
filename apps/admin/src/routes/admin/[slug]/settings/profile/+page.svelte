@@ -23,7 +23,7 @@
     facebook_url: '', youtube_url: '', instagram_url: '', website_url: '',
     about_markdown: '', donation_links: '[]', calculation_method: 2, timezone: 'America/Chicago',
     asr_madhab: 'shafi', high_latitude_rule: 'seventh_of_night',
-    show_dual_asr: false, fajr_angle: null as number | null, isha_angle: null as number | null,
+    show_dual_asr: false, show_donate_qr: true, fajr_angle: null as number | null, isha_angle: null as number | null,
     adjust_fajr: 0, adjust_sunrise: 0, adjust_dhuhr: 0, adjust_asr: 0, adjust_maghrib: 0, adjust_isha: 0,
     latitude: 0, longitude: 0,
   });
@@ -121,6 +121,7 @@
       form.asr_madhab = profile.asr_madhab || 'shafi';
       form.high_latitude_rule = profile.high_latitude_rule || 'seventh_of_night';
       form.show_dual_asr = !!profile.show_dual_asr;
+      form.show_donate_qr = !!profile.show_donate_qr;
       form.fajr_angle = profile.fajr_angle ?? null;
       form.isha_angle = profile.isha_angle ?? null;
       form.adjust_fajr = profile.adjust_fajr ?? 0;
@@ -168,6 +169,7 @@
         asr_madhab: coerceAsrMadhab(form.asr_madhab),
         high_latitude_rule: coerceHighLatitudeRule(form.high_latitude_rule),
         show_dual_asr: coerceBoolean(form.show_dual_asr),
+        show_donate_qr: coerceBoolean(form.show_donate_qr),
         fajr_angle: coerceAngle(form.fajr_angle),
         isha_angle: coerceAngle(form.isha_angle),
         adjust_fajr: Number(form.adjust_fajr) || 0,
@@ -400,6 +402,15 @@
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" class="w-4 h-4" bind:checked={form.show_dual_asr} onchange={handleChange} />
               <span>Show both Asr times (Shafi + Hanafi)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" class="w-4 h-4" bind:checked={form.show_donate_qr} onchange={handleChange} />
+              <span>Show Share QR card on donate page</span>
             </label>
           </div>
         </div>

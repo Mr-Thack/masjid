@@ -67,6 +67,7 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
       website_url: masjid.websiteUrl,
       about_markdown: masjid.aboutMarkdown,
       donation_links: masjid.donationLinks,
+      show_donate_qr: !!masjid.showDonateQr,
       created_at: masjid.createdAt,
       theme: theme
         ? {
@@ -141,6 +142,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.asr_madhab !== undefined) masjidData.asrMadhab = masjidUpdate.asr_madhab;
     if (masjidUpdate.high_latitude_rule !== undefined) masjidData.highLatitudeRule = masjidUpdate.high_latitude_rule;
     if (masjidUpdate.show_dual_asr !== undefined) masjidData.showDualAsr = masjidUpdate.show_dual_asr;
+    if (masjidUpdate.show_donate_qr !== undefined) masjidData.showDonateQr = masjidUpdate.show_donate_qr;
     if (masjidUpdate.fajr_angle !== undefined) masjidData.fajrAngle = masjidUpdate.fajr_angle;
     if (masjidUpdate.isha_angle !== undefined) masjidData.ishaAngle = masjidUpdate.isha_angle;
     if (masjidUpdate.adjust_fajr !== undefined) masjidData.adjustFajr = masjidUpdate.adjust_fajr;
@@ -216,6 +218,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       asr_madhab: updated?.asrMadhab,
       high_latitude_rule: updated?.highLatitudeRule,
       show_dual_asr: !!updated?.showDualAsr,
+      show_donate_qr: !!updated?.showDonateQr,
       tenant_status: updated?.tenantStatus,
       address_line1: updated?.addressLine1,
       address_line2: updated?.addressLine2,

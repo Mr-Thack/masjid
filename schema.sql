@@ -47,7 +47,8 @@ CREATE TABLE masjids (
     donation_links TEXT,                            -- JSON array of {label, url} for multiple donation links
     admin_email TEXT,                               -- Authenticated identity for email-based ingestion
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    show_donate_qr INTEGER NOT NULL DEFAULT 1
 );
 CREATE INDEX idx_masjids_slug ON masjids(slug);
 

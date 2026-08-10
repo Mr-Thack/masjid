@@ -106,6 +106,7 @@ const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
   // about_markdown and donation_links (2026-08-09)
   ['masjids', 'about_markdown', 'TEXT'],
   ['masjids', 'donation_links', 'TEXT'],
+  ['masjids', 'show_donate_qr', 'INTEGER NOT NULL DEFAULT 1'],
 ];
 
 function ensureTables(sqlite: Database.Database) {
@@ -144,6 +145,7 @@ function ensureTables(sqlite: Database.Database) {
       website_url TEXT,
       about_markdown TEXT,
       donation_links TEXT,
+      show_donate_qr INTEGER NOT NULL DEFAULT 1,
       admin_email TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );

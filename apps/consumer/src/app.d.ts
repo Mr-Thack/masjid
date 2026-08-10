@@ -36,6 +36,7 @@ declare global {
         about_markdown: string | null;
         about_html: string | null;
         donation_links: string | null;
+        show_donate_qr: boolean;
       };
       theme: Theme;
       prayer_times: PrayerTimes | null;

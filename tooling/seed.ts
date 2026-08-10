@@ -68,6 +68,7 @@ async function seed() {
     asrMadhab: 'shafi',
     highLatitudeRule: 'seventh_of_night',
     showDualAsr: false,
+    showDonateQr: true,
     fajrAngle: null,
     ishaAngle: null,
     tenantStatus: 'ACTIVE',

@@ -53,6 +53,7 @@ export const POST: RequestHandler = async ({ request, platform }) => {
       asrMadhab: body.asr_madhab,
       highLatitudeRule: body.high_latitude_rule,
       showDualAsr: body.show_dual_asr,
+      showDonateQr: body.show_donate_qr,
       fajrAngle: body.fajr_angle ?? null,
       ishaAngle: body.isha_angle ?? null,
       adjustFajr: body.adjust_fajr ?? 0,

@@ -127,6 +127,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         about_markdown: masjid.aboutMarkdown,
         about_html: masjid.aboutMarkdown ? compileMarkdown(masjid.aboutMarkdown) : null,
         donation_links: masjid.donationLinks,
+        show_donate_qr: !!masjid.showDonateQr,
       },
       theme: rawTheme
         ? {

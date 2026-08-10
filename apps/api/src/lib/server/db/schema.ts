@@ -41,6 +41,7 @@ export const masjids = sqliteTable('masjids', {
   donationLinks: text('donation_links'),
   adminEmail: text('admin_email'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  showDonateQr: integer('show_donate_qr', { mode: 'boolean' }).notNull().default(true),
 });
 
 export const masjidThemes = sqliteTable('masjid_themes', {
