@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { fetchPrayerTimes } from '$lib/api';
+  import { fetchWeeklyPrayerTimes } from '$lib/api';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import WeeklyPrayerTable, { type WeekDay } from '$lib/components/WeeklyPrayerTable.svelte';
@@ -78,12 +78,13 @@
     const newData = new Map<string, { times: Record<string, { adhaan: string; iqaamah: string }>; asr_secondary?: string }>();
 
     try {
-      for (const date of weekDates) {
-        const dateStr = formatDate(date);
-        const result = await fetchPrayerTimes(masjid.slug, dateStr);
-        const times = result.times as Record<string, { adhaan: string; iqaamah: string }> & { asr_secondary?: string | null };
+      const startDate = formatDate(weekDates[0]!);
+      const result = await fetchWeeklyPrayerTimes(masjid.slug, startDate);
+      for (const day of result.days) {
+        if (!day.times) continue;
+        const times = day.times as Record<string, { adhaan: string; iqaamah: string }> & { asr_secondary?: string | null };
         const { asr_secondary, ...prayerTimes } = times;
-        newData.set(dateStr, {
+        newData.set(day.date, {
           times: prayerTimes as unknown as Record<string, { adhaan: string; iqaamah: string }>,
           asr_secondary: asr_secondary ?? undefined,
         });
