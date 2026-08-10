@@ -2,9 +2,9 @@
 
 ## Current state (2026-08-05)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 470 tests)
+- **Working API** (SvelteKit + D1, 671 tests)
 - **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
-- **Working consumer frontend** (SvelteKit static/SPA, 83 tests)
+- **Working consumer frontend** (SvelteKit static/SPA, 165 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
 - **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
@@ -65,10 +65,10 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test             # API unit tests, 470 (no server needed)
+npm run test             # API unit tests, 671 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
 npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
-npm run test:consumer    # Consumer frontend, 83 tests (jsdom + testing-library)
+npm run test:consumer    # Consumer frontend, 165 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 215 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker removal tests, 12 (Playwright, requires running dev servers)
 npm run test:agent       # Agent package tests (pending: ~175 expected)
@@ -421,7 +421,8 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 Maktab enrollment lives inside the main `@masjid/api` monolith, using the same D1/SQLite database as the rest of the platform.
 
 ### State
-- **408 API tests** total; 56 of those cover Maktab (public info, auth, validation, admin CRUD, Square enrollment, term activation, registrations, and helper units for Square/email/money/schemas).
+- **671 API tests** total; 67 of those cover Maktab (public info, auth, validation, admin CRUD, Square enrollment, term activation, registrations, and helper units for Square/email/money/schemas).
+- **Enrollment form errors (2026-08-10)**: client validation lives in `apps/consumer/src/lib/maktab-validation.ts` (pure, unit-tested) and mirrors `SquareEnrollmentSchema` — keep the two in sync when rules change. The enroll page shows a `role="alert"` summary panel at the top on submit (scrolled into view + focused) plus per-field inline errors with `aria-invalid`; inline errors also appear on blur pre-submit (the summary panel stays submit-only) and clear on input. Required fields carry accent asterisks + `aria-required`; server Zod failures return readable sentences, not the raw Zod JSON blob.
 - **Square is the only payment provider**; Stripe support was removed because account verification could not be completed in time.
 - **No migration from `suffah-old`** — only new enrollments are tracked.
 - **Embed mode** for the enrollment form: `?embed=1` (or `?embed=true`) hides the consumer header and bottom navigation so the form can be dropped into an existing masjid website via iframe.

@@ -1,8 +1,14 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { formatCents, monthlyPriceCents } from '$lib/money';
   import { submitMaktabEnrollment, verifyAssistanceCode } from '$lib/api';
+  import {
+    validateEnrollment,
+    hasErrors,
+    summarizeErrors,
+    type EnrollmentErrors,
+  } from '$lib/maktab-validation';
   import ErrorState from '$lib/components/ErrorState.svelte';
 
   let slug = $derived($page.params.masjid_slug);
@@ -28,9 +34,20 @@
   let verifying = $state(false);
   let submitting = $state(false);
   let submitError = $state<string | null>(null);
+  let fieldErrors = $state<EnrollmentErrors | null>(null);
+  let errorSummaryEl = $state<HTMLDivElement | null>(null);
+  let submitAttempted = $state(false);
   let success = $state(false);
   let cardInstance: { destroy: () => void } | null = null;
   let verifyTimer: ReturnType<typeof setTimeout> | null = null;
+
+  let errorLines = $derived(
+    fieldErrors && hasErrors(fieldErrors)
+      ? summarizeErrors(fieldErrors)
+      : submitError
+        ? [submitError]
+        : [],
+  );
 
   let amountCents = $derived(
     maktab?.term ? monthlyPriceCents(maktab.term, form.children.length) : 0,
@@ -115,28 +132,107 @@
 
   function removeChild(index: number) {
     form.children = form.children.filter((_, i) => i !== index);
+    if (fieldErrors) {
+      fieldErrors = {
+        ...fieldErrors,
+        childErrors: fieldErrors.childErrors.filter((_, i) => i !== index),
+      };
+    }
   }
 
-  function validate(): string | null {
-    if (!form.father.name && !form.mother.name) {
-      return 'Please enter at least one parent\'s name.';
-    }
-    if (form.children.length === 0) return 'Please add at least one child.';
-    for (const child of form.children) {
-      if (!child.name || !child.dob || !child.sex) return 'Please complete each child\'s information.';
-    }
-    if (!form.address_line1 || !form.city || !form.postal_code) return 'Please enter the full address.';
-    if (!form.card_holder_name) return 'Please enter the card holder name.';
-    return null;
+  function borderColor(invalid: boolean | undefined): string {
+    return invalid ? 'var(--color-accent)' : 'var(--color-border)';
+  }
+
+  function clearFieldError(
+    field: 'address_line1' | 'city' | 'postal_code' | 'card_holder_name',
+  ) {
+    if (!fieldErrors) return;
+    fieldErrors = { ...fieldErrors, [field]: undefined };
+  }
+
+  function clearParentError(parent: 'father' | 'mother', field: 'name' | 'phone' | 'email') {
+    if (!fieldErrors) return;
+    const current = fieldErrors.parentErrors[parent];
+    const next = current ? { ...current, [field]: undefined } : null;
+    const parentStillInvalid = next && Object.values(next).some(Boolean);
+    fieldErrors = {
+      ...fieldErrors,
+      parents: undefined,
+      parentErrors: {
+        ...fieldErrors.parentErrors,
+        [parent]: parentStillInvalid ? next : null,
+      },
+    };
+  }
+
+  function clearChildError(index: number, field: 'name' | 'dob' | 'sex') {
+    if (!fieldErrors) return;
+    const childErrors = fieldErrors.childErrors.map((c, i) => {
+      if (i !== index || !c) return c;
+      const next = { ...c, [field]: undefined };
+      return Object.values(next).some(Boolean) ? next : null;
+    });
+    fieldErrors = { ...fieldErrors, childErrors };
+  }
+
+  /** Scroll the error summary into view and move keyboard/screen-reader focus to it. */
+  async function showErrors() {
+    await tick();
+    errorSummaryEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    errorSummaryEl?.focus({ preventScroll: true });
+  }
+
+  // ── Validate-on-blur ──────────────────────────────────────────────────────
+  // Blur validation only ever ADDS an inline error for the field that was just
+  // left (typing clears them via the clear* helpers above). The big summary
+  // panel stays submit-only — pre-submit feedback is inline, field by field.
+
+  function emptyFieldErrors(): EnrollmentErrors {
+    return { parentErrors: { father: null, mother: null }, childErrors: [] };
+  }
+
+  function blurField(field: 'address_line1' | 'city' | 'postal_code' | 'card_holder_name') {
+    const msg = validateEnrollment(form)[field];
+    if (!msg) return;
+    fieldErrors = { ...(fieldErrors ?? emptyFieldErrors()), [field]: msg };
+  }
+
+  function blurParentField(parent: 'father' | 'mother', field: 'name' | 'phone' | 'email') {
+    const fresh = validateEnrollment(form);
+    const msg = fresh.parentErrors[parent]?.[field];
+    if (!msg) return;
+    const base = fieldErrors ?? emptyFieldErrors();
+    fieldErrors = {
+      ...base,
+      parentErrors: {
+        ...base.parentErrors,
+        [parent]: { ...base.parentErrors[parent], [field]: msg },
+      },
+    };
+  }
+
+  function blurChildField(index: number, field: 'name' | 'dob' | 'sex') {
+    const fresh = validateEnrollment(form);
+    const msg = fresh.childErrors[index]?.[field];
+    if (!msg) return;
+    const base = fieldErrors ?? emptyFieldErrors();
+    const childErrors = [...base.childErrors];
+    while (childErrors.length <= index) childErrors.push(null);
+    childErrors[index] = { ...childErrors[index], [field]: msg };
+    fieldErrors = { ...base, childErrors };
   }
 
   async function handleSubmit(e: SubmitEvent) {
     e.preventDefault();
     submitError = null;
+    fieldErrors = null;
 
-    const err = validate();
-    if (err) {
-      submitError = err;
+    const errors = validateEnrollment(form);
+    if (hasErrors(errors)) {
+      submitAttempted = true;
+      fieldErrors = errors;
+      await showErrors();
       return;
     }
 
@@ -170,7 +266,9 @@
       await submitMaktabEnrollment(slug, payload);
       success = true;
     } catch (e) {
+      submitAttempted = true;
       submitError = e instanceof Error ? e.message : 'Enrollment failed. Please try again.';
+      await showErrors();
     } finally {
       submitting = false;
     }
@@ -180,6 +278,10 @@
 <svelte:head>
   <title>Maktab Enrollment — {masjid?.name ?? 'Masjid'}</title>
 </svelte:head>
+
+{#snippet req()}
+  <span style="color: var(--color-accent);" aria-hidden="true">*</span>
+{/snippet}
 
 <div class="max-w-3xl mx-auto pb-12">
   {#if !embed}
@@ -226,8 +328,40 @@
       class="glass-card rounded-2xl p-6 sm:p-8 space-y-8"
       autocomplete="on"
     >
+      {#if submitAttempted && errorLines.length > 0}
+        <div
+          bind:this={errorSummaryEl}
+          tabindex="-1"
+          role="alert"
+          class="rounded-xl p-4 sm:p-5 text-sm space-y-2 scroll-mt-28 outline-none"
+          style="background-color: rgba(var(--color-accent-rgb, 239, 68, 68), 0.1); border: 1px solid var(--color-accent);"
+        >
+          <h3 class="font-semibold font-heading text-base" style="color: var(--color-accent);">
+            {errorLines.length === 1
+              ? 'Please fix the following problem:'
+              : `Please fix the following ${errorLines.length} problems:`}
+          </h3>
+          <ul class="list-disc pl-5 space-y-1" style="color: var(--color-text);">
+            {#each errorLines as line}
+              <li>{line}</li>
+            {/each}
+          </ul>
+        </div>
+      {/if}
+
+      <p class="text-xs" style="color: var(--color-text-dim);">
+        <span style="color: var(--color-accent);" aria-hidden="true">*</span> Required field
+      </p>
+
       <section class="space-y-4">
         <h2 class="text-lg font-semibold font-heading border-b pb-2" style="border-color: var(--color-border);">Parent / Guardian Information</h2>
+
+        <p
+          class="text-xs {fieldErrors?.parents ? 'font-semibold' : ''}"
+          style="color: {fieldErrors?.parents ? 'var(--color-accent)' : 'var(--color-text-dim)'};"
+        >
+          At least one parent's complete information (name, phone, and email) is required.
+        </p>
 
         <div class="grid sm:grid-cols-2 gap-4">
           <label class="block space-y-1">
@@ -235,60 +369,98 @@
             <input
               type="text"
               bind:value={form.father.name}
+              oninput={() => clearParentError('father', 'name')}
+              onblur={() => blurParentField('father', 'name')}
+              aria-invalid={fieldErrors?.parentErrors.father?.name ? 'true' : undefined}
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.parentErrors.father?.name != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.parentErrors.father?.name}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.parentErrors.father.name}</p>
+            {/if}
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Mother's Name</span>
             <input
               type="text"
               bind:value={form.mother.name}
+              oninput={() => clearParentError('mother', 'name')}
+              onblur={() => blurParentField('mother', 'name')}
+              aria-invalid={fieldErrors?.parentErrors.mother?.name ? 'true' : undefined}
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.parentErrors.mother?.name != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.parentErrors.mother?.name}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.parentErrors.mother.name}</p>
+            {/if}
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Father's Phone</span>
             <input
               type="tel"
               bind:value={form.father.phone}
+              oninput={() => clearParentError('father', 'phone')}
+              onblur={() => blurParentField('father', 'phone')}
+              aria-invalid={fieldErrors?.parentErrors.father?.phone ? 'true' : undefined}
               placeholder="+1 123 456 7890"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.parentErrors.father?.phone != null)}; color: var(--color-text);"
             />
-            <p class="text-xs font-bold mt-1" style="color: var(--color-accent);">* Include country code (+1)</p>
+            {#if fieldErrors?.parentErrors.father?.phone}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.parentErrors.father.phone}</p>
+            {:else}
+              <p class="text-xs font-bold mt-1" style="color: var(--color-accent);">* Include country code (+1)</p>
+            {/if}
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Mother's Phone</span>
             <input
               type="tel"
               bind:value={form.mother.phone}
+              oninput={() => clearParentError('mother', 'phone')}
+              onblur={() => blurParentField('mother', 'phone')}
+              aria-invalid={fieldErrors?.parentErrors.mother?.phone ? 'true' : undefined}
               placeholder="+1 123 456 7890"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.parentErrors.mother?.phone != null)}; color: var(--color-text);"
             />
-            <p class="text-xs font-bold mt-1" style="color: var(--color-accent);">* Include country code (+1)</p>
+            {#if fieldErrors?.parentErrors.mother?.phone}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.parentErrors.mother.phone}</p>
+            {:else}
+              <p class="text-xs font-bold mt-1" style="color: var(--color-accent);">* Include country code (+1)</p>
+            {/if}
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Father's Email</span>
             <input
               type="email"
               bind:value={form.father.email}
+              oninput={() => clearParentError('father', 'email')}
+              onblur={() => blurParentField('father', 'email')}
+              aria-invalid={fieldErrors?.parentErrors.father?.email ? 'true' : undefined}
               placeholder="father@email.com"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.parentErrors.father?.email != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.parentErrors.father?.email}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.parentErrors.father.email}</p>
+            {/if}
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Mother's Email</span>
             <input
               type="email"
               bind:value={form.mother.email}
+              oninput={() => clearParentError('mother', 'email')}
+              onblur={() => blurParentField('mother', 'email')}
+              aria-invalid={fieldErrors?.parentErrors.mother?.email ? 'true' : undefined}
               placeholder="mother@email.com"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.parentErrors.mother?.email != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.parentErrors.mother?.email}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.parentErrors.mother.email}</p>
+            {/if}
           </label>
         </div>
       </section>
@@ -297,34 +469,56 @@
         <h2 class="text-lg font-semibold font-heading border-b pb-2" style="border-color: var(--color-border);">Home Address</h2>
         <div class="grid sm:grid-cols-2 gap-4">
           <label class="block space-y-1 sm:col-span-2">
-            <span class="text-sm font-medium" style="color: var(--color-text-muted);">Street Address</span>
+            <span class="text-sm font-medium" style="color: var(--color-text-muted);">Street Address {@render req()}</span>
             <input
               type="text"
               bind:value={form.address_line1}
+              oninput={() => clearFieldError('address_line1')}
+              onblur={() => blurField('address_line1')}
+              aria-invalid={fieldErrors?.address_line1 ? 'true' : undefined}
+              aria-required="true"
               autocomplete="street-address"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.address_line1 != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.address_line1}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.address_line1}</p>
+            {/if}
           </label>
           <label class="block space-y-1">
-            <span class="text-sm font-medium" style="color: var(--color-text-muted);">City</span>
+            <span class="text-sm font-medium" style="color: var(--color-text-muted);">City {@render req()}</span>
             <input
               type="text"
               bind:value={form.city}
+              oninput={() => clearFieldError('city')}
+              onblur={() => blurField('city')}
+              aria-invalid={fieldErrors?.city ? 'true' : undefined}
+              aria-required="true"
               autocomplete="address-level2"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.city != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.city}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.city}</p>
+            {/if}
           </label>
           <label class="block space-y-1">
-            <span class="text-sm font-medium" style="color: var(--color-text-muted);">ZIP Code</span>
+            <span class="text-sm font-medium" style="color: var(--color-text-muted);">ZIP Code {@render req()}</span>
             <input
               type="text"
               bind:value={form.postal_code}
+              oninput={() => clearFieldError('postal_code')}
+              onblur={() => blurField('postal_code')}
+              aria-invalid={fieldErrors?.postal_code ? 'true' : undefined}
+              aria-required="true"
               autocomplete="postal-code"
+              placeholder="e.g. 60601"
               class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-              style="border-color: var(--color-border); color: var(--color-text);"
+              style="border-color: {borderColor(fieldErrors?.postal_code != null)}; color: var(--color-text);"
             />
+            {#if fieldErrors?.postal_code}
+              <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.postal_code}</p>
+            {/if}
           </label>
           <label class="block space-y-1">
             <span class="text-sm font-medium" style="color: var(--color-text-muted);">Country</span>
@@ -353,6 +547,7 @@
         </div>
 
         {#each form.children as child, i (i)}
+          {@const childErr = fieldErrors?.childErrors?.[i] ?? null}
           <div class="glass rounded-xl p-4 space-y-3">
             <div class="flex items-center justify-between">
               <span class="text-sm font-medium" style="color: var(--color-text-muted);">Child {i + 1}</span>
@@ -366,28 +561,58 @@
               {/if}
             </div>
             <div class="grid sm:grid-cols-3 gap-3">
-              <input
-                type="text"
-                bind:value={child.name}
-                placeholder="Full name"
-                class="rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-                style="border-color: var(--color-border); color: var(--color-text);"
-              />
-              <input
-                type="date"
-                bind:value={child.dob}
-                class="rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-                style="border-color: var(--color-border); color: var(--color-text);"
-              />
-              <select
-                bind:value={child.sex}
-                class="rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
-                style="border-color: var(--color-border); color: var(--color-text);"
-              >
-                <option value="" disabled>Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
+              <label class="block space-y-1">
+                <span class="text-sm font-medium" style="color: var(--color-text-muted);">Full Name {@render req()}</span>
+                <input
+                  type="text"
+                  bind:value={child.name}
+                  oninput={() => clearChildError(i, 'name')}
+                  onblur={() => blurChildField(i, 'name')}
+                  aria-invalid={childErr?.name ? 'true' : undefined}
+                  aria-required="true"
+                  placeholder="Full name"
+                  class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
+                  style="border-color: {borderColor(childErr?.name != null)}; color: var(--color-text);"
+                />
+                {#if childErr?.name}
+                  <p class="text-xs font-medium mt-1" style="color: var(--color-accent);">{childErr.name}</p>
+                {/if}
+              </label>
+              <label class="block space-y-1">
+                <span class="text-sm font-medium" style="color: var(--color-text-muted);">Date of Birth {@render req()}</span>
+                <input
+                  type="date"
+                  bind:value={child.dob}
+                  oninput={() => clearChildError(i, 'dob')}
+                  onblur={() => blurChildField(i, 'dob')}
+                  aria-invalid={childErr?.dob ? 'true' : undefined}
+                  aria-required="true"
+                  class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
+                  style="border-color: {borderColor(childErr?.dob != null)}; color: var(--color-text);"
+                />
+                {#if childErr?.dob}
+                  <p class="text-xs font-medium mt-1" style="color: var(--color-accent);">{childErr.dob}</p>
+                {/if}
+              </label>
+              <label class="block space-y-1">
+                <span class="text-sm font-medium" style="color: var(--color-text-muted);">Gender {@render req()}</span>
+                <select
+                  bind:value={child.sex}
+                  onchange={() => clearChildError(i, 'sex')}
+                  onblur={() => blurChildField(i, 'sex')}
+                  aria-invalid={childErr?.sex ? 'true' : undefined}
+                  aria-required="true"
+                  class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50"
+                  style="border-color: {borderColor(childErr?.sex != null)}; color: var(--color-text);"
+                >
+                  <option value="" disabled>Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                {#if childErr?.sex}
+                  <p class="text-xs font-medium mt-1" style="color: var(--color-accent);">{childErr.sex}</p>
+                {/if}
+              </label>
             </div>
           </div>
         {/each}
@@ -399,15 +624,22 @@
         <div class="grid sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
             <label class="block space-y-1">
-              <span class="text-sm font-medium" style="color: var(--color-text-muted);">Card Holder Name</span>
+              <span class="text-sm font-medium" style="color: var(--color-text-muted);">Card Holder Name {@render req()}</span>
               <input
                 type="text"
                 bind:value={form.card_holder_name}
+                oninput={() => clearFieldError('card_holder_name')}
+                onblur={() => blurField('card_holder_name')}
+                aria-invalid={fieldErrors?.card_holder_name ? 'true' : undefined}
+                aria-required="true"
                 autocomplete="cc-name"
                 disabled={needsPayment === false}
                 class="w-full rounded-lg px-3 py-2 bg-surface border outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-60"
-                style="border-color: var(--color-border); color: var(--color-text);"
+                style="border-color: {borderColor(fieldErrors?.card_holder_name != null)}; color: var(--color-text);"
               />
+              {#if fieldErrors?.card_holder_name}
+                <p class="text-xs font-medium" style="color: var(--color-accent);">{fieldErrors.card_holder_name}</p>
+              {/if}
             </label>
           </div>
 
@@ -478,12 +710,6 @@
           </div>
         {/if}
       </section>
-
-      {#if submitError}
-        <div class="rounded-xl p-4 text-sm" style="background-color: rgba(var(--color-accent-rgb, 239,68,68), 0.1); color: var(--color-accent);">
-          {submitError}
-        </div>
-      {/if}
     </form>
   {/if}
 </div>

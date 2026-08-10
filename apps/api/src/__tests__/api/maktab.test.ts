@@ -839,6 +839,29 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('returns human-readable validation messages (not raw Zod JSON)', async () => {
+    const slug = `enroll-zodmsg-${Date.now()}`;
+    await enrollSetup(slug);
+
+    const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, {
+      father: { name: 'Normal Parent', phone: '+14155555001', email: 'normal@example.com' },
+      address_line1: '333 Main St',
+      city: 'Atlanta',
+      postal_code: 'BADZIP',
+      children: [{ name: 'S', dob: '2015-05-05', sex: 'male' }],
+      card_holder_name: 'Normal Name',
+    });
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    // Messages must be plain sentences a parent can act on — not a JSON blob.
+    expect(body.error.message).toContain('Please enter a valid ZIP code');
+    expect(body.error.message).toContain('Child name must be at least 2 characters');
+    expect(body.error.message).not.toContain('"path"');
+    expect(body.error.message).not.toContain('[{');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────────

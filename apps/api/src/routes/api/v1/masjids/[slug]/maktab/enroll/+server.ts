@@ -187,7 +187,14 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
     });
   } catch (e: unknown) {
     if (e && typeof e === 'object' && 'name' in e && e.name === 'ZodError') {
-      return ErrorJsonResponse('VALIDATION_ERROR', (e as Error).message);
+      // Surface human-readable issue messages instead of the raw Zod JSON blob
+      // (ZodError.message is a stringified issues array — unreadable for parents).
+      const issues = (e as { issues?: { message: string }[] }).issues ?? [];
+      const message = [...new Set(issues.map((i) => i.message).filter(Boolean))].join(' ');
+      return ErrorJsonResponse(
+        'VALIDATION_ERROR',
+        message || 'Please check the enrollment form and try again.',
+      );
     }
     console.error('POST maktab/enroll error:', e);
     return ErrorJsonResponse('INTERNAL_ERROR', 'Enrollment failed');
