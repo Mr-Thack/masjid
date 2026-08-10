@@ -190,6 +190,9 @@ export function getToolDefinitions(): ToolDefinition[] {
           website_url: stringProp('Website URL'),
           about_markdown: stringProp('About Us markdown content (history, story, etc.)'),
           donation_links: stringProp('JSON array of {label, url} donation links (e.g. \'[{"label":"PayPal","url":"https://..."}]\')'),
+          show_donate_qr: { type: 'boolean', description: 'If true, show a QR code card on the donate page' },
+          latitude: { type: 'number', minimum: -90, maximum: 90, description: 'Geographic latitude (e.g. 41.88 for Chicago)' },
+          longitude: { type: 'number', minimum: -180, maximum: 180, description: 'Geographic longitude (e.g. -87.63 for Chicago)' },
           calculation_method: { type: 'integer', minimum: 1, description: 'Prayer calculation method (1-13, e.g. 2=ISNA, 3=MWL, 4=Umm al-Qura, 7=Karachi)' },
           asr_madhab: { type: 'string', enum: ['shafi', 'hanafi'], description: 'Asr madhab: shafi (earlier) or hanafi (later, common for Indo-Pak)' },
           high_latitude_rule: { type: 'string', enum: ['seventh_of_night', 'middle_of_night', 'twilight_angle', 'none'], description: 'High latitude rule for locations above 48°N' },
@@ -215,7 +218,7 @@ export function getToolDefinitions(): ToolDefinition[] {
     },
     {
       name: 'prayer_config_get',
-      description: 'Get the current prayer configuration (calculation method and timezone).',
+      description: 'Get the current prayer configuration: calculation method, timezone, asr_madhab, high_latitude_rule, show_dual_asr, fajr/isha angles, and minute adjustments for each prayer.',
       parameters: {
         type: 'object',
         properties: {},

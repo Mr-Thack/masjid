@@ -108,37 +108,52 @@ If the API is partially down, the sections that work still render.
 
 ## 3. Profile Settings (`/admin/[slug]/settings/profile`)
 
-### Form Fields
+### Form Fields (26 total)
 
-| Field | Input Type | Zod Validation | Notes |
-|-------|-----------|----------------|-------|
-| Masjid Name | text | 1-255 chars, required | |
-| Address | textarea | optional | |
-| City | text | optional | |
-| State | text | optional, max 2 chars | State abbreviation |
-| Postal Code | text | optional | |
-| Phone | tel | optional, E.164 if provided | |
-| Email | email | optional, valid email | |
-| Website | url | optional, valid URL | |
-| Donation URL | url | optional, valid URL | |
-| Facebook URL | url | optional | |
-| Twitter/X URL | url | optional | |
-| YouTube URL | url | optional | |
-| Instagram URL | url | optional | |
-| Latitude | number (step=0.0001) | -90 to 90 | Used for prayer calculation |
-| Longitude | number (step=0.0001) | -180 to 180 | Used for prayer calculation |
-| Calculation Method | select | 1-7, required | See dropdown labels below |
-| Timezone | searchable select | required | IANA tz (e.g. "America/Chicago") |
+| Field | Input Type | Notes |
+|-------|-----------|-------|
+| Masjid Name | text | Required, 1–255 chars |
+| Address Line 1 | text | Street address |
+| Address Line 2 | text | Suite, unit, etc. |
+| City | text | |
+| State | text | Province/state |
+| Postal Code | text | |
+| Country | text | Defaults to "US" |
+| Contact Phone | tel | Public phone number |
+| Contact Email | email | Public email address |
+| Website URL | url | |
+| Facebook URL | url | |
+| YouTube URL | url | |
+| Instagram URL | url | |
+| Donation Links | repeatable `[{label, url}]` pairs | JSON array, e.g. `[{"label":"PayPal","url":"https://..."}]` |
+| About Us (Markdown) | textarea | Long-form markdown content |
+| Latitude | number | -90 to 90, used for prayer calculation |
+| Longitude | number | -180 to 180, used for prayer calculation |
+| Calculation Method | select (1–13) | See dropdown labels below |
+| Timezone | searchable select | IANA tz (e.g. "America/Chicago") |
+| Asr Madhab | select | shafi (earlier Asr) or hanafi (later Asr, common in Indo-Pak communities) |
+| High Latitude Rule | select | seventh_of_night (default), middle_of_night, twilight_angle, none. Only relevant above 48°N |
+| Show both Asr times | checkbox | When true, displays both Shafi and Hanafi Asr on public pages |
+| Show donate QR card | checkbox | When true, shows a QR code on the donate page |
+| Fajr Angle (°) | number (8–22) | Custom Fajr twilight angle; null = use calculation method default |
+| Isha Angle (°) | number (8–22) | Custom Isha twilight angle; null = use calculation method default |
+| Adhaan Adjustments | 6 number inputs | Manual minute offsets for Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha (can be negative) |
 
 ### Calculation Method Dropdown
 ```
-1 — Shia Ithna-Ashari
-2 — ISNA (Islamic Society of North America)
-3 — MWL (Muslim World League)
-4 — Makkah (Umm al-Qura University)
-5 — Egyptian General Authority of Survey
-6 — University of Tehran (Institute of Geophysics)
-7 — University of Karachi (Hanafi)
+ 1 — Shia Ithna-Ashari
+ 2 — ISNA (Islamic Society of North America)
+ 3 — MWL (Muslim World League)
+ 4 — Makkah (Umm al-Qura University)
+ 5 — Egyptian General Authority of Survey
+ 6 — University of Tehran (Institute of Geophysics)
+ 7 — University of Karachi (Hanafi)
+ 8 — Turkey (Diyanet)
+ 9 — Singapore (MUIS)
+10 — Dubai
+11 — Kuwait
+12 — Qatar
+13 — Moonsighting Committee
 ```
 
 ### Timezone Picker
@@ -147,11 +162,13 @@ date/time picker — just a list of IANA timezone strings filtered by region).
 Defaults to `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 
 ### Behavior
-- **Load**: Fetches `GET /admin/masjids/[id]` — fills all fields
-- **Save**: `PUT /admin/masjids/[id]` with only dirty fields (uses Zod partial schema)
-- **Reset**: Button to revert all fields to last-saved state
-- **Validation**: Client-side Zod mirror of `UpdateMasjidSchema` + `PrayerConfigUpdateSchema`
-- **Error handling**: Inline field errors (red border + message below field). Toast on save success/failure.
+- **Load**: Fetches `GET /admin/masjids/[id]` — fills all 26 fields
+- **Save**: `PUT /admin/masjids/[id]` with the full profile object (all fields are sent;
+  the server applies only fields that differ from the stored values by checking
+  `!== undefined` per-field)
+- **Reset**: Button to revert all fields to last-loaded state
+- **Validation**: Client-side Zod mirror of `UpdateMasjidSchema`
+- **Error handling**: Inline field errors (red border + message below field). Toast on save success/failure (via svelte-sonner).
 
 ---
 
@@ -493,7 +510,83 @@ THEME
 
 ---
 
-## 10. Account Settings (`/admin/[slug]/settings/account`)
+## 10. Maktab Settings (`/admin/[slug]/settings/maktab`)
+
+### Section: Enrollment Controls
+
+| Field | Input Type | Notes |
+|-------|-----------|-------|
+| Enrollment Open | toggle switch | When off, the public enrollment form shows a "closed" message |
+| Status Message | text | Shown on the public maktab page (e.g. "Registration opens August 1st") |
+| Assistance Code | text (optional) | Discount code for financial aid applicants |
+| Active Term | select | Dropdown of existing terms; selecting one activates it AND opens enrollment |
+
+### Section: Program Info
+
+| Field | Input Type | Notes |
+|-------|-----------|-------|
+| Program Goal | text | e.g. "To provide structured Islamic education" |
+| Schedule Days | text | e.g. "Monday–Thursday" |
+| Schedule Time | text | e.g. "5:00 PM – 7:00 PM" |
+| Curriculum | repeatable text rows | List of subjects (e.g. "Quran", "Arabic", "Islamic Studies") |
+| FAQs | repeatable `{question, answer}` pair rows | Shown on the public maktab page |
+
+All program info fields are stored as a JSON object in `mkt_settings.program_info`.
+
+### Section: Terms & Pricing
+
+Terms table showing:
+| Column | Content |
+|--------|---------|
+| Name | Term name (e.g. "Fall 2026") |
+| Length | Duration in months |
+| Billing | Number of months charged (may differ from length) |
+| Prices | 3-tier pricing: 1 child / 2 children / 3+ children (monthly) |
+| Active | Badge if this is the active term |
+| Activate | Button (only on inactive rows) |
+
+**Create Term** form:
+| Field | Input Type | Notes |
+|-------|-----------|-------|
+| Term Name | text | Required |
+| Length (months) | number (1–12) | Total program duration |
+| Billing Months | number (1–12) | How many months to charge (defaults to length) |
+| Price — 1 Child | number (cents) | Monthly amount |
+| Price — 2 Children | number (cents) | Monthly amount |
+| Price — 3+ Children | number (cents) | Monthly amount |
+
+Creating a term calls `POST /maktab/terms` which creates a Square subscription plan
+first, then inserts the DB record. If Square fails, nothing is persisted (atomic).
+
+### Section: Registrations
+
+Students table with filtering:
+- **Filters**: Term dropdown, status dropdown (active/cancelled)
+- **Columns**: Student name(s), parent name, enrollment date, monthly amount, status
+- **Sex filter**: All / Boys / Girls
+- **Sorting**: By name, sex, age
+
+**Export buttons**: CSV (students), CSV (applications), HTML report
+
+### API Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/admin/masjids/[id]/maktab/settings` | Read enrollment controls + active term + program info |
+| `PUT` | `/admin/masjids/[id]/maktab/settings` | Update enrollment controls + program info |
+| `GET` | `/admin/masjids/[id]/maktab/terms` | List all terms |
+| `POST` | `/admin/masjids/[id]/maktab/terms` | Create term (Square + DB, atomic) |
+| `POST` | `/admin/masjids/[id]/maktab/terms/[termId]/activate` | Activate term + open enrollment |
+| `GET` | `/admin/masjids/[id]/maktab/registrations` | List registrations (filter by term, status) |
+
+### Agent Coverage
+Maktab has **zero agent tools**. Enrollment, terms, pricing, and registrations are
+manual UI only. This is intentional — payment configuration is out of scope for
+the AI agent. See `docs/admin-ai-capabilities.md` §11.3.
+
+---
+
+## 11. Account Settings (`/admin/[slug]/settings/account`)
 
 ### Password Change Form
 
@@ -519,9 +612,9 @@ THEME
 
 ---
 
-## 11. Cross-Cutting Resilience Patterns
+## 12. Cross-Cutting Resilience Patterns
 
-### 11.1 Section-Level Error Boundaries
+### 12.1 Section-Level Error Boundaries
 
 Every page wraps each data-fetching section in its own error boundary:
 
@@ -542,7 +635,7 @@ Every page wraps each data-fetching section in its own error boundary:
 If the profile API fails, the form area shows an error card but the sidebar
 navigation and other page sections continue to work.
 
-### 11.2 Auto-Snapshot Before Dangerous Operations
+### 12.2 Auto-Snapshot Before Dangerous Operations
 
 | Operation | Auto-snapshot label |
 |-----------|-------------------|
@@ -552,14 +645,14 @@ navigation and other page sections continue to work.
 | Manual rollback restore | `pre-rollback-auto` |
 | Bot `/confirm` | Handled by `mergeBranch()` in `@masjid/agent` |
 
-### 11.3 Form Safety
+### 12.3 Form Safety
 
 - **Dirty tracking**: Submit button disabled until form is changed AND valid
 - **No partial saves**: Forms submit atomically. If validation fails, nothing is saved.
 - **Confirm dialogs**: Required for delete operations, preset switches, and rollback.
 - **Undo toasts**: Deletions show a 5-second undo toast that re-creates the deleted item.
 
-### 11.4 Offline Awareness (No Caching)
+### 12.4 Offline Awareness (No Caching)
 
 The admin app does **not** cache via service worker. The browser's built-in cache
 handles static assets. A `.push-only-sw.js` exists solely to receive push notifications.
@@ -568,7 +661,7 @@ When `navigator.onLine === false`, a non-dismissible banner appears at the top:
 "You're offline — changes cannot be saved." Form submit buttons are disabled.
 When connectivity returns, the banner disappears automatically.
 
-### 11.5 Self-Healing on Corrupt Config
+### 12.5 Self-Healing on Corrupt Config
 
 | Scenario | Recovery |
 |----------|----------|

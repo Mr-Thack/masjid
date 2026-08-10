@@ -530,12 +530,16 @@ manual admin settings UI. It is the **canonical reference** for agent scope.
 | Layout preset (Mishkaat / Sakeenah) | ✓ | ✓ | Values: `mishkaat` or `minimal-light` |
 | Masjid profile (name, address, contact) | ✓ | ✓ | |
 | Social media links | ✓ | ✓ | Facebook, YouTube, Instagram, website |
-| Prayer calculation method (1–13) | ✓ | ✓ (1–7) | Agent supports all 13; manual UI shows 7 |
-| Asr madhab (shafi/hanafi) | ✓ | — | Agent-only setting |
-| High latitude rule | ✓ | — | Agent-only setting |
-| Dual Asr display | ✓ | — | Agent-only setting |
-| Fajr/Isha custom angles | ✓ | — | Agent-only setting |
-| Manual prayer offsets (7 prayers) | ✓ | — | Agent-only setting |
+| Geographic coordinates (lat/lng) | ✓ | ✓ | |
+| Donation links (JSON array of {label, url}) | ✓ | ✓ | |
+| Show donate QR card | ✓ | ✓ | |
+| About markdown | ✓ | ✓ | |
+| Prayer calculation method (1–13) | ✓ | ✓ | Both support all 13 methods |
+| Asr madhab (shafi/hanafi) | ✓ | ✓ | |
+| High latitude rule | ✓ | ✓ | |
+| Dual Asr display | ✓ | ✓ | |
+| Fajr/Isha custom angles | ✓ | ✓ | |
+| Manual prayer offsets (7 prayers) | ✓ | ✓ | Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha |
 | Prayer rules CRUD | ✓ | ✓ | |
 | Jumu'ah sessions CRUD | ✓ | ✓ | |
 | Announcements CRUD + pin | ✓ | ✓ | |
@@ -558,8 +562,6 @@ manual settings pages.
 | **Account password** (change password) | Security boundary — agent should never handle credentials |
 | **Maktab** (terms, pricing, enrollment open/close, registrations) | Payment configuration out of scope |
 | **Style options** (`style_system`, `style_options` JSON: metal, motif, arch, ambient phases, frames, emblem) | These are advanced visual options not yet exposed in any interface (UI or agent) |
-| **Twitter/X URL** | Missing from `profile_update` tool parameters; only Facebook, YouTube, Instagram, website are supported |
-| **About HTML** (`about_html`) | Not exposed; only `about_markdown` is available |
 
 ### 11.4 Condition & Action Types for Prayer Rules
 
