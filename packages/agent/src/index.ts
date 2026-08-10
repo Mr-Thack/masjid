@@ -19,5 +19,6 @@ export {
   cleanupStaleBranches,
 } from './session';
 export { bufferToDataUri, uploadToR2, registerAsset } from './media';
+export { searchWeb, fetchUrl } from './web';
 export * from './types';
 export { applyAction, evaluateCondition, replayRules, explainAllPrayers, validateRules } from './rules-engine';

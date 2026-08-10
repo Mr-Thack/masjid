@@ -112,7 +112,12 @@ Custom pages for the masjid website (permanent informational content).
 Slugs must be URL-safe: lowercase letters, numbers, and hyphens only.
 Pages are a natural fit for an About Us, Services, Programs, or Community Info section.
 You can create a page and then add it to the navigation with nav_create.
-`;
+
+### WEB
+Search the web and read web pages. Use web_search to find information (prayer timetables,
+contact details, reference material like hadith or fatwas). Use web_fetch to read a full
+page after finding it via search, or when the admin provides a URL directly. Always
+cite your sources when using web results.`;
 
 const EXAMPLES = `
 ## Examples
@@ -192,6 +197,15 @@ User: "Switch us to the Mishkaat style with gold accents and turn on ambient col
 
 User: "Make the display large-print and use Arabic-Indic numerals"
 → call theme_update({style_options:{density:"large-print", numerals:"arabic-indic"}})
+
+User: "Find the contact information for the Islamic Society of North America"
+→ call web_search({query:"Islamic Society of North America contact information"})
+
+User: "What does the Quran say about charity? Find me some relevant verses"
+→ call web_search({query:"Quran verses about charity and giving"})
+
+User: "Download the prayer timetable from this URL: https://example.com/timetable"
+→ call web_fetch({url:"https://example.com/timetable"})
 `;
 
 export function buildSystemPrompt(

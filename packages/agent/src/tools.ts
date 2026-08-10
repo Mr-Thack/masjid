@@ -47,6 +47,7 @@ import { explainAllPrayers, validateRules } from './rules-engine';
 import type { RuleWithDb, ConditionEval, RuleTrace, PrayerTrace } from './rules-engine';
 import type { PrayerName } from './types';
 import type { Condition, Action } from '@masjid/schemas';
+import { searchWeb, fetchUrl } from './web';
 
 const NOWHERE = 'nowhere';
 
@@ -1183,6 +1184,55 @@ All kinds: label (display text), icon (one of: book, calendar, clock, compass, d
         const summary = describeMutation('PAGES', 'DELETE', args);
         await storeMutation(ctx.branchId, 'PAGES', 'DELETE', `page:${args.slug}`, args, ctx.db);
         return { success: true, mutationSummary: summary };
+      },
+    },
+    // ── Web ──────────────────────────────────────────────────────────────────
+    {
+      name: 'web_search',
+      description: `Search the web using DuckDuckGo. Returns up to ${/* MAX_SEARCH_RESULTS */ 8} results with titles, URLs, and snippets. Use this to find information the masjid admin needs — prayer timetables from other masjids, contact details for organizations, reference material (hadith, Quran verses, fatwas), or general research. Results are plain text snippets. To read a full page, use web_fetch with one of the returned URLs.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          query: stringProp('Search query (e.g. "ISNA prayer timetable 2026", "contact details for Islamic Relief", "hadith about charity")'),
+        },
+        required: ['query'],
+      },
+      handler: async (args) => {
+        const { results, error } = await searchWeb(args.query as string);
+        if (error) {
+          return { success: false, error: `Search failed: ${error}` };
+        }
+        if (results.length === 0) {
+          return { success: true, data: { results: [], note: 'No results found. Try a different query.' } };
+        }
+        return { success: true, data: { results } };
+      },
+    },
+    {
+      name: 'web_fetch',
+      description: `Download and read the text content of a web page. Use this after web_search to read a specific page in detail, or when the admin provides a URL directly. Returns cleaned plain text (HTML tags, scripts, and styles removed). Content is truncated to ${/* MAX_CONTENT_LENGTH */ 8000} characters. Only HTML, plain text, and JSON pages are supported.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          url: stringProp('Full URL to fetch (e.g. "https://example.com/prayer-times")'),
+        },
+        required: ['url'],
+      },
+      handler: async (args) => {
+        const url = args.url as string;
+        try {
+          new URL(url);
+        } catch {
+          return { success: false, error: `Invalid URL: "${url}". Provide a full URL starting with https:// or http://.` };
+        }
+        const { content, contentType, error } = await fetchUrl(url);
+        if (error) {
+          return { success: false, error: `Failed to fetch ${url}: ${error}` };
+        }
+        return {
+          success: true,
+          data: { url, content_type: contentType, text: content },
+        };
       },
     },
   ];
