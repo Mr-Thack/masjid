@@ -7,7 +7,7 @@ import { POST as postEnrollment } from '../../routes/api/v1/masjids/[slug]/makta
 import { GET as getSettings, PUT as putSettings } from '../../routes/api/v1/admin/masjids/[id]/maktab/settings/+server';
 import { GET as getTerms, POST as postTerms } from '../../routes/api/v1/admin/masjids/[id]/maktab/terms/+server';
 import { POST as activateTerm } from '../../routes/api/v1/admin/masjids/[id]/maktab/terms/[termId]/activate/+server';
-import { GET as getRegistrations } from '../../routes/api/v1/admin/masjids/[id]/maktab/registrations/+server';
+import { GET as getRegistrations, POST as postManualRegistration } from '../../routes/api/v1/admin/masjids/[id]/maktab/registrations/+server';
 
 let db: ReturnType<typeof getDb>;
 
@@ -1330,5 +1330,83 @@ describe('Admin registrations', () => {
     const body = await res.json();
     expect(body.registrations).toHaveLength(1);
     expect(body.registrations[0].father_name).toBe('Bad');
+  });
+
+  it('creates a manual registration', async () => {
+    const slug = `reg-manual-${Date.now()}`;
+    const id = await seedMasjid(slug);
+    const termId = crypto.randomUUID();
+    await db.insert(mktTerms).values({
+      id: termId, masjidId: id, name: 'Spring 2027', lengthMonths: 3,
+      priceCents1: 5000, priceCents2: 8000, priceCents3plus: 10000,
+    });
+
+    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/registrations`, {
+      term_id: termId,
+      father: { name: 'Omar Ahmad', phone: '+14155551234', email: 'omar@example.com' },
+      address_line1: '789 Oak St',
+      city: 'Chicago',
+      postal_code: '60601',
+      children: [{ name: 'Sara', dob: '2016-03-15', sex: 'female' }],
+      monthly_amount_cents: 3500,
+    });
+    const res = await postManualRegistration({
+      params: { id },
+      request: req,
+      url: new URL(req.url),
+      locals: adminLocals(id),
+      platform: { env: {} },
+      cookies: {} as any,
+      fetch: globalThis.fetch,
+    } as any);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.status).toBe('manual');
+    expect(body.monthly_amount_cents).toBe(3500);
+    expect(body.children_count).toBe(1);
+
+    // Verify in DB
+    const row = await db
+      .select()
+      .from(mktRegistrations)
+      .where(eq(mktRegistrations.id, body.registration_id))
+      .get();
+    expect(row).toBeTruthy();
+    expect(row!.fatherName).toBe('Omar Ahmad');
+    expect(row!.monthlyAmountCents).toBe(3500);
+    expect(row!.status).toBe('manual');
+    expect(row!.paymentProvider).toBe('manual');
+  });
+
+  it('rejects manual registration with no parents', async () => {
+    const slug = `reg-manual-np-${Date.now()}`;
+    const id = await seedMasjid(slug);
+    const termId = crypto.randomUUID();
+    await db.insert(mktTerms).values({
+      id: termId, masjidId: id, name: 'T', lengthMonths: 3,
+      priceCents1: 1, priceCents2: 1, priceCents3plus: 1,
+    });
+
+    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/registrations`, {
+      term_id: termId,
+      address_line1: '123 Main',
+      city: 'Chicago',
+      postal_code: '60601',
+      children: [{ name: 'S', dob: '2015-05-05', sex: 'male' }],
+      monthly_amount_cents: 0,
+    });
+    const res = await postManualRegistration({
+      params: { id },
+      request: req,
+      url: new URL(req.url),
+      locals: adminLocals(id),
+      platform: { env: {} },
+      cookies: {} as any,
+      fetch: globalThis.fetch,
+    } as any);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.message).toContain("parent's complete information");
   });
 });

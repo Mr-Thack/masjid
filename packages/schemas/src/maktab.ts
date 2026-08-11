@@ -87,6 +87,29 @@ export const SquareEnrollmentSchema = BaseEnrollmentSchema.extend({
 );
 export type SquareEnrollmentInput = z.infer<typeof SquareEnrollmentSchema>;
 
+export const ManualEnrollmentSchema = z
+  .object({
+    term_id: z.string().min(1, 'Select a term'),
+    father: ParentSchema.optional(),
+    mother: ParentSchema.optional(),
+    address_line1: z.string().min(1, 'Street address is required'),
+    city: z.string().min(1, 'City is required'),
+    postal_code: z.string().min(1, 'ZIP code is required'),
+    country: z.string().default('US'),
+    children: z.array(ChildSchema).min(1, 'At least one child is required'),
+    monthly_amount_cents: z.number().int().min(0, 'Amount cannot be negative'),
+  })
+  .refine(
+    (data) => {
+      const fatherComplete = !!(data.father?.name && data.father?.phone && data.father?.email);
+      const motherComplete = !!(data.mother?.name && data.mother?.phone && data.mother?.email);
+      return fatherComplete || motherComplete;
+    },
+    { message: "At least one parent's complete information must be provided", path: ['father'] },
+  );
+
+export type ManualEnrollmentInput = z.infer<typeof ManualEnrollmentSchema>;
+
 export const TermCreateSchema = z.object({
   name: z.string().trim().min(1),
   length_months: z.number().int().min(1).max(12),

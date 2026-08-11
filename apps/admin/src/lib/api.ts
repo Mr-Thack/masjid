@@ -162,6 +162,9 @@ export const api = {
     return request('GET', `/api/v1/admin/masjids/${masjidId}/maktab/registrations${qs}`);
   },
 
+  createManualRegistration: (masjidId: string, data: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/maktab/registrations`, data),
+
   getNavItems: (masjidId: string) =>
     request('GET', `/api/v1/admin/masjids/${masjidId}/nav`),
 

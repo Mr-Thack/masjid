@@ -2,12 +2,12 @@
 
 ## Current state (2026-08-05)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 671 tests)
+- **Working API** (SvelteKit + D1, 673 tests)
 - **Working TV frontend** (SvelteKit static, 210 tests — no Tailwind, hand-written CSS)
 - **Working consumer frontend** (SvelteKit static/SPA, 165 tests)
 - **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 215 tests)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — tools, runner, prompts, format, api-client, session, media)
-- **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — tests pending)
+- **Admin app scaffolded** (SvelteKit static/SPA on port 5176 — auth, dashboard, 9 settings pages, bot chat panel — 230 tests)
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
 - **Prayer tables shipped (2026-07-30)** — the homepage prayer section is the classic masjid timetable (`PrayerTable`: one row per prayer, adhaan/iqaamah columns, sunrise row, current-row highlight + rosette, next chip, right-after-adhaan and dual-Asr notes) and the Times tab is the weekly timetable (`WeeklyPrayerTable`: days × prayers, iqaamah over adhaan per cell, today row, cross-week change accents, styled legend) — BOTH style systems, replacing the card grid and the stacked day cards. `PrayerCard`/`PrayerList`/`SkeletonPrayerCard` deleted.
 - **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
@@ -65,7 +65,7 @@ npm run dev --workspace=@masjid/admin        # port 5176
 
 ## How to test
 ```bash
-npm run test             # API unit tests, 671 (no server needed)
+npm run test             # API unit tests, 673 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires `npm run dev` on 5173)
 npm run test:tv          # TV frontend, 210 tests (jsdom + testing-library)
 npm run test:consumer    # Consumer frontend, 165 tests (jsdom + testing-library)
@@ -421,7 +421,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 Maktab enrollment lives inside the main `@masjid/api` monolith, using the same D1/SQLite database as the rest of the platform.
 
 ### State
-- **671 API tests** total; 67 of those cover Maktab (public info, auth, validation, admin CRUD, Square enrollment, term activation, registrations, and helper units for Square/email/money/schemas).
+- **673 API tests** total; 69 of those cover Maktab (public info, auth, validation, admin CRUD, Square enrollment, term activation, manual registration, registrations, and helper units for Square/email/money/schemas).
 - **Enrollment form errors (2026-08-10)**: client validation lives in `apps/consumer/src/lib/maktab-validation.ts` (pure, unit-tested) and mirrors `SquareEnrollmentSchema` — keep the two in sync when rules change. The enroll page shows a `role="alert"` summary panel at the top on submit (scrolled into view + focused) plus per-field inline errors with `aria-invalid`; inline errors also appear on blur pre-submit (the summary panel stays submit-only) and clear on input. Required fields carry accent asterisks + `aria-required`; server Zod failures return readable sentences, not the raw Zod JSON blob.
 - **Square is the only payment provider**; Stripe support was removed because account verification could not be completed in time.
 - **No migration from `suffah-old`** — only new enrollments are tracked.
@@ -454,6 +454,7 @@ All routes are part of the main API; no Vite proxy or separate worker is needed.
 | `GET/POST /api/v1/admin/masjids/:id/maktab/terms` | JWT | Term CRUD; creates Square subscription plan |
 | `POST /api/v1/admin/masjids/:id/maktab/terms/:termId/activate` | JWT | Make term active |
 | `GET /api/v1/admin/masjids/:id/maktab/registrations` | JWT | List registrations |
+| `POST /api/v1/admin/masjids/:id/maktab/registrations` | JWT | Create manual (offline-payment) registration with custom monthly amount |
 
 ### How to test
 ```bash

@@ -316,6 +316,70 @@
   function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString();
   }
+
+  // ── Manual registration form ──────────────────────────────────────────────
+  let showManualForm = $state(false);
+  let manualForm = $state({
+    term_id: '',
+    father: { name: '', phone: '', email: '' },
+    mother: { name: '', phone: '', email: '' },
+    address_line1: '',
+    city: '',
+    postal_code: '',
+    country: 'US',
+    children: [{ name: '', dob: '', sex: '' as 'male' | 'female' | '' }],
+    monthly_amount_dollars: '',
+  });
+  let manualSubmitting = $state(false);
+
+  function addManualChild() {
+    manualForm.children = [...manualForm.children, { name: '', dob: '', sex: '' }];
+  }
+
+  function removeManualChild(i: number) {
+    manualForm.children = manualForm.children.filter((_, j) => j !== i);
+  }
+
+  function resetManualForm() {
+    showManualForm = false;
+    manualForm = {
+      term_id: '',
+      father: { name: '', phone: '', email: '' },
+      mother: { name: '', phone: '', email: '' },
+      address_line1: '',
+      city: '',
+      postal_code: '',
+      country: 'US',
+      children: [{ name: '', dob: '', sex: '' }],
+      monthly_amount_dollars: '',
+    };
+  }
+
+  async function submitManual(e: SubmitEvent) {
+    e.preventDefault();
+    manualSubmitting = true;
+    try {
+      const amountCents = Math.round(Number(manualForm.monthly_amount_dollars) * 100);
+      await api.createManualRegistration(masjidId, {
+        term_id: manualForm.term_id,
+        father: manualForm.father.name ? manualForm.father : undefined,
+        mother: manualForm.mother.name ? manualForm.mother : undefined,
+        address_line1: manualForm.address_line1,
+        city: manualForm.city,
+        postal_code: manualForm.postal_code,
+        country: manualForm.country,
+        children: manualForm.children.map((c) => ({ name: c.name, dob: c.dob, sex: c.sex })),
+        monthly_amount_cents: amountCents,
+      });
+      toast.success('Manual registration created');
+      resetManualForm();
+      await loadAll();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create registration');
+    } finally {
+      manualSubmitting = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -579,6 +643,13 @@
             </span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              class="btn-primary text-xs"
+              onclick={() => showManualForm = !showManualForm}
+            >
+              <Plus size={14} /> Manual Registration
+            </button>
             <button type="button" class="btn-secondary text-xs" onclick={cycleSexFilter} class:badge-blue={sexFilter === 'male'} class:badge-purple={sexFilter === 'female'}>
               {sexFilterLabel()}
             </button>
@@ -600,9 +671,123 @@
               </button>
             </div>
           </div>
-        </div>
+</div>
 
-        {#if flatStudents.length === 0}
+      {#if showManualForm}
+        <form onsubmit={submitManual} class="border border-border rounded-xl p-5 mb-4 space-y-5" style="background-color: var(--color-bg);">
+          <div class="flex items-center justify-between">
+            <h3 class="font-heading font-semibold text-text">New Manual Registration</h3>
+            <button type="button" class="btn-secondary text-xs" onclick={resetManualForm}>Cancel</button>
+          </div>
+          <p class="text-xs text-text-muted">
+            Create a registration with a custom monthly amount. Payment is handled outside the system (cash, check, etc.).
+          </p>
+
+          <div>
+            <label for="manual_term" class="block text-sm text-text-muted mb-1">Term *</label>
+            <select id="manual_term" class="w-full" bind:value={manualForm.term_id} required>
+              <option value="" disabled>Select term</option>
+              {#each terms as term}
+                <option value={term.id}>{term.name}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm text-text-muted mb-1">Monthly Amount ($) *</label>
+            <input type="number" step="0.01" min="0" bind:value={manualForm.monthly_amount_dollars} class="w-full max-w-xs" placeholder="0.00" required />
+            <p class="text-xs text-text-dim mt-1">What the family will pay each month. Use 0 for financial aid.</p>
+          </div>
+
+          <fieldset class="border border-border rounded-lg p-4 space-y-3">
+            <legend class="text-sm font-medium text-text px-1">Parent / Guardian</legend>
+            <p class="text-xs text-text-dim">At least one parent's complete information is required.</p>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div class="form-group">
+                <label for="manual_fn">Father's Name</label>
+                <input id="manual_fn" type="text" bind:value={manualForm.father.name} class="w-full" />
+              </div>
+              <div class="form-group">
+                <label for="manual_mn">Mother's Name</label>
+                <input id="manual_mn" type="text" bind:value={manualForm.mother.name} class="w-full" />
+              </div>
+              <div class="form-group">
+                <label for="manual_fp">Father's Phone</label>
+                <input id="manual_fp" type="tel" bind:value={manualForm.father.phone} class="w-full" placeholder="+1 123 456 7890" />
+              </div>
+              <div class="form-group">
+                <label for="manual_mp">Mother's Phone</label>
+                <input id="manual_mp" type="tel" bind:value={manualForm.mother.phone} class="w-full" placeholder="+1 123 456 7890" />
+              </div>
+              <div class="form-group">
+                <label for="manual_fe">Father's Email</label>
+                <input id="manual_fe" type="email" bind:value={manualForm.father.email} class="w-full" />
+              </div>
+              <div class="form-group">
+                <label for="manual_me">Mother's Email</label>
+                <input id="manual_me" type="email" bind:value={manualForm.mother.email} class="w-full" />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="border border-border rounded-lg p-4 space-y-3">
+            <legend class="text-sm font-medium text-text px-1">Address</legend>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <div class="form-group sm:col-span-2">
+                <label for="manual_addr">Street Address *</label>
+                <input id="manual_addr" type="text" bind:value={manualForm.address_line1} class="w-full" required />
+              </div>
+              <div class="form-group">
+                <label for="manual_city">City *</label>
+                <input id="manual_city" type="text" bind:value={manualForm.city} class="w-full" required />
+              </div>
+              <div class="form-group">
+                <label for="manual_zip">ZIP Code *</label>
+                <input id="manual_zip" type="text" bind:value={manualForm.postal_code} class="w-full" required />
+              </div>
+              <div class="form-group">
+                <label for="manual_country">Country</label>
+                <input id="manual_country" type="text" bind:value={manualForm.country} class="w-full" placeholder="US" />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="border border-border rounded-lg p-4 space-y-3">
+            <legend class="text-sm font-medium text-text px-1">Children</legend>
+            {#each manualForm.children as child, i (i)}
+              <div class="border border-border/50 rounded-lg p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-text-muted">Child {i + 1}</span>
+                  {#if manualForm.children.length > 1}
+                    <button type="button" class="text-xs text-accent" onclick={() => removeManualChild(i)}>Remove</button>
+                  {/if}
+                </div>
+                <div class="grid sm:grid-cols-3 gap-3">
+                  <input type="text" bind:value={child.name} class="w-full" placeholder="Full name" required />
+                  <input type="date" bind:value={child.dob} class="w-full" required />
+                  <select bind:value={child.sex} class="w-full" required>
+                    <option value="" disabled>Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </div>
+              </div>
+            {/each}
+            <button type="button" class="btn-secondary text-xs" onclick={addManualChild}>
+              <Plus size={14} /> Add Child
+            </button>
+          </fieldset>
+
+          <div class="flex items-center justify-end gap-3 pt-2 border-t border-border">
+            <button type="button" class="btn-secondary text-sm" onclick={resetManualForm}>Cancel</button>
+            <button type="submit" class="btn-primary" disabled={manualSubmitting}>
+              {manualSubmitting ? 'Saving…' : 'Create Registration'}
+            </button>
+          </div>
+        </form>
+      {/if}
+
+      {#if flatStudents.length === 0}
           <p class="text-text-muted text-sm">No registrations yet.</p>
         {:else}
           <div class="overflow-x-auto">
