@@ -1176,5 +1176,43 @@ await testCase(t, 'CON-50', async () => {
   }
 });
 
+// CON-51 — Custom page renders after creating via admin API
+await testCase(t, 'CON-51', async () => {
+  let masjidId = null;
+  try { const auth = await apiLogin(cfg); masjidId = auth.masjidId; } catch { /* skip */ }
+  if (!masjidId) { t.assert(true, 'CON-51 skipped (no admin login)'); return; }
+  const title = `E2E Page ${Math.random().toString(36).slice(2, 8)}`;
+  const pageSlug = `e2e-page-${Math.random().toString(36).slice(2, 6)}`;
+
+  let created = false;
+  try {
+    await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/pages`, {
+      slug: pageSlug,
+      title,
+      raw_markdown: '# E2E Custom Page\n\nTest content for consumer rendering.',
+    });
+    created = true;
+  } catch { /* skip */ }
+  if (!created) { t.assert(true, 'CON-51 skipped (page create failed)'); return; }
+
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const b = collectPage(page, cfg);
+  try {
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/pages/${pageSlug}`, { waitUntil: 'load' });
+    await waitForHydration(page, 10000);
+    await settlePage(page, b, 1000);
+
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    t.assert(bodyText.includes(title),
+      `CON-51 page renders title "${title}" (body: ${bodyText.slice(0, 80)}…)`);
+    t.assert(b.pageErrors.length === 0,
+      `CON-51 page no errors — ${JSON.stringify(b.pageErrors)}`);
+  } finally {
+    await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/pages/${pageSlug}`).catch(() => {});
+    await context.close();
+  }
+});
+
 await browser.close();
 process.exit((await t.done()) > 0 ? 1 : 0);

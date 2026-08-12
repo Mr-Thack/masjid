@@ -255,4 +255,21 @@ for (const [id, path, check] of [
   t.assert(r.isJson, 'API-19 body is JSON, not HTML');
 }
 
+// API-20 — weekly prayer endpoint returns expected shape
+{
+  const r = await getJson(`/api/v1/masjids/${SLUG_A}/prayer/weekly`);
+  t.assert(r.status === 200, `API-20 weekly prayer → 200 (got ${r.status})`);
+  t.assert(r.isJson, 'API-20 weekly prayer body is JSON');
+  t.assert(r.body && Array.isArray(r.body.days), `API-20 has days array (len: ${r.body?.days?.length})`);
+  t.assert(r.body && typeof r.body.masjid === 'object', 'API-20 has masjid object');
+}
+
+// API-21 — nav endpoint returns expected shape
+{
+  const r = await getJson(`/api/v1/masjids/${SLUG_A}/nav`);
+  t.assert(r.status === 200, `API-21 nav → 200 (got ${r.status})`);
+  t.assert(r.isJson, 'API-21 nav body is JSON');
+  t.assert(r.body && Array.isArray(r.body.nav_items), `API-21 has nav_items array (len: ${r.body?.nav_items?.length})`);
+}
+
 process.exit((await t.done()) > 0 ? 1 : 0);

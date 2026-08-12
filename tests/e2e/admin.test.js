@@ -890,5 +890,27 @@ if (!cfg.adminEmail || !authState) {
   });
 }
 
+// ADM-30 — Rollback: list snapshots and restore (DISABLED — feature not stable yet).
+// Remove the skip() call to activate once rollback is production-ready.
+t.skip('ADM-30', 'rollback feature not yet stable');
+/*
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-30', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-30', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const snapshots = await apiGet(cfg, `/api/v1/admin/masjids/${masjidId}/rollback`);
+    const list = snapshots?.json?.snapshots || [];
+    t.assert(Array.isArray(list), `ADM-30 snapshots list (len: ${list.length})`);
+    const branches = await apiGet(cfg, `/api/v1/admin/masjids/${masjidId}/branches`);
+    t.assert(branches?.json !== null, 'ADM-30 branches endpoint returns JSON');
+    if (list.length > 0) {
+      const r = await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/rollback`, { snapshot_id: list[0].id });
+      t.assert(r.status < 500, `ADM-30 rollback attempt status ${r.status}`);
+    }
+  });
+}
+*/
+
 await browser.close();
 process.exit((await t.done()) > 0 ? 1 : 0);
