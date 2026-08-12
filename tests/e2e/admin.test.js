@@ -518,10 +518,15 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
       const nameInput = page.locator('#rule-name');
       await nameInput.waitFor({ state: 'visible', timeout: 10000 });
       await nameInput.fill(ruleName);
-      // Submit the RuleForm (its own <form>, submit label "Add")
-      await page.locator('form:has(#rule-name) button[type="submit"]').click();
+      // Submit the RuleForm (its own <form>, submit label "Add").
+      // the form closes (showAddPrayer=null) on successful save.
+      const submitBtn = page.locator('form:has(#rule-name) button[type="submit"]');
+      await submitBtn.click();
 
-      // Verify the rule appeared (condition-based — resolves on API round trip)
+      // Wait for success — the form disappears after the API round-trip.
+      await submitBtn.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+
+      // Verify the rule appeared in the refreshed list.
       const ruleCreated = await page.waitForFunction(
         (name) => document.body.innerText.includes(name), ruleName,
         { timeout: 10000 },
