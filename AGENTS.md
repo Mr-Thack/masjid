@@ -43,9 +43,9 @@ done
 npx tsx tooling/seed.ts
 ```
 
-> **`npm run setup`** runs all of the above in one pass, plus copies `.env.dev` → `apps/api/.dev.vars` for Wrangler/runtime secrets. Use it for fresh clones and new worktrees.
+> **`npm run setup`** runs all of the above in one pass. Use it for fresh clones and new worktrees.
 
-> **Secrets**: `.env.dev` is committed to git (Square/Brevo/LLM keys for dev), so every worktree gets it automatically. `apps/api/.dev.vars` is gitignored — `setup` copies `.env.dev` into it. Never commit `.dev.vars`.
+> **Secrets**: `.env.dev` is committed to git (Square/Brevo/LLM keys for dev), so every worktree gets it automatically. In production, secrets come from the Cloudflare Worker runtime (`platform.env`). In local dev with `vite dev`, the API reads from `process.env` — nothing loads `.env.dev` automatically. Most local work (prayer engine, UI, tests) doesn't need these secrets. For Maktab/Square enrollment in local dev, source them into your shell: `set -a && source .env.dev && set +a` before starting the API server. Tests that need Square credentials auto-skip when they're missing.
 
 > **Per-worktree note**: each `git worktree` is a separate directory with its own `.masjid/local.db` and `node_modules`. You must `npm install` and seed inside each worktree. See "Branching model & parallel work" below.
 >
@@ -472,7 +472,7 @@ Maktab enrollment lives inside the main `@masjid/api` monolith, using the same D
 - **Square is the only payment provider**; Stripe support was removed because account verification could not be completed in time.
 - **No migration from `suffah-old`** — only new enrollments are tracked.
 - **Embed mode** for the enrollment form: `?embed=1` (or `?embed=true`) hides the consumer header and bottom navigation so the form can be dropped into an existing masjid website via iframe.
-- **Local dev secrets** live in `apps/api/.dev.vars` — this file is gitignored and loaded by Wrangler-style dev setups (and merged into `process.env` by the Maktab API routes for `vite dev`).
+- **Local dev secrets** live in `.env.dev` at the repo root — this file is committed and contains Square/Brevo/LLM keys for local development. The API reads from `process.env` in `vite dev` — to use Maktab/Square features, source `.env.dev` into your shell first.
 
 ### D1 tables
 | Table | Purpose |
@@ -516,7 +516,7 @@ npm run test
 - To start admin: `npm run dev --workspace=@masjid/admin` (port 5176)
 - To see the Mishkaat TV board locally: start API + TV and open `http://localhost:5174/display/masjid-al-noor` (Al-Noor seeds to Mishkaat; Al-Jabal shows Sakeenah). Ceremony states to watch: adhaan/iqaamah-countdown at each prayer, night calm ~90 min after Isha iqaamah (20% veil, times stay readable)
 - Maktab form embed URL: `http://localhost:5175/masjid-al-noor/maktab/enroll?embed=1`
-- Maktab dev secrets (Square/Brevo) go in `apps/api/.dev.vars`; put real values there for live sandbox testing
+- Maktab/Square enrollment in local dev: source `.env.dev` into your shell (`set -a && source .env.dev && set +a`) before starting API. Tests auto-skip when keys are missing.
 - Debug endpoint: `GET /api/v1/debug` — public, no auth; returns DB connectivity, bcrypt test, admin info
 - Status endpoint: `GET /api/v1/status` — public, no auth; returns worker health, env vars presence, D1 connectivity
 - Production status: `curl https://mapi.mr-thack.workers.dev/api/v1/status`

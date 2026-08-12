@@ -54,20 +54,20 @@ In production (Cloudflare Workers), `getDb()` returns the D1 binding (`platform.
 
 Each `git worktree` is a separate directory with its own `.masjid/local.db`. Running `npx tsx tooling/seed.ts` inside each worktree creates its own isolated DB.
 
-## Secrets: `.dev.vars`
+## Secrets: `.env.dev`
 
-Local secrets (Square API keys, Brevo email credentials) go in `apps/api/.dev.vars`:
+The repo includes a committed `.env.dev` at the root with all dev secrets (Square sandbox keys, Brevo API key, LLM API key). Every worktree and clone gets it automatically.
 
+In local `vite dev`, the API reads secrets from `process.env` — NOT from `.env.dev` automatically. For most work (prayer engine, UI, tests), you don't need these. To use Maktab/Square enrollment locally, source `.env.dev` into your shell first:
+
+```bash
+set -a && source .env.dev && set +a
+npm run dev --workspace=@masjid/api
 ```
-SQUARE_ACCESS_TOKEN=sandbox-...
-SQUARE_APP_ID=sandbox-...
-SQUARE_LOCATION_ID=...
-BREVO_API_KEY=...
-```
 
-This file is **gitignored**. In production, secrets are set via `wrangler.toml` `[vars]` + `--var` flags at deploy time, or via the Cloudflare dashboard.
+In production (Cloudflare Workers), secrets come from `platform.env` — configured via `wrangler.toml` `[vars]` + `--var` flags at deploy time, or via the Cloudflare dashboard.
 
-The Maktab routes read these from `process.env` in dev mode:
+The Maktab routes read from `process.env` in dev, and `platform.env` in prod:
 ```ts
 const squareAccessToken = process.env.SQUARE_ACCESS_TOKEN || platform?.env?.SQUARE_ACCESS_TOKEN;
 ```
@@ -122,7 +122,7 @@ curl http://localhost:5175/masjid-al-noor
 |---|---|
 | Consumer/Admin pages show "Please Verify Your URL" | API server (5173) is down or DB is empty |
 | API returns 500 | DB not seeded — run `seed.ts` |
-| Maktab enrollment fails | `.dev.vars` missing Square credentials |
+| Maktab enrollment fails | `.env.dev` not sourced into shell |
 | Consumer/TV/Admin tests fail with module errors | `.svelte-kit/` missing — run `svelte-kit sync` |
 | Port already in use | Another dev server (or worktree) is running on that port |
 | `npm run test:all` passes but `test:e2e` fails | Dev servers not running on 5173-5176 |
