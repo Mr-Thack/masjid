@@ -497,28 +497,3 @@ export function explain(r) {
   }
   return parts.join(' | ') || '(no detail)';
 }
-
-// ---------------------------------------------------------------------------
-// Pre-warm: visit every URL the test suite will use to warm the API worker,
-// D1, and CDN edges. Runs once at suite start. Uses 'commit' (response
-// headers received) — we only need to trigger the HTTP request and start
-// the SPA boot, not wait for full render.
-// ---------------------------------------------------------------------------
-export async function prewarm(browser, baseUrl, paths) {
-  console.log(`  pre-warming ${paths.length} URLs…`);
-  const start = Date.now();
-  for (const p of paths) {
-    try {
-      const ctx = await newContext(browser);
-      const page = await ctx.newPage();
-      // 'commit' = navigation committed (response headers received).
-      // This triggers the API call via the SPA's layout load() without
-      // waiting for scripts/iframes to finish loading.
-      await page.goto(`${baseUrl}${p}`, { waitUntil: 'commit', timeout: 10000 });
-      await ctx.close();
-    } catch (e) {
-      console.error(`    prewarm ${p}: ${e.message.split('\n')[0]}`);
-    }
-  }
-  console.log(`  pre-warm done in ${((Date.now() - start) / 1000).toFixed(0)}s`);
-}

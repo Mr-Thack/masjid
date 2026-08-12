@@ -20,7 +20,6 @@ import {
   gotoPage,
   settlePage,
   waitForHydration,
-  prewarm,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
 import { getPublicMaktab } from './api-client.js';
@@ -28,26 +27,6 @@ import { getPublicMaktab } from './api-client.js';
 const cfg = targets();
 const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
 const browser = await launchBrowser();
-
-// Pre-warm all URLs the suite will visit to heat API/D1 and cache CDN chunks.
-await prewarm(browser, cfg.consumer, [
-  '/',
-  `/${SLUG_A}`,
-  `/${SLUG_B}`,
-  `/${SLUG_A}/prayer`,
-  `/${SLUG_B}/prayer`,
-  `/${SLUG_A}/announcements`,
-  `/${SLUG_B}/announcements`,
-  `/${SLUG_A}/jumuah`,
-  `/${SLUG_A}/info`,
-  `/${SLUG_B}/info`,
-  `/${SLUG_A}/donate`,
-  `/${SLUG_B}/donate`,
-  `/${SLUG_A}/maktab`,
-  `/${SLUG_B}/maktab`,
-  `/${SLUG_A}/maktab/enroll`,
-  `/${SLUG_B}/maktab/enroll`,
-]);
 
 // CON-01 — root shows the URL-verification notice, never redirects to a masjid
 await testCase(t, 'CON-01', async () => {

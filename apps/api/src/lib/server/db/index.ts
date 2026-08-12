@@ -449,72 +449,38 @@ let d1MigrationPromise: Promise<void> | null = null;
 function ensureD1Columns(d1db: D1Database) {
   if (d1MigrationPromise) return;
   d1MigrationPromise = (async () => {
-    // Fix column ORDER for masjid_themes — style_system/style_options must
-    // be at position 6-7 (after font_body).  sqlite_master.sql doesn't
-    // reflect ALTER TABLE so we query the live column list instead.
-    try {
-      const cols = await d1db
-        .prepare("SELECT name FROM pragma_table_info('masjid_themes') ORDER BY cid")
-        .all<{ name: string }>();
-      const names = cols.results.map((c) => c.name);
-      const styleIdx = names.indexOf('style_system');
-      // style_system belongs at position 6 (after font_body, before time_format)
-      if (styleIdx !== -1 && styleIdx !== 6) {
-        await fixMasjidThemesColumnOrder(d1db);
-      }
-    } catch { /* pragma_table_info may not be available; skip check */ }
-
+    // Group migrations by table — one PRAGMA per table instead of one
+    // blind ALTER per column (31 failing round-trips → 7 cheap pragmas).
+    const tableCols = new Map<string, Array<{ column: string; def: string }>>();
     for (const [table, column, def] of COLUMN_MIGRATIONS) {
+      if (!tableCols.has(table)) tableCols.set(table, []);
+      tableCols.get(table)!.push({ column, def });
+    }
+    for (const [table, cols] of tableCols) {
       try {
-        await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
-        console.log(`[migration] D1: added ${table}.${column}`);
-      } catch (e) {
-        // Column likely already exists — D1 has no ADD COLUMN IF NOT EXISTS.
+        const result = await d1db
+          .prepare(`SELECT name FROM pragma_table_info('${table}') ORDER BY cid`)
+          .all<{ name: string }>();
+        const existing = new Set(result.results.map((c) => c.name));
+        for (const { column, def } of cols) {
+          if (!existing.has(column)) {
+            await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+            console.log(`[migration] D1: added ${table}.${column}`);
+          }
+        }
+      } catch {
+        // pragma_table_info unavailable; fall back to blind ALTER (should not happen).
+        for (const { column, def } of cols) {
+          try {
+            await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+            console.log(`[migration] D1: added ${table}.${column}`);
+          } catch {
+            // Column likely exists
+          }
+        }
       }
     }
   })();
-}
-
-async function fixMasjidThemesColumnOrder(d1db: D1Database) {
-  console.log('[migration] D1: recreating masjid_themes with canonical column order');
-  // SQLite has no ALTER COLUMN POSITION; recreate the table.
-  await d1db.exec(`
-    CREATE TABLE masjid_themes_new (
-      masjid_id TEXT PRIMARY KEY,
-      layout_preset TEXT NOT NULL DEFAULT 'modern_minimal',
-      primary_color TEXT NOT NULL DEFAULT '#1e3a8a',
-      accent_color TEXT NOT NULL DEFAULT '#10b981',
-      font_heading TEXT NOT NULL DEFAULT 'Inter',
-      font_body TEXT NOT NULL DEFAULT 'Roboto',
-      time_format TEXT NOT NULL DEFAULT '24h',
-      label_adhaan TEXT NOT NULL DEFAULT 'Adhaan',
-      label_iqaamah TEXT NOT NULL DEFAULT 'Iqaamah',
-      label_jumuah TEXT NOT NULL DEFAULT 'Jumu''ah',
-      label_speech TEXT NOT NULL DEFAULT 'Speech',
-      label_sunrise TEXT NOT NULL DEFAULT 'Sunrise',
-      label_fajr TEXT NOT NULL DEFAULT 'Fajr',
-      label_dhuhr TEXT NOT NULL DEFAULT 'Dhuhr',
-      label_asr TEXT NOT NULL DEFAULT 'Asr',
-      label_maghrib TEXT NOT NULL DEFAULT 'Maghrib',
-      label_isha TEXT NOT NULL DEFAULT 'Isha',
-      style_system TEXT NOT NULL DEFAULT 'sakeenah',
-      style_options TEXT NOT NULL DEFAULT '{}',
-      FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE
-    );
-    INSERT INTO masjid_themes_new
-      (masjid_id, layout_preset, primary_color, accent_color, font_heading, font_body,
-       time_format, label_adhaan, label_iqaamah, label_jumuah, label_speech,
-       label_sunrise, label_fajr, label_dhuhr, label_asr, label_maghrib, label_isha,
-       style_system, style_options)
-    SELECT masjid_id, layout_preset, primary_color, accent_color, font_heading, font_body,
-           time_format, label_adhaan, label_iqaamah, label_jumuah, label_speech,
-           label_sunrise, label_fajr, label_dhuhr, label_asr, label_maghrib, label_isha,
-           style_system, style_options
-    FROM masjid_themes;
-    DROP TABLE masjid_themes;
-    ALTER TABLE masjid_themes_new RENAME TO masjid_themes;
-  `);
-  console.log('[migration] D1: masjid_themes recreated successfully');
 }
 
 /** Await this in hooks.server.ts before any route runs to ensure columns exist. */

@@ -49,22 +49,7 @@ for (const name of selected) {
   console.log(`\n--- running ${name} ---`);
   const start = Date.now();
 
-  const run = () => spawnSync(process.execPath, [file], { stdio: 'inherit', env: process.env });
-
-  let r = run();
-  // Retry once on failure to absorb CDN cold-start / edge propagation timing.
-  if (r.status !== 0) {
-    const firstElapsed = ((Date.now() - start) / 1000).toFixed(1);
-    console.log(`\n--- ${name}: first run FAILED after ${firstElapsed}s, retrying once...`);
-    const retryStart = Date.now();
-    r = run();
-    const retryElapsed = ((Date.now() - retryStart) / 1000).toFixed(1);
-    if (r.status === 0) {
-      console.log(`--- ${name}: retry PASSED after ${retryElapsed}s`);
-    } else {
-      console.log(`--- ${name}: retry FAILED after ${retryElapsed}s`);
-    }
-  }
+  const r = spawnSync(process.execPath, [file], { stdio: 'inherit', env: process.env });
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
   timings.push(`${name} ${elapsed}s${r.status === 0 ? '' : ' (FAILED)'}`);

@@ -24,7 +24,6 @@ import {
   gotoPage,
   settlePage,
   waitForHydration,
-  prewarm,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B } from './targets.js';
 import {
@@ -41,20 +40,6 @@ import {
 const cfg = targets();
 const t = createReporter(`Admin [${cfg.env}] → ${cfg.admin}`);
 const browser = await launchBrowser();
-
-// Pre-warm admin URLs to heat API/D1 and cache CDN chunks.
-// Auth-gated pages will redirect to /login but still warm the worker.
-await prewarm(browser, cfg.admin, [
-  '/login',
-  `/admin/${SLUG_A}`,
-  `/admin/${SLUG_B}`,
-  `/admin/${SLUG_A}/settings/profile`,
-  `/admin/${SLUG_A}/settings/theme`,
-  `/admin/${SLUG_A}/settings/prayer`,
-  `/admin/${SLUG_A}/settings/announcements`,
-  `/admin/${SLUG_A}/settings/snapshots`,
-  `/admin/${SLUG_A}/bot`,
-]);
 
 // Captured once by ADM-03's real login; reused by every later authed case.
 let authState = null;

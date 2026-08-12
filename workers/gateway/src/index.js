@@ -92,10 +92,6 @@ const SW_KILL_HTML = `<!doctype html>
 
 export default {
   async fetch(request, env) {
-    // Real assets always win.
-    const asset = await env.ASSETS.fetch(request);
-    if (asset.status !== 404) return asset;
-
     const url = new URL(request.url);
     const { pathname } = url;
 
@@ -110,12 +106,14 @@ export default {
       });
     }
 
-    // Asset-like misses are real 404s. Falling through to the SPA shell here
-    // is what turned "stale HTML references deleted chunk" into a white
-    // screen: the browser would get text/html with a 200 and try to parse it
-    // as JavaScript. A clean 404 lets SvelteKit's failed-import recovery
-    // (full reload → fresh HTML → fresh chunks) do its job.
+    // Asset-like paths: always try ASSETS. Real assets win; misses → 404.
+    // This IS the intentional 404 path — prevents SPA HTML being served
+    // for a missing JS chunk (which would parse as JS → white screen).
+    // SPA routes (extensionless paths like /masjid-al-noor, /display/…)
+    // skip this guaranteed-404 check and go straight to the SPA shell.
     if (looksLikeAsset(pathname)) {
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status !== 404) return asset;
       return new Response('Not found', {
         status: 404,
         headers: {
