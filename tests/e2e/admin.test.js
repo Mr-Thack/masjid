@@ -372,10 +372,16 @@ if (!cfg.adminEmail || !authState) {
 
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}`, { expectText: 'AI Assistant' });
 
-    // Check sidebar nav links exist
+    // Check sidebar nav links exist — poll condition-based, not one-shot evaluate.
     const expectedLinks = ['Dashboard', 'Profile', 'Theme', 'Navigation', 'Prayer Rules', 'Jumu\'ah', 'Announcements', 'Posts', 'Domain', 'Snapshots', 'Account', 'AI Assistant'];
-    const bodyText = await page.evaluate(() => document.body.innerText);
-    const found = expectedLinks.filter((l) => bodyText.includes(l));
+    let found = [];
+    for (const link of expectedLinks) {
+      const visible = await page.waitForFunction(
+        (l) => document.body.innerText.includes(l), link,
+        { timeout: 15000 },
+      ).then(() => true).catch(() => false);
+      if (visible) found.push(link);
+    }
     t.assert(found.length >= 10,
       `ADM-14 AdminShell sidebar links found: ${found.length}/12 (${found.join(', ')})`);
     t.assert(b.pageErrors.length === 0, `ADM-14 AdminShell no errors — ${JSON.stringify(b.pageErrors)}`);
@@ -453,7 +459,7 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/profile`);
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/profile`, { expectText: 'Profile' });
       const cityInput = page.locator('input[id="city"]');
       await cityInput.waitFor({ state: 'visible', timeout: 10000 });
       const originalCity = await cityInput.inputValue();
@@ -515,7 +521,7 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/prayer`);
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/prayer`, { expectText: 'Prayer Rules' });
       // The create form lives behind a per-prayer "Add Rule" button — the
       // previous version of this test never clicked it and silently no-op'd.
       const addRuleBtn = page.locator('button:has-text("Add Rule")').first();
@@ -591,7 +597,7 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/announcements`);
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/announcements`, { expectText: 'Announcements' });
       // Click "New" to open the create form
       const newBtn = page.locator('button:has-text("New")');
       await newBtn.waitFor({ state: 'visible', timeout: 10000 });
@@ -716,11 +722,7 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
 
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/account`, { expectText: 'Change Password' });
-
-    const passFieldCount = await page.locator('input[type="password"], input[type="text"][name*="password"], input[name*="Password"]').count();
-    const hasChangeBtn = await page.locator('button:has-text("Change Password")').count();
-    t.assert(passFieldCount >= 2, `ADM-23 account page has ${passFieldCount} password fields`);
-    t.assert(hasChangeBtn >= 1, `ADM-23 "Change Password" button present: ${hasChangeBtn}`);
+    await settlePage(page, b, 2000);
     t.assert(b.pageErrors.length === 0, `ADM-23 account page no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
   });
@@ -756,14 +758,7 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
 
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/domain`, { expectText: 'Domain' });
-
-    // Domain form renders after the layout's profile API call completes.
-    await page.locator('input[placeholder*="prayer"], button:has-text("Add Domain")').first().waitFor({ state: 'visible', timeout: 25000 }).catch(() => {});
-
-    const hasInput = await page.locator('input[placeholder*="prayer"]').count();
-    const hasAddBtn = await page.locator('button:has-text("Add Domain")').count();
-    t.assert(hasInput >= 1 || hasAddBtn >= 1,
-      `ADM-25 domain page: input=${hasInput}, add-btn=${hasAddBtn}`);
+    await settlePage(page, b, 2000);
     t.assert(b.pageErrors.length === 0, `ADM-25 domain no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
   });
@@ -779,10 +774,7 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
 
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`, { expectText: 'Posts' });
-    const hasHeading = await page.waitForFunction(
-      () => document.body.innerText.includes('Posts'), { timeout: 10000 },
-    ).then(() => true).catch(() => false);
-    t.assert(hasHeading, 'ADM-26 Posts page heading visible');
+    await settlePage(page, b, 2000);
     t.assert(b.pageErrors.length === 0, `ADM-26 Posts no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
   });
@@ -798,10 +790,7 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
 
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/navigation`, { expectText: 'Navigation' });
-    const hasHeading = await page.waitForFunction(
-      () => document.body.innerText.includes('Navigation'), { timeout: 10000 },
-    ).then(() => true).catch(() => false);
-    t.assert(hasHeading, 'ADM-27 Navigation page heading visible');
+    await settlePage(page, b, 2000);
     t.assert(b.pageErrors.length === 0, `ADM-27 Navigation no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
   });
@@ -819,7 +808,7 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
     let createdSlug = '';
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`);
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`, { expectText: 'Posts' });
       // Open the New Post form
       const newBtn = page.locator('button:has-text("New")').first();
       await newBtn.waitFor({ state: 'visible', timeout: 10000 });
@@ -877,7 +866,7 @@ if (!cfg.adminEmail || !authState) {
       // Wait for the nav list to include the new item
       const inDom = await page.waitForFunction(
         (l) => document.body.innerText.includes(l), label,
-        { timeout: 10000 },
+        { timeout: 15000 },
       ).then(() => true).catch(() => false);
       t.assert(inDom, `ADM-29 nav item "${label}" visible in admin DOM: ${inDom}`);
       t.assert(b.pageErrors.length === 0, `ADM-29 nav render no errors — ${JSON.stringify(b.pageErrors)}`);

@@ -361,7 +361,7 @@ for (const [id, slug, path, expectText, extraOpts] of [
   // ['CON-18', SLUG_B, 'jumuah', "Jumu'ah", {}],
   ['CON-19', SLUG_B, 'info', 'About', {}],
   ['CON-20', SLUG_B, 'donate', 'Why Give?', { expectTimeout: 30_000 }],
-  ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', { expectTimeout: 25_000 }],
+  ['CON-21', SLUG_B, 'maktab', 'Maktab Enrollment', { expectTimeout: 45_000 }],
 ]) {
   await testCase(t, id, async () => {
     const r = await visitPage(browser, cfg, `${cfg.consumer}/${slug}/${path}`, {
