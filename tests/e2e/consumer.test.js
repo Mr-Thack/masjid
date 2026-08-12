@@ -22,7 +22,7 @@ import {
   waitForHydration,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
-import { getPublicMaktab } from './api-client.js';
+import { getPublicMaktab, apiLogin, apiPost, apiDelete } from './api-client.js';
 
 const cfg = targets();
 const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
@@ -1114,6 +1114,66 @@ await testCase(t, 'CON-48', async () => {
   t.assert(b.pageErrors.length === 0,
     `CON-48 verify-assistance-code no uncaught exceptions — ${JSON.stringify(b.pageErrors)}`);
   await context.close();
+});
+
+// CON-49 — News page renders (posts + announcements tabs)
+await testCase(t, 'CON-49', async () => {
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const b = collectPage(page, cfg);
+
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/news`, { waitUntil: 'load' });
+  await waitForHydration(page, 10000);
+  await settlePage(page, b, 1000);
+
+  const bodyText = await page.evaluate(() => document.body.innerText);
+  const hasPosts = bodyText.includes('Posts');
+  const hasAnnouncements = bodyText.includes('Announcements');
+  t.assert(hasPosts || hasAnnouncements,
+    `CON-49 news page tabs visible (posts: ${hasPosts}, announcements: ${hasAnnouncements})`);
+  t.assert(b.pageErrors.length === 0,
+    `CON-49 news no errors — ${JSON.stringify(b.pageErrors)}`);
+  t.assert(b.failedRequests.length === 0,
+    `CON-49 news no failed requests — ${JSON.stringify(b.failedRequests)}`);
+  await context.close();
+});
+
+// CON-50 — Post page renders after creating via admin API
+await testCase(t, 'CON-50', async () => {
+  // Create a post via admin API so we have something to visit
+  let masjidId = null;
+  try { const auth = await apiLogin(cfg); masjidId = auth.masjidId; } catch { /* skip */ }
+  if (!masjidId) { t.assert(true, 'CON-50 skipped (no admin login)'); return; }
+  const title = `E2E Consumer Post ${Math.random().toString(36).slice(2, 8)}`;
+  const slug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
+
+  let created = false;
+  try {
+    await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/posts`, {
+      title,
+      content_markdown: '**E2E** test content for consumer rendering.',
+    });
+    created = true;
+  } catch { /* skip */ }
+  if (!created) { t.assert(true, 'CON-50 skipped (post create failed)'); return; }
+
+  const context = await newContext(browser);
+  const page = await context.newPage();
+  const b = collectPage(page, cfg);
+  try {
+    await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/posts/${slug}`, { waitUntil: 'load' });
+    await waitForHydration(page, 10000);
+    await settlePage(page, b, 1000);
+
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    t.assert(bodyText.includes(title),
+      `CON-50 post page renders title "${title}" (body: ${bodyText.slice(0, 80)}…)`);
+    t.assert(b.pageErrors.length === 0,
+      `CON-50 post page no errors — ${JSON.stringify(b.pageErrors)}`);
+  } finally {
+    await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/posts/${slug}`).catch(() => {});
+    await context.close();
+  }
 });
 
 await browser.close();

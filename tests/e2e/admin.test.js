@@ -29,6 +29,8 @@ import { targets, SLUG_A, SLUG_B } from './targets.js';
 import {
   apiLogin,
   apiGet,
+  apiPost,
+  apiDelete,
   snapshotProfileFields,
   restoreProfileFields,
   restoreEnrollmentOpen,
@@ -145,6 +147,8 @@ if (!cfg.adminEmail) {
       ['/settings/theme', 'Style'],
       ['/settings/prayer', 'Prayer Rules'],
       ['/settings/jumuah', 'Jumu\'ah Sessions'],
+      ['/settings/posts', 'Posts'],
+      ['/settings/navigation', 'Navigation'],
       ['/settings/maktab', 'Maktab Settings'],
       ['/settings/announcements', 'Announcements'],
       ['/settings/domain', 'Domain'],
@@ -294,6 +298,8 @@ if (!cfg.adminEmail || !authState) {
       '/settings/theme',
       '/settings/prayer',
       '/settings/jumuah',
+      '/settings/posts',
+      '/settings/navigation',
       '/settings/maktab',
       '/settings/announcements',
       '/settings/domain',
@@ -367,11 +373,11 @@ if (!cfg.adminEmail || !authState) {
     await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}`, { expectText: 'AI Assistant' });
 
     // Check sidebar nav links exist
-    const expectedLinks = ['Dashboard', 'Profile', 'Theme', 'Prayer Rules', 'Jumu\'ah', 'Announcements', 'Domain', 'Snapshots', 'Account', 'AI Assistant'];
+    const expectedLinks = ['Dashboard', 'Profile', 'Theme', 'Navigation', 'Prayer Rules', 'Jumu\'ah', 'Announcements', 'Posts', 'Domain', 'Snapshots', 'Account', 'AI Assistant'];
     const bodyText = await page.evaluate(() => document.body.innerText);
     const found = expectedLinks.filter((l) => bodyText.includes(l));
-    t.assert(found.length >= 8,
-      `ADM-14 AdminShell sidebar links found: ${found.length}/10 (${found.join(', ')})`);
+    t.assert(found.length >= 10,
+      `ADM-14 AdminShell sidebar links found: ${found.length}/12 (${found.join(', ')})`);
     t.assert(b.pageErrors.length === 0, `ADM-14 AdminShell no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
   });
@@ -760,6 +766,127 @@ if (!cfg.adminEmail || !authState) {
       `ADM-25 domain page: input=${hasInput}, add-btn=${hasAddBtn}`);
     t.assert(b.pageErrors.length === 0, `ADM-25 domain no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
+  });
+}
+
+// ADM-26 — Posts page renders with heading and zero errors
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-26', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-26', async () => {
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+
+    await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`, { expectText: 'Posts' });
+    const hasHeading = await page.waitForFunction(
+      () => document.body.innerText.includes('Posts'), { timeout: 10000 },
+    ).then(() => true).catch(() => false);
+    t.assert(hasHeading, 'ADM-26 Posts page heading visible');
+    t.assert(b.pageErrors.length === 0, `ADM-26 Posts no errors — ${JSON.stringify(b.pageErrors)}`);
+    await context.close();
+  });
+}
+
+// ADM-27 — Navigation page renders with heading and zero errors
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-27', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-27', async () => {
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+
+    await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/navigation`, { expectText: 'Navigation' });
+    const hasHeading = await page.waitForFunction(
+      () => document.body.innerText.includes('Navigation'), { timeout: 10000 },
+    ).then(() => true).catch(() => false);
+    t.assert(hasHeading, 'ADM-27 Navigation page heading visible');
+    t.assert(b.pageErrors.length === 0, `ADM-27 Navigation no errors — ${JSON.stringify(b.pageErrors)}`);
+    await context.close();
+  });
+}
+
+// ADM-28 — Create a post via UI, verify it appears, API cleanup
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-28', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-28', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const title = `E2E Post ${Math.random().toString(36).slice(2, 8)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    let createdSlug = '';
+    try {
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`);
+      // Open the New Post form
+      const newBtn = page.locator('button:has-text("New")').first();
+      await newBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await newBtn.click();
+      // Fill the form
+      const titleInput = page.locator('form:has(h3:has-text("New Post")) input[type="text"]');
+      await titleInput.waitFor({ state: 'visible', timeout: 10000 });
+      await titleInput.fill(title);
+      const contentArea = page.locator('form:has(h3:has-text("New Post")) textarea');
+      await contentArea.fill('E2E test content.');
+      // Submit
+      const submitBtn = page.locator('form:has(h3:has-text("New Post")) button[type="submit"]');
+      await submitBtn.click();
+      // Wait for the form to close (success)
+      await submitBtn.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+      // Verify the post title appears in the list
+      const appeared = await page.waitForFunction(
+        (t) => document.body.innerText.includes(t), title,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(appeared, `ADM-28 post "${title}" appeared in list: ${appeared}`);
+      t.assert(b.pageErrors.length === 0, `ADM-28 create post no errors — ${JSON.stringify(b.pageErrors)}`);
+      // Compute slug for cleanup
+      createdSlug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
+    } finally {
+      if (createdSlug) {
+        await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/posts/${createdSlug}`).catch(() => {});
+      }
+      await context.close();
+    }
+  });
+}
+
+// ADM-29 — Nav items created via API render in the admin page DOM
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-29', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-29', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const label = `E2E Link ${Math.random().toString(36).slice(2, 6)}`;
+    const url = 'https://example.com';
+    let createdItemId = '';
+    // Create via API
+    const postRes = await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/nav`, {
+      kind: 'link', external_url: url, label,
+    });
+    t.assert(postRes.status === 201, `ADM-29 nav item created via API (status ${postRes.status})`);
+    createdItemId = postRes?.json?.id;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/navigation`);
+      await settlePage(page, b, 2000);
+      // Wait for the nav list to include the new item
+      const inDom = await page.waitForFunction(
+        (l) => document.body.innerText.includes(l), label,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(inDom, `ADM-29 nav item "${label}" visible in admin DOM: ${inDom}`);
+      t.assert(b.pageErrors.length === 0, `ADM-29 nav render no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      if (createdItemId) {
+        await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/nav/${createdItemId}`).catch(() => {});
+      }
+      await context.close();
+    }
   });
 }
 
