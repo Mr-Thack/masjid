@@ -96,6 +96,15 @@ npm run test:all:ci      # all vitest suites + schema check (must be green)
 npm run typecheck        # or: npm run check --workspaces --if-present
 ```
 
+**Before writing or modifying ANY E2E test, first read:**
+- **`docs/integration-testing.md`** — the determinism rules (§5.2), conventions (§7), and incident regression map (§9)
+- **`docs/e2e-determinism.md`** — root causes, plan, and handoff lessons
+
+These docs contain hard-earned lessons (condition-based waits, `expectText`
+before form interaction, public-API polling after entity creation, storageState
+patterns, etc.) that will prevent flakes and staging failures.  Every rule
+there was learned from a production or staging incident.
+
 Also:
 - `git status` — only stage intended files, never `git add -A`
 - No `console.log`, `debugger`, or commented-out code unless intentional
@@ -301,6 +310,8 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 - Reserved preset names: `manara` (portrait), `mashrabiya` (pattern), `qandeel` (seasonal). Never name anything `sakina` or `mihrab`.
 
 ## Reference docs — what to read for what
+
+**⚠️ Before writing or changing ANY E2E test, read `docs/integration-testing.md` §5.2 and `docs/e2e-determinism.md`. Every rule there was learned from a staging or production incident.**
 
 | Task | Read |
 |---|---|

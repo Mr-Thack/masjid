@@ -300,6 +300,48 @@ cleanup, not readiness. The rules added:
     context-level request listeners): cold-worker bcrypt can blow the 45s
     ceiling exactly once per suite.
 
+**Resilience & coverage lessons (2026-08-12 — session post-determinism
+restructure).** These rules emerged from staging failures after the
+restructure shipped:
+
+14. **Every `gotoPage` that interacts with page content after navigation
+    MUST include `expectText`.** The admin SPA shows a loader spinner while
+    its `$effect(() => load())` fetches API data — `gotoPage` without
+    `expectText` returns immediately and subsequent `waitFor` races the API
+    call. `expectText` uses `waitForFunction` polling (condition-based, 30s
+    ceiling), not wall-clock sleep. The text should confirm the *page's own
+    content* rendered, not just the layout chrome (e.g. `'Profile'`, not
+    `'AI Assistant'` which appears in the static sidebar before the page
+    data loads).
+
+15. **`page.evaluate(() => document.body.innerText)` is not condition-based.**
+    A one-shot evaluate after navigation can capture incomplete body text
+    (staging pages may re-render after the layout resolves). Use
+    `waitForFunction((t) => document.body.innerText.includes(t), text, opts)`
+    instead — it polls until the text appears, then the DOM is stable.
+
+16. **After creating an entity via admin API, poll the public API to
+    confirm propagation before visiting the consumer page.** Post creation,
+    the public read path may not see the new data immediately (D1
+    read-after-write delay on staging worker isolates). Poll up to 5 times
+    at 2s intervals before Playwright navigates. Posts propagate faster than
+    pages on staging; always verify the specific entity type.
+
+17. **`gotoPage` `expectText` is handled by `waitForFunction` with the 30s
+    default ceiling** (from `EXPECT_TIMEOUT` in helpers.js). It IS
+    condition-based. Do not add redundant `waitForFunction` calls for the
+    same text immediately after `gotoPage` — they just repeat the same check
+    with a shorter timeout and race the page load.
+
+18. **Simplify fragile DOM form assertions.** If ADM-04 already verifies a
+    page's heading in the settings sweep, standalone tests for that page
+    should check zero errors + content, not count specific form elements.
+    Form element selectors (especially complex CSS selectors like
+    `input[type="password"], input[name*="Password"]`) break when the
+    underlying component changes its markup. The sweep handles the "does it
+    render?" question; standalone tests should focus on what they uniquely
+    verify.
+
 ## 6. Test catalog
 
 **`docs/integration-test-cases.md` is the authoritative list**: ~50 cases

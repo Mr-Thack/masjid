@@ -1,9 +1,10 @@
 # E2E Determinism Restructure Plan
 
-> Status: **implemented & locally verified (2026-08-09)** — full local E2E run
-> green on first pass (consumer 82/82, admin 75/75, api/worker/tv/deploy green);
-> unit suites green (API 670, admin 230, tooling 23).
-> **Staging validation is BLOCKED on an infra issue — see §7 handoff.**
+> Status: **shipped & validated (2026-08-12)** — determinism restructure
+> (P1–P6) landed, staging hang diagnosed as CF daily-limit soft-throttling
+> (94K/100K requests), cold-isolate D1 ops cut 33→9, gateway subrequest waste
+> eliminated, prewarm/retry removed, pipeline fully green across all 6 suites.
+> Further resilience rules added 2026-08-12 in `docs/integration-testing.md` §5.2.
 
 ## 1. Root causes (what the investigation found)
 
