@@ -27,7 +27,7 @@ The project is a fully implemented monorepo with:
 Every fresh checkout — whether `git clone` or `git worktree add` — needs these steps before anything else will work:
 
 ```bash
-# 1. One-shot setup (install + sync + seed)
+# 1. One-shot setup (install + sync + seed + dev secrets)
 npm run setup
 
 # 2. (Legacy manual steps kept for reference)
@@ -43,9 +43,11 @@ done
 npx tsx tooling/seed.ts
 ```
 
-> **`npm run setup`** runs all of the above in one pass. Use it for fresh clones and new worktrees.
+> **`npm run setup`** runs all of the above in one pass, plus copies `.env.dev` → `apps/api/.dev.vars` for Wrangler/runtime secrets. Use it for fresh clones and new worktrees.
 
-> **Per-worktree note**: each `git worktree` is a separate directory with its own `.masjid/local.db` and `node_modules`. You must `npm install` and seed inside each worktree. See "Multi-agent parallel work (worktrees)" below.
+> **Secrets**: `.env.dev` is committed to git (Square/Brevo/LLM keys for dev), so every worktree gets it automatically. `apps/api/.dev.vars` is gitignored — `setup` copies `.env.dev` into it. Never commit `.dev.vars`.
+
+> **Per-worktree note**: each `git worktree` is a separate directory with its own `.masjid/local.db` and `node_modules`. You must `npm install` and seed inside each worktree. See "Branching model & parallel work" below.
 >
 > **If admin/consumer/TV tests fail with `Cannot find module './.svelte-kit/tsconfig.json'`**, the `.svelte-kit/` output is missing — re-run step 2 above (`svelte-kit sync`).
 
