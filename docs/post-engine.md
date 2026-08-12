@@ -1,7 +1,10 @@
 # Post Engine — Implementation Plan
 
-**Status**: Not started
+**Status**: Implemented (shipped 2026-08-09)
 **Created**: 2026-08-05
+**Updated**: 2026-08-11 (status update)
+
+> **This feature is fully implemented**: `posts` table in D1, admin CRUD + homepage/info pin endpoints, consumer `/news` tabbed page + `/posts/[post_slug]` detail page, 6 agent tools (`posts_list` through `posts_pin_info`), admin settings page, and config snapshot inclusion. The `masjid_pages` custom page system is also fully implemented and active (was "dormant" in the original spec).
 
 ## Overview
 
@@ -27,7 +30,7 @@ Adds a new `posts` content type to the platform — rich, permanent informationa
 ### What does NOT change
 
 - Announcements: DB table, API, admin page, agent tools, TV display, consumer page at `/announcements` — zero changes
-- `masjid_pages` table: remains dormant
+- `masjid_pages` table: now active (pages CRUD API + admin UI + consumer route + agent tools implemented alongside posts)
 - TV display: no post content surfaces on TV
 - Service worker, deploy pipeline
 

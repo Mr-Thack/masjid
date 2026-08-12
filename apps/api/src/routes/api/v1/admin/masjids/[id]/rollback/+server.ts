@@ -94,7 +94,6 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       if (typeof m.youtube_url === 'string' || m.youtube_url === null) masjidData.youtubeUrl = m.youtube_url;
       if (typeof m.instagram_url === 'string' || m.instagram_url === null) masjidData.instagramUrl = m.instagram_url;
       if (typeof m.website_url === 'string' || m.website_url === null) masjidData.websiteUrl = m.website_url;
-      if (typeof m.external_donation_url === 'string' || m.external_donation_url === null) masjidData.externalDonationUrl = m.external_donation_url;
 
       if (Object.keys(masjidData).length > 0) {
         await db.update(masjids).set(masjidData).where(eq(masjids.id, params.id));

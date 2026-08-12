@@ -4,7 +4,7 @@ import { load } from '../routes/display/[masjid_slug]/+page';
 describe('load', () => {
   it('calls the board endpoint and returns the payload', async () => {
     const payload = {
-      masjid: { slug: 'test', name: 'Test', city: null, external_donation_url: null },
+      masjid: { slug: 'test', name: 'Test', city: null },
     };
 
     const mockFetch = vi.fn().mockResolvedValue({

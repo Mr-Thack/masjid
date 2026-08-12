@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 5176",
+    "dev": "vite dev",
     "build": "vite build",
-    "preview": "vite preview --port 5176",
+    "preview": "vite preview",
     "deploy": "node ../../tooling/deploy-pages.js"
   },
   "dependencies": {

@@ -560,7 +560,6 @@ describe('UpdateMasjidSchema', () => {
         youtube_url: null,
         instagram_url: null,
         website_url: null,
-        external_donation_url: null,
         contact_email: null,
       }),
     ).not.toThrow();

@@ -2,6 +2,8 @@
 
 The TV display (`apps/tv/`) is a **static SvelteKit kiosk display** built for prayer hall big-screen TVs. It renders on `GET /display/{masjid_slug}` and targets TVs 10 years old or newer.
 
+> **Note (2026-08-11)**: This document describes the **Sakeenah** style system layout and the pre-Mishkaat architecture. The **Mishkaat** style system (shipped 2026-07-29) adds substantial features not described here: RTL layout, ceremony overlay states, soul-column frame rotation, board roll cycle, server-clock sync, night calm veil, Amiri headings, star-and-octagon band, and mihrab arch crest. See `AGENTS.md` § "TV Frontend Architecture" for the full current component and library inventory. The APIs described here (board endpoint, formatTime, etc.) remain accurate for both style systems.
+
 ## Design Philosophy
 
 1. **Runs on potato TVs** — No heavy frameworks, no Tailwind CSS (replaced with ~300 lines of hand-written CSS), non-blocking Google Fonts with `<noscript>` fallback.

@@ -4,6 +4,7 @@ import { execSync } from 'child_process';
 
 const BUILD_ID = execSync('git rev-parse --short HEAD').toString().trim();
 const BUILD_TIME = new Date().toISOString();
+const PORT = parseInt(process.env.PORT || '5173', 10);
 
 function stubNativeModules(): Plugin {
   let isBuild = false;
@@ -31,6 +32,6 @@ export default defineConfig({
   },
   plugins: [stubNativeModules(), sveltekit()],
   server: {
-    port: 5173,
+    port: PORT,
   },
 });

@@ -5,7 +5,6 @@ export interface BoardPayload {
     city: string | null;
     state: string | null;
     asr_madhab?: string;
-    external_donation_url: string | null;
   };
   theme: {
     style_system: 'sakeenah' | 'mishkaat';

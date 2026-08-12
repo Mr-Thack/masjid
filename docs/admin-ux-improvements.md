@@ -1,5 +1,7 @@
 # Admin UX Improvements: Prayer Rules
 
+**Status: MOSTLY IMPLEMENTED** — pipeline visualization (toggle), duplicate rule button, and `enabled` toggle all exist. The inline computed-times display (Section 1) may not be fully implemented. See `apps/admin/src/routes/admin/[slug]/settings/prayer/+page.svelte`.
+
 ## Summary
 
 The rules engine is powerful but the admin UI needs to make the chaining model visible and give instant feedback. These are UX-only changes — no new engine features needed for most of them (only `enabled` column from the rules spec).

@@ -61,6 +61,8 @@ export const EnrollmentSchema = BaseEnrollmentSchema.refine(
 );
 export type EnrollmentInput = z.infer<typeof EnrollmentSchema>;
 
+// Placeholder for future Stripe integration — not currently used.
+// Current payment provider is Square (see SquareEnrollmentSchema below).
 export const StripeEnrollmentSchema = BaseEnrollmentSchema.extend({
   success_url: z.string().url(),
   cancel_url: z.string().url(),

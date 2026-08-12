@@ -1,7 +1,9 @@
 # Configurable Navigation
 
-> **Status**: Spec (2026-08-06). This document is the canonical reference for per-masjid
+> **Status**: Spec + Implemented (2026-08-06, updated 2026-08-11). This document is the canonical reference for per-masjid
 > navigation configuration across the consumer app and admin dashboard.
+>
+> **Implementation notes**: (a) The `UpdateNavItemSchema` uses a flat partial object (all fields optional), not `z.discriminatedUnion` — discriminated unions reject partial updates without the `kind` field (see AGENTS.md Lesson 52). (b) The D1 schema uses `INTEGER 0/1` not `BOOLEAN`. (c) No `UNIQUE(masjid_id, sort_order)` constraint exists — the reorder endpoint handles dedup. (d) All CRUD endpoints and the consumer `/nav` route are implemented.
 
 ---
 

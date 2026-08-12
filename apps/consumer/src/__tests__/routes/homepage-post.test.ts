@@ -5,7 +5,6 @@ import HomePage from '../../routes/[masjid_slug]/+page.svelte';
 
 type MasjidData = {
   name: string;
-  external_donation_url?: string;
 };
 
 type PrayerTimes = Record<string, { adhaan: string; iqaamah: string } | string>;

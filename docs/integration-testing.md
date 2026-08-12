@@ -1,18 +1,16 @@
 # Integration & browser smoke testing
 
-**Status**: LIVE (2026-08-01). All 6 suites implemented and green locally:
-`api` (15 cases, 45 assertions), `worker` (5 cases, 11 assertions),
-`deploy` (6 cases, remote-only), `consumer` (28 cases, 57 assertions),
-`tv` (6 cases, 9 assertions), `admin` (12 cases, 41 assertions). CI workflows exist
-(`deploy-staging.yml`, `e2e-prod` job in `deploy.yml`). Only WP7
-(human-with-creds rollout checklist) remains.
+**Status**: LIVE (2026-08-11). All 6 suites implemented:
+`api` (15 cases), `deploy` (9 cases), `consumer` (48 cases),
+`tv` (11 cases), `admin` (25 cases). CI workflows exist
+(`deploy-staging.yml`). Test counts at time of writing: 673 API + 266 TV + 165 consumer + 230 admin + 231 WhatsApp + 40 agent + 23 tooling.
 
 Read `docs/unified-deploy.md` and the AGENTS.md "Production deployment
 lessons" before touching any of this.
 
 ## 1. Why this exists
 
-Our unit tests (470 API + 210 TV + 83 consumer + 115 admin + …) all pass, yet
+Our unit tests (673 API + 266 TV + 165 consumer + 230 admin + 231 WhatsApp + 40 agent + 23 tooling) all pass, yet
 the consumer and admin pages have crashed in production multiple times. Every
 one of those incidents falls into a class that **unit tests cannot catch by
 construction**:
@@ -98,23 +96,25 @@ Consequences (binding):
 ## 3. Branch & promotion flow
 
 ```
-feature branches ──merge──▶ staging ────merge (fast-forward)──▶ master
-     │                        │                                  │
-     │                   CI: check-schema gate               CI: check-schema gate
-     │                   deploy mapi-staging +             deploy workers + pages
-     │                   masjid-staging pages                   │
-     │                        │                                  │
-     │                   GATE: test:e2e:staging              POST: test:e2e:prod
-     │                   (browser+API, WRITES ok)            (browser+API, READ-ONLY)
+master (dev) ──merge──▶ staging (release gate) ──manual trigger──▶ production
+     │                          │                                      │
+     │                    CI: check-schema + d1-drift gate         deploy workers + pages
+     │                    deploy mapi-staging +                         │
+     │                    masjid-staging pages                     POST: test:e2e:prod
+     │                    seed staging D1                          (browser+API, READ-ONLY)
+     │                          │
+     │                    GATE: test:e2e:staging
+     │                    (browser+API, WRITES ok)
      ▼
   local: npm run test:e2e (dev servers) — run before pushing anything
 ```
 
 Rules:
 
-1. **Nothing merges to `master` unless staging CI is green** on that exact
-   commit. Merge staging → master fast-forward where possible so the tested
-   commit IS the deployed commit.
+1. **Development happens on `master`**. Commit freely there. When enough
+   changes are ready, merge **master → staging**, let E2E run, then manually
+   trigger `Deploy to Cloudflare` (`workflow_dispatch`) to push to prod.
+   Staging is the final gate before prod — NOT for everyday testing.
 2. `e2e-staging` runs AFTER the staging deploy in the same workflow. Each
    browser/deploy job first runs `tests/e2e/wait-for-deploy.js` — a readiness
    probe that polls until the runner's edge consistently serves the FRESH
@@ -127,8 +127,8 @@ Rules:
    The deploy is already live — a red result pages a human, it does not
    roll back.
 4. Agents never deploy (AGENTS.md multi-agent rule 6). Only CI deploys.
-5. The whatsapp/agent vitest suites are intentionally NOT in any workflow
-   (currently red — missing tokens; tracked separately).
+5. The whatsapp/push workers remain OUT OF SCOPE for staging. Their vitest
+   suites run locally but are not deployed to staging or prod.
 
 ## 4. Rollout checklist (one-time, needs Cloudflare/GitHub creds)
 
@@ -179,14 +179,12 @@ tests/e2e/
   targets.js          — E2E_ENV resolution, slugs, credentials guard, allowedApiOrigins,
                         expectedEnvironment (dev/staging/production)
   helpers.js          — reporter, launchBrowser, collectPage, visitPage, explain
-  api.test.js         — API-01..15 (no browser) — 45 assertions, green
-  worker.test.js      — WRK-01..05: runtime health, registration smoke, login
-                        round-trip, schema-drift guard — 11 assertions, green
-  consumer.test.js    — CON-01..28 — 57 assertions, green
-  deploy.test.js      — DEP-01..06 (remote only) — 0 assertions (remote-only), green
-  tv.test.js          — TV-01..06 — 9 assertions, green
-  admin.test.js       — ADM-01..12 — 41 assertions, green
-  run.js              — runs existing suites in order api→worker→deploy→consumer→tv→admin,
+  api.test.js         — API-01..15 (no browser) — green
+  deploy.test.js      — DEP-01..09 (no browser) — remote-only, green
+  consumer.test.js    — CON-01..48 — green
+  tv.test.js          — TV-01..11 — green
+  admin.test.js       — ADM-01..25 — green
+  run.js              — runs suites in order api→deploy→consumer→tv→admin,
                         --suite=<name> flag, exit code
 ```
 
@@ -342,13 +340,12 @@ Implement cases exactly as specced there; update statuses as they land.
 | WP | Scope | Status |
 |---|---|---|
 | WP0 | CORS origin, wrangler `[env.staging]`, workflows (worker+pages+schema gate), harness, targets, runner, npm scripts | ✅ DONE (2026-08-01) |
-| WP1 | `api.test.js` (API-01..15) | ✅ DONE — 45 assertions green locally |
-| WP1b | `worker.test.js` (WRK-01..05) | ✅ DONE — 11 assertions green locally |
-| WP2 | `consumer.test.js` CON-01..28 | ✅ DONE — 57 assertions green locally |
-| WP3 | `deploy.test.js` (DEP-01..06) | ✅ DONE — 6 cases, remote-only, self-skips locally |
-| WP4 | `consumer.test.js` CON-17..28 (extended coverage) | ✅ DONE — 57 assertions total green locally |
-| WP5 | `tv.test.js` (TV-01..06) | ✅ DONE — 9 assertions green locally |
-| WP6 | `admin.test.js` (ADM-01..12) | ✅ DONE — 41 assertions green locally |
+| WP1 | `api.test.js` (API-01..15) | ✅ DONE |
+| WP1b | `deploy.test.js` (DEP-01..09) | ✅ DONE — remote-only |
+| WP2 | `consumer.test.js` CON-01..48 | ✅ DONE |
+| WP4 | `consumer.test.js` CON-17..48 (extended coverage) | ✅ DONE |
+| WP5 | `tv.test.js` (TV-01..11) | ✅ DONE |
+| WP6 | `admin.test.js` (ADM-01..25) | ✅ DONE |
 | WP7 | Rollout checklist §4 (D1 create/seed, GitHub env, staging branch — human with creds), then flip catalog/doc statuses | PENDING |
 
 WP3–WP6 can run in parallel worktrees (disjoint files; WP4/WP2 same file

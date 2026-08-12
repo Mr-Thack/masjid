@@ -5,8 +5,8 @@ This file is the authoritative, enumerated list of every browser/API smoke
 test case, written so an agent with no project context can implement a case
 end-to-end without inventing anything.
 
-- **Harness + API/worker/consumer suites already exist** in `tests/e2e/`
-  (implemented 2026-08-01, green locally: 174 assertions). Cases marked
+- **Harness + API/deploy/consumer/TV/admin suites already exist** in `tests/e2e/`
+  (implemented 2026-08-01 through 2026-08-09). Cases marked
   **IMPLEMENTED** show the pattern to copy. Cases marked **PENDING** are the
   swarm's work.
 - Every expected string below was verified against the real components or a
@@ -144,7 +144,7 @@ else { ...write test... }
 
 ## Suite: API (no browser) — `tests/e2e/api.test.js`
 
-**Status: ALL 8 IMPLEMENTED + green locally (23 assertions).**
+**Status: ALL 19 IMPLEMENTED (API-01..19).**
 Each is a plain `fetch` against `cfg.api`. Verified payload shapes
 (2026-08-01): masjid → `{masjid, theme, calculation_method, timezone,
 prayer_times{fajr{adhaan,iqaamah,right_after_adhaan}, sunrise, dhuhr, asr,
@@ -188,7 +188,7 @@ suite, not just in vitest.
 
 ## Suite: DEPLOY (deployed artifact integrity) — `tests/e2e/deploy.test.js`
 
-**Status: ALL PENDING.** Env: `remote only` — self-skip when
+**Status: ALL 9 IMPLEMENTED (DEP-01..09).** Env: `remote only` — self-skip when
 `!cfg.remote` (print one SKIP line and exit 0). These are plain `fetch`
 checks; no browser. Case DEP-02 additionally needs a local `.merged/`
 directory (exists after `node tooling/merge-pages.js`) — skip it with a
@@ -258,7 +258,7 @@ Assert: 200; `cache-control` contains `max-age=3600` and does NOT contain
 
 ## Suite: CONSUMER — `tests/e2e/consumer.test.js`
 
-**Status: CON-01..16 IMPLEMENTED + green.** Env: all.
+**Status: CON-01..48 IMPLEMENTED.** Env: all.
 Verified strings: root → "Please Verify Your URL"; SLUG_A name "Masjid
 Al-Noor", labels Fajr/Dhuhr/Asr/Maghrib/Isha; SLUG_B name "Masjid Al-Jabal",
 labels Fajr/**Zuhr**/Asr/Maghrib/Isha (Indo-Pak transliterations — verified
@@ -342,7 +342,7 @@ dev). The port stays in sync manually — note drift in your hand-off.
 
 ## Suite: TV — `tests/e2e/tv.test.js`
 
-**Status: ALL 4 IMPLEMENTED.** Env: all. Base: `{cfg.tv}/display/{slug}`.
+**Status: ALL 11 IMPLEMENTED (TV-01..11).** Env: all. Base: `{cfg.tv}/display/{slug}`.
 Verified: board container selector `.prayer-grid`; header cells render the
 theme's adhaan/iqaamah labels ("Adhaan"/"Iqaamah" for SLUG_A,
 "Azaan"/"Iqamah" for SLUG_B — verify remotely via
@@ -386,7 +386,7 @@ tests (`npm run test:tv`). Smoke = presence + zero errors.
 
 ## Suite: ADMIN — `tests/e2e/admin.test.js`
 
-**Status: ALL 8 IMPLEMENTED.** Env: all (auth cases skip without credentials).
+**Status: ALL 25 IMPLEMENTED (ADM-01..25).** Env: all (auth cases skip without credentials).
 Verified strings: `/login` → "Masjid Admin", "Sign in to manage your
 masjid", email input `input[type="email"]`, password `input[type="password"]`,
 submit `button[type="submit"]` labeled "Sign In" ("Signing in..." while
@@ -571,14 +571,14 @@ Assert: 200 + valid shapes for SLUG_B prayer/jumuah/announcements/maktab.
 ## Workflow integration (how CI runs these)
 
 - **Push to `staging`** → `.github/workflows/deploy-staging.yml`:
-  `check-schema` gate → build+deploy API worker to `mapi-staging`
+  `check-schema` + `check-d1-drift` gates → build+deploy API worker to `mapi-staging`
   (staging D1 id injected over `placeholder-staging-db-id`) → build+merge
   pages with `VITE_API_URL=https://mapi-staging.mr-thack.workers.dev` →
-  deploy to `masjid-staging.pages.dev` → `sleep 30` (edge propagation) →
+  deploy to `masjid-staging.pages.dev` → `wait-for-deploy.js` (readiness probe) →
   `npm run test:e2e:staging` (ALL suites incl. write cases — disposable DB).
-  Green = eligible to merge into `master`.
-- **Push to `master`** → `.github/workflows/deploy.yml`: `check-schema`
-  gate → workers+pages deploy → `e2e-prod` job → `npm run test:e2e:prod`
+  Green = eligible to manually trigger prod deploy.
+- **Prod deploy** → `.github/workflows/deploy.yml` (`workflow_dispatch`):
+  `check-schema` + `check-d1-drift` gates → workers+pages deploy → `e2e-prod` job → `npm run test:e2e:prod`
   (read-only alarm; write cases skip on `cfg.writes`).
 - **Local**: `npm run test:e2e` with the 4 dev servers running. Run one
   suite while developing: `node tests/e2e/run.js --suite=admin`.

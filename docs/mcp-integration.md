@@ -3,7 +3,7 @@
 ## Architecture
 
 ```
-LLM ──► MCP Server ──► HTTP ──► SvelteKit API ──► D1 / KV / Stripe
+LLM ──► MCP Server ──► HTTP ──► SvelteKit API ──► D1 / KV / Square
                                 (same origin)
 ```
 

@@ -1,6 +1,6 @@
 # API Endpoint Reference
 
-Base path: `/api/v1`. Admin endpoints require `Authorization: Bearer <jwt>`. Public endpoints are unauthenticated and served from KV cache.
+Base path: `/api/v1`. Admin endpoints require `Authorization: Bearer <jwt>`. Public endpoints are unauthenticated.
 
 ---
 
@@ -8,35 +8,57 @@ Base path: `/api/v1`. Admin endpoints require `Authorization: Bearer <jwt>`. Pub
 
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
-| `POST` | `/auth/login` | — | `{ email: string, password: string }` | `{ token: string, admin: { id, email, display_name, masjid_id } }` |
+| `POST` | `/auth/login` | — | `{ email, password }` | `{ token, admin: { id, email, display_name, masjid_id } }` |
+| `POST` | `/auth/register` | — | `{ email, password, display_name, masjid: { slug, name, latitude, longitude, timezone?, ... } }` | `{ token, admin, masjid }` |
 | `GET` | `/auth/me` | JWT | — | `{ admin: { id, email, display_name, masjid_id } }` |
 
 JWT is self-contained (no server-side session store). Contains `{ sub: admin_id, masjid_id }`, signed with a Cloudflare Workers secret.
 
 ---
 
-## Masjid Profile
+## Debug / Status
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| `GET` | `/masjids/:id` | JWT | Returns full profile: masjid row + theme row merged |
-| `PUT` | `/masjids/:id` | JWT | Partial update. Accepted fields: `name`, `address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`, `contact_phone`, `contact_email`, `facebook_url`, `youtube_url`, `instagram_url`, `website_url`, `external_donation_url`, `calculation_method`, `timezone`, and all theme fields (`primary_color`, `accent_color`, `font_heading`, `font_body`, `layout_preset`) |
-
-Admin can only access their own masjid (validated from JWT `masjid_id`).
+| `GET` | `/debug` | — | Public debug: DB connectivity, bcrypt test, admin info |
+| `GET` | `/status` | — | Public status: worker health, env vars presence, D1 connectivity, build_id |
 
 ---
 
-## Prayer Rules
+## Admin: Masjid Profile
 
-All scoped to the admin's masjid (from JWT).
+All scoped to the admin's masjid (from JWT `masjid_id`).
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id` | JWT | Returns full profile: masjid row + theme row merged |
+| `PUT` | `/admin/masjids/:id` | JWT | Partial update. Fields: `name`, `address_line1`, `address_line2`, `city`, `state`, `postal_code`, `country`, `contact_phone`, `contact_email`, `facebook_url`, `youtube_url`, `instagram_url`, `website_url`, `calculation_method`, `timezone`, `latitude`, `longitude`, `fajr_angle`, `isha_angle`, `asr_madhab`, `high_latitude_rule`, `show_dual_asr`, adjust fields, `about_markdown`, `donation_links`, and all theme fields |
+| `PUT` | `/admin/masjids/:id/admin` | JWT | Update own admin password |
+
+---
+
+## Admin: Prayer Config
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id/prayer` | JWT | Returns current prayer config (calculation method, angles, offsets, etc.) |
+| `PATCH` | `/admin/masjids/:id/prayer` | JWT | Partial update of prayer config |
+| `GET` | `/admin/masjids/:id/prayer/hijri-today` | JWT | Returns today's Hijri date |
+| `GET` | `/admin/masjids/:id/prayer/health` | JWT | Prayer times health check (validation warnings) |
+| `POST` | `/admin/masjids/:id/prayer/dry-run` | JWT | `{ adjustments?, overrides? }` — simulate prayer times without saving |
+
+---
+
+## Admin: Prayer Rules
 
 | Method | Path | Auth | Body / Notes |
 |---|---|---|---|
-| `GET` | `/masjids/:id/prayer-rules` | JWT | Returns `{ rules: [...] }` ordered by `execution_order ASC` |
-| `POST` | `/masjids/:id/prayer-rules` | JWT | `{ prayer_name, rule_name, execution_order, conditions_json, action_json }` |
-| `PUT` | `/masjids/:id/prayer-rules/:rule_id` | JWT | Partial update of any rule field |
-| `DELETE` | `/masjids/:id/prayer-rules/:rule_id` | JWT | Removes rule, re-numbers execution_order for remaining rules |
-| `PUT` | `/masjids/:id/prayer-rules/reorder` | JWT | `{ order: ["id1","id3","id2"] }` — bulk reassigns execution_order sequentially |
+| `GET` | `/admin/masjids/:id/prayer/rules` | JWT | Returns `{ rules: [...] }` ordered by `execution_order ASC` |
+| `POST` | `/admin/masjids/:id/prayer/rules` | JWT | `{ prayer_name, rule_name, execution_order, conditions_json, action_json }` |
+| `PUT` | `/admin/masjids/:id/prayer/rules/:rule_id` | JWT | Partial update of any rule field |
+| `DELETE` | `/admin/masjids/:id/prayer/rules/:rule_id` | JWT | Removes rule, re-numbers execution_order for remaining rules |
+| `PUT` | `/admin/masjids/:id/prayer/rules/reorder` | JWT | `{ order: ["id1","id3","id2"] }` — bulk reassigns execution_order sequentially |
+| `GET` | `/admin/masjids/:id/prayer/rules/preview` | JWT | Preview the effect of the current rules chain |
 
 ### Condition & Action shapes
 
@@ -44,14 +66,14 @@ See [rules-engine.md](rules-engine.md) for the full type reference.
 
 ---
 
-## Jumu'ah Sessions
+## Admin: Jumu'ah Sessions
 
 | Method | Path | Auth | Body |
 |---|---|---|---|
-| `GET` | `/masjids/:id/jumuah-sessions` | JWT | Returns `{ sessions: [...] }` |
-| `POST` | `/masjids/:id/jumuah-sessions` | JWT | `{ label, time, khateeb?, language?, location? }` |
-| `PUT` | `/masjids/:id/jumuah-sessions/:session_id` | JWT | Partial update |
-| `DELETE` | `/masjids/:id/jumuah-sessions/:session_id` | JWT | Hard delete |
+| `GET` | `/admin/masjids/:id/jumuah` | JWT | Returns `{ sessions: [...] }` |
+| `POST` | `/admin/masjids/:id/jumuah` | JWT | `{ label, time, khateeb?, language?, location? }` |
+| `PUT` | `/admin/masjids/:id/jumuah/:session_id` | JWT | Partial update |
+| `DELETE` | `/admin/masjids/:id/jumuah/:session_id` | JWT | Hard delete |
 
 ### Session object
 ```json
@@ -69,137 +91,116 @@ See [rules-engine.md](rules-engine.md) for the full type reference.
 
 ---
 
-## Announcements
+## Admin: Announcements
 
 | Method | Path | Auth | Body / Notes |
 |---|---|---|---|
-| `GET` | `/masjids/:id/announcements` | JWT | Includes drafts. Returns `{ announcements: [...] }` ordered by `published_at DESC` |
-| `POST` | `/masjids/:id/announcements` | JWT | `{ title, content_markdown, status?, is_pinned? }` — auto-generates slug + compiled_html |
-| `PUT` | `/masjids/:id/announcements/:slug` | JWT | Partial update. If `content_markdown` changes, recompiles `compiled_html` |
-| `DELETE` | `/masjids/:id/announcements/:slug` | JWT | Sets `status = 'archived'` (soft delete) |
-| `PUT` | `/masjids/:id/announcements/:slug/pin` | JWT | Toggles `is_pinned`. If setting to `true`, unpins any other pinned announcement first (only one pinned at a time) |
-
-### Announcement object
-```json
-{
-  "id": "abc123",
-  "masjid_id": "xyz789",
-  "title": "Ramadan Iftar Sponsorship",
-  "slug": "ramadan-iftar-sponsorship",
-  "content_markdown": "## Join us for Iftar\n\nSign up at the front desk.",
-  "compiled_html": "<h2>Join us for Iftar</h2><p>Sign up at the front desk.</p>",
-  "is_pinned": true,
-  "status": "published",
-  "published_at": "2026-07-01T12:00:00Z",
-  "expires_at": null,
-  "created_at": "2026-07-01T12:00:00Z",
-  "updated_at": "2026-07-01T14:30:00Z"
-}
-```
+| `GET` | `/admin/masjids/:id/announcements` | JWT | Includes drafts. Returns `{ announcements: [...] }` ordered by `published_at DESC` |
+| `POST` | `/admin/masjids/:id/announcements` | JWT | `{ title, content_markdown, status?, is_pinned? }` — auto-generates slug + compiled_html |
+| `PUT` | `/admin/masjids/:id/announcements/:slug` | JWT | Partial update. If `content_markdown` changes, recompiles `compiled_html` |
+| `DELETE` | `/admin/masjids/:id/announcements/:slug` | JWT | Sets `status = 'archived'` (soft delete) |
+| `PUT` | `/admin/masjids/:id/announcements/:slug/pin` | JWT | Toggles `is_pinned`. If setting to `true`, unpins any other pinned announcement first (only one pinned at a time) |
 
 ---
 
-## Custom Domains
+## Admin: Posts
 
 | Method | Path | Auth | Body / Notes |
 |---|---|---|---|
-| `GET` | `/masjids/:id/custom-domain` | JWT | Returns `{ domain: { ... } }` or `{ domain: null }` |
-| `POST` | `/masjids/:id/custom-domain` | JWT | `{ domain: "localmasjid.org" }` — provisions CF custom hostname, returns `{ domain: { domain, ssl_status } }` |
-| `DELETE` | `/masjids/:id/custom-domain` | JWT | Deletes domain row and calls CF API to remove hostname |
-
-### Domain object
-```json
-{
-  "id": "abc123",
-  "masjid_id": "xyz789",
-  "domain": "localmasjid.org",
-  "cf_hostname_id": "hostname_abc",
-  "ssl_status": "active",
-  "verified_at": "2026-07-01T12:00:00Z",
-  "created_at": "2026-07-01T10:00:00Z"
-}
-```
+| `GET` | `/admin/masjids/:id/posts` | JWT | Returns `{ posts: [...] }` |
+| `POST` | `/admin/masjids/:id/posts` | JWT | `{ title, content_markdown }` |
+| `PUT` | `/admin/masjids/:id/posts/:slug` | JWT | Partial update |
+| `DELETE` | `/admin/masjids/:id/posts/:slug` | JWT | Hard delete |
+| `PUT` | `/admin/masjids/:id/posts/:slug/homepage` | JWT | Toggle homepage pin |
+| `PUT` | `/admin/masjids/:id/posts/:slug/info` | JWT | Toggle info page pin |
 
 ---
 
-## Public Endpoints (cached, no auth)
+## Admin: Pages (Custom Pages)
+
+| Method | Path | Auth | Body / Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id/pages` | JWT | Returns `{ pages: [...] }` |
+| `POST` | `/admin/masjids/:id/pages` | JWT | `{ title, slug, content_markdown }` |
+| `GET` | `/admin/masjids/:id/pages/:pageSlug` | JWT | Single page detail |
+| `PUT` | `/admin/masjids/:id/pages/:pageSlug` | JWT | Partial update |
+| `DELETE` | `/admin/masjids/:id/pages/:pageSlug` | JWT | Hard delete |
+
+---
+
+## Admin: Navigation
+
+| Method | Path | Auth | Body / Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id/nav` | JWT | Returns `{ nav_items: [...] }` ordered by `sort_order` |
+| `POST` | `/admin/masjids/:id/nav` | JWT | `{ kind, label, route?, external_url?, page_slug?, icon?, show_on_desktop_header?, show_on_mobile_bottom?, is_highlighted? }` |
+| `PUT` | `/admin/masjids/:id/nav/:itemId` | JWT | Partial update |
+| `DELETE` | `/admin/masjids/:id/nav/:itemId` | JWT | Hard delete |
+| `PUT` | `/admin/masjids/:id/nav/reorder` | JWT | `{ order: ["id1","id3","id2"] }` |
+
+---
+
+## Admin: Maktab
+
+| Method | Path | Auth | Body / Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id/maktab/settings` | JWT | Returns `{ settings: { enrollment_open, active_term_id } }` |
+| `PUT` | `/admin/masjids/:id/maktab/settings` | JWT | `{ enrollment_open?, active_term_id? }` |
+| `GET` | `/admin/masjids/:id/maktab/terms` | JWT | Returns `{ terms: [...] }` |
+| `POST` | `/admin/masjids/:id/maktab/terms` | JWT | `{ name, start_date, end_date, billing_months, price_1_child, price_2_children, price_3_plus_children, description?, enrollment_goal?, registration_fee? }` — creates Square subscription plan |
+| `POST` | `/admin/masjids/:id/maktab/terms/:termId/activate` | JWT | Make term active |
+| `GET` | `/admin/masjids/:id/maktab/registrations` | JWT | List registrations |
+| `POST` | `/admin/masjids/:id/maktab/registrations` | JWT | Create manual (offline-payment) registration |
+
+---
+
+## Admin: Domains
+
+| Method | Path | Auth | Body / Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id/domains` | JWT | Returns `{ domains: [...] }` |
+| `POST` | `/admin/masjids/:id/domains` | JWT | `{ domain: "localmasjid.org" }` — provisions CF custom hostname |
+| `DELETE` | `/admin/masjids/:id/domains/:domain_id` | JWT | Deletes domain row and calls CF API to remove hostname |
+
+---
+
+## Admin: Agent Chat
+
+| Method | Path | Auth | Body / Notes |
+|---|---|---|---|
+| `POST` | `/admin/masjids/:id/agent/chat` | JWT | `{ message, images?: [...] }` — returns SSE stream with agent response + diff receipt |
+| `POST` | `/admin/masjids/:id/agent/confirm` | JWT | Confirms pending config branch → creates snapshot |
+| `POST` | `/admin/masjids/:id/agent/cancel` | JWT | Cancels pending config branch |
+
+---
+
+## Admin: Branches & Rollback
+
+| Method | Path | Auth | Body / Notes |
+|---|---|---|---|
+| `GET` | `/admin/masjids/:id/branches` | JWT | List config branches |
+| `POST` | `/admin/masjids/:id/rollback` | JWT | `{ snapshot_id }` — restore configuration from snapshot |
+
+---
+
+## Public Endpoints (no auth)
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/masjids/:slug/prayer-times` | Today's prayer times |
-| `GET` | `/masjids/:slug/prayer-times?date=YYYY-MM-DD` | Specific date's times |
-| `GET` | `/masjids/:slug/announcements` | Published announcements feed (last 20) |
+| `GET` | `/masjids/:slug` | Full page payload (profile + theme + prayer_times + jumuah + announcements + homepage_posts + recent_posts) |
+| `GET` | `/masjids/:slug/board` | TV display board (today + 7 upcoming days, theme, jumuah, announcements) |
+| `GET` | `/masjids/:slug/prayer` | Today's prayer times |
+| `GET` | `/masjids/:slug/prayer/weekly` | Weekly prayer times |
+| `GET` | `/masjids/:slug/jumuah` | Upcoming jumu'ah sessions |
+| `GET` | `/masjids/:slug/announcements` | Published announcements feed |
 | `GET` | `/masjids/:slug/announcements/:ann_slug` | Single announcement detail |
-| `GET` | `/masjids/:slug` | Full page payload (profile + times + jumuah + pinned announcement + feed) |
-| `GET` | `/masjids/:slug/board` | TV display board (today + 7 upcoming days, theme, jumuah, announcements) — see [TV Display docs](./tv-display.md) |
-
-### Prayer times response
-```json
-{
-  "date": "2026-07-19",
-  "masjid": { "slug": "masjid-al-noor", "name": "Masjid Al Noor" },
-  "calculation_method": "ISNA",
-  "times": {
-    "fajr":    { "adhaan": "04:23", "iqaamah": "04:43" },
-    "sunrise": "05:47",
-    "dhuhr":   { "adhaan": "13:15", "iqaamah": "13:25" },
-    "asr":     { "adhaan": "17:05", "iqaamah": "17:15" },
-    "maghrib": { "adhaan": "20:32", "iqaamah": "20:37" },
-    "isha":    { "adhaan": "22:10", "iqaamah": "22:20" }
-  }
-}
-```
-
-### Full page payload response
-```json
-{
-  "masjid": { "slug": "masjid-al-noor", "name": "Masjid Al Noor", "address_line1": "...", "city": "...", ... },
-  "theme": { "primary_color": "#1e3a8a", "accent_color": "#10b981", ... },
-  "prayer_times": { ... },
-  "jumuah": [ { "label": "1st Session", "time": "13:30", "khateeb": "..." } ],
-  "pinned_announcement": { "title": "...", "compiled_html": "..." },
-  "recent_announcements": [ ... ]
-}
-```
-
-### Board endpoint response
-
-`GET /masjids/:slug/board` — Returns everything the TV display needs in one request, including 8 days of computed prayer times (today + 7 upcoming). Used by the kiosk/TV frontend.
-
-```json
-{
-  "masjid": { "slug": "masjid-al-noor", "name": "Masjid Al-Noor", "city": "Chicago", "external_donation_url": "..." },
-  "theme": {
-    "primary_color": "#1e3a8a", "accent_color": "#10b981",
-    "font_heading": "Inter", "font_body": "Roboto",
-    "layout_preset": "modern_minimal", "time_format": "24h",
-    "label_adhaan": "Adhaan", "label_iqaamah": "Iqaamah",
-    "label_jumuah": "Jumu'ah", "label_sunrise": "Sunrise",
-    "label_fajr": "Fajr", "label_dhuhr": "Dhuhr",
-    "label_asr": "Asr", "label_maghrib": "Maghrib", "label_isha": "Isha"
-  },
-  "today": {
-    "date": "2026-07-20",
-    "times": {
-      "fajr": { "adhaan": "03:57", "iqaamah": "04:17" },
-      "sunrise": "05:33",
-      "dhuhr": { "adhaan": "12:57", "iqaamah": "13:10" },
-      "asr": { "adhaan": "15:14", "iqaamah": "15:24" },
-      "maghrib": { "adhaan": "20:21", "iqaamah": "20:26" },
-      "isha": { "adhaan": "21:57", "iqaamah": "22:10" }
-    }
-  },
-  "upcoming_days": [
-    {
-      "date": "2026-07-21",
-      "times": { "fajr": {...}, "sunrise": "05:34", "dhuhr": {...}, ... }
-    }
-  ],
-  "jumuah": [ { "id": "jum-01", "label": "1st Session (English)", "time": "13:30", "khateeb": "Imam Abdullah", "language": "en" } ],
-  "pinned_announcement": { "title": "Welcome to Masjid Al-Noor", "compiled_html": "..." },
-  "recent_announcements": [ { "id": "...", "title": "...", "compiled_html": "...", "status": "published", "published_at": "2026-07-20T12:00:00.000Z", "expires_at": null } ]
-}
-```
+| `GET` | `/masjids/:slug/posts` | Published posts feed |
+| `GET` | `/masjids/:slug/posts/:post_slug` | Single post detail |
+| `GET` | `/masjids/:slug/pages/:pageSlug` | Single custom page |
+| `GET` | `/masjids/:slug/nav` | Navigation items (ordered, with visibility toggles) |
+| `GET` | `/masjids/:slug/maktab` | Active term, prices, open/closed status, Square app/location IDs |
+| `POST` | `/masjids/:slug/maktab/enroll` | Create Square customer/card/subscription and register enrollment |
+| `POST` | `/masjids/:slug/maktab/verify-code` | Verify promo/discount code |
 
 ---
 

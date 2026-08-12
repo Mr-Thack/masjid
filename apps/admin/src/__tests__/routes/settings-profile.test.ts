@@ -24,7 +24,6 @@ const mockGetProfile = vi.fn().mockResolvedValue({
   facebook_url: '',
   youtube_url: '',
   instagram_url: '',
-  external_donation_url: '',
   postal_code: '60601',
   country: 'US',
   calculation_method: 2,

@@ -2,6 +2,15 @@
 
 **Comprehensive Context Preservation, System Specification, and Rollout Strategy**
 
+> **Note**: This is the original vision/spec document. Several details have evolved during implementation:
+> - Payment provider: Stripe → **Square** (Stripe account verification could not be completed)
+> - The schema has expanded significantly (19 tables in production vs the 5 shown below)
+> - A full admin dashboard now exists (`apps/admin/`) in addition to the Zero-UI WhatsApp path
+> - WhatsApp agent currently uses 47 MCP tools (expanded from the 22 originally planned)
+> - Current implementation details are in `AGENTS.md`, `docs/api.md`, and `schema.sql`
+>
+> **Last spec date**: Original. **Last updated**: 2026-08-11 (added this note).
+
 ---
 
 ## 1. Project Overview & Core Vision
@@ -37,7 +46,7 @@ By removing heavy client-side JavaScript hydration and database reads from runti
 ### The Principle of Conservation of Money & Serializability
 
 Financial transactions (such as *Maktab* student registrations or *Iftaar* seasonal dinner sponsorships) require absolute transactional safety. To eliminate complex state synchronization, data race conditions, and heavy legal liabilities, the platform enforces **PCI-DSS Scope Reduction**.
-All payment card interactions are completely offloaded to Stripe-hosted Checkout frameworks. The system remains stateless during payment entry. Upon successful completion, Stripe fires an asynchronous, cryptographically signed HTTP webhook payload back to the edge application, which updates the relational state using atomic database transactions.
+All payment card interactions are completely offloaded to Square-hosted Checkout frameworks (originally spec'd as Stripe, changed due to account verification issues). The system remains stateless during payment entry. Upon successful completion, Square fires an asynchronous, cryptographically signed HTTP webhook payload back to the edge application, which updates the relational state using atomic database transactions.
 
 ---
 
@@ -127,7 +136,9 @@ The entire system architecture lives inside a single **Unified Monorepo Workspac
 
 ## 6. Complete Relational Database Schema Specification (Cloudflare D1)
 
-This clean D1 (SQLite-native) script outlines the multi-tenant logical partitioning paradigm. Every record ties back to a central `masjid_id`. Unstructured layouts are preserved securely inside native text columns parsed directly as JSON blocks within SvelteKit edge configurations.
+> **Note**: This schema reflects the original spec. The actual production schema has 19 tables — see `schema.sql` for the canonical D1 schema.
+
+This clean D1 (SQLite-native) script outlines the multi-tenant logical partitioning paradigm. Every record ties back to a central `masjid_id`.
 
 ```sql
 -- Multi-Tenant System Architecture Schema Reference Specification

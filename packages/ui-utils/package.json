@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./ceremony": "./src/ceremony.ts",
     "./rules-engine": "./src/rules-engine.ts",
+    "./time": "./src/time.ts",
     "./components/*": "./src/components/*"
   },
   "scripts": {

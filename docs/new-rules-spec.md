@@ -1,5 +1,7 @@
 # Rule Engine: New Conditions & Actions
 
+**Status: SHIPPED (2026-08)** — all conditions, actions, and the `enabled` column are implemented. See `docs/rules-engine.md` for the complete reference.
+
 ## Summary
 
 Two new conditions and two new action types + a rule toggle column. All backwards-compatible (no existing rules break).

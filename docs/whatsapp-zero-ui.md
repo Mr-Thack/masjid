@@ -1,6 +1,6 @@
 # WhatsApp Zero-UI Implementation Plan
 
-**Status:** Stages 1-2 in progress (2026-07-20)
+**Status:** Stages 1-4 complete (2026-07-20 — 2026-08-11). This doc is the original implementation plan; the current architecture evolved from this. See `AGENTS.md` § WhatsApp Zero-UI worker for the current state.
 
 ## Architecture overview
 

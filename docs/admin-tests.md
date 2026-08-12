@@ -197,7 +197,7 @@ Tests the auth rune (`auth.svelte.ts`) that manages login state.
 ## 6. Component Tests — Settings Pages
 
 All component tests use `@testing-library/svelte` with `render()` and follow
-the same pattern as consumer tests (`PrayerCard.test.ts`).
+the same pattern as consumer tests (e.g., `PrayerTable.test.ts`).
 
 ### 6.1 `ProfileForm.svelte` — ~10 tests
 
@@ -516,9 +516,9 @@ export default defineConfig({
 | **Integration subtotal** | **~16** |
 | E2E: Playwright | 15 |
 | **E2E subtotal** | **15** |
-| **Total** | **~202** |
+| **Total** | **~230** |
 
-This brings the total test suite to: 269 (API) + 28 (TV) + 175 (agent) + 40 (WhatsApp) + 36 (consumer) + 26 (SW) + 202 (admin) = **~776 tests**.
+This brings the total test suite to: 673 (API) + 266 (TV) + 40 (agent) + 231 (WhatsApp) + 165 (consumer) + 23 (tooling) + 230 (admin) = **~1,628 tests**. (Plus 12 SW tests and 7 integration tests that require running servers.)
 
 ---
 

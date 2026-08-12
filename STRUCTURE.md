@@ -1,176 +1,114 @@
+# Project Structure
+
+```
 masjid/
-├── .gitignore
-├── .prettierrc
-├── AGENTS.md
-├── Background.md
-├── README.md
+├── .env.dev / .env.staging / .env.prod  # Environment configs
 ├── package.json                          # npm workspaces root
 ├── tsconfig.base.json                    # shared TS compiler options
 ├── eslint.config.js                      # shared lint rules
-├── schema.sql                            # D1 schema (reference only)
+├── schema.sql                            # CANONICAL D1 schema (19 tables) — source of truth for production
+├── AGENTS.md                             # Primary developer onboarding & architecture doc
+├── Background.md                         # Original vision/spec
+├── .masjid/                              # local dev DB (per-worktree)
+├── .merged/                              # unified Pages build output (merge-pages.js)
 │
-├── docs/
+├── docs/                                 # 31 design/architecture documents
 │   ├── api.md
+│   ├── testing.md                        # Complete testing guide
+│   ├── local-dev.md                      # How local development works
+│   ├── adding-api-routes.md              # Recipe for new endpoints
+│   ├── deploy-lessons.md                 # 54 hard-earned production lessons
+│   ├── design-language.md                # Canonical naming + Sakeenah/Mishkaat spec
 │   ├── rules-engine.md
-│   └── mcp-integration.md
+│   ├── tv-display.md
+│   ├── unified-deploy.md                 # Deployment runbook
+│   ├── integration-testing.md / integration-test-cases.md
+│   ├── e2e-determinism.md
+│   ├── admin-manual-settings.md / admin-ai-capabilities.md / admin-tests.md
+│   ├── bot-abstraction.md / zero-ui.md / whatsapp-zero-ui.md
+│   ├── consumer-service-worker.md / admin-cache-poisoning.md
+│   ├── maktab-integration.md
+│   ├── mcp-integration.md
+│   ├── post-engine.md / nav-config.md
+│   └── ... (adhan-js-migration, code-quality-audit, llm-ux-improvements, etc.)
 │
 ├── packages/
-│   └── schemas/                          # shared Zod + TS types (consumed by all workspaces)
-│       ├── package.json                  # name: @masjid/schemas
-│       ├── tsconfig.json
-│       └── src/
-│           ├── index.ts                  # barrel re-export
-│           ├── masjid.ts                 # masjid profile, settings
-│           ├── prayer.ts                 # prayer-time config, rules
-│           ├── announcement.ts           # announcements
-│           ├── jumuah.ts                 # jumuah sessions
-│           ├── admin.ts                  # admin auth (login, register)
-│           ├── domain.ts                 # custom_domains
-│           ├── common.ts                 # pagination, error shape, shared helpers
-│           └── generated.ts              # (future) generated from MCP introspection
+│   ├── schemas/                          # @masjid/schemas — shared Zod types (masjid, prayer, theme, announcements, jumuah, nav, posts, pages, maktab, common)
+│   ├── ui-utils/                         # @masjid/ui-utils — theme presets, applyTheme, Mishkaat modules (Rosette.svelte, StarBand.svelte, arch.ts, ceremony.ts, hadith.ts)
+│   └── agent/                            # @masjid/agent — shared bot logic: 47 MCP tools, LLM runner, prompts, api-client, session, media
 │
 ├── apps/
-│   ├── api/                              # SvelteKit → Cloudflare Workers (API engine)
-│   │   ├── package.json                  # name: @masjid/api
-│   │   ├── tsconfig.json
-│   │   ├── svelte.config.js
+│   ├── api/                              # @masjid/api — SvelteKit API (Cloudflare Workers + D1 + Drizzle ORM + Prayer engine)
+│   │   ├── svelte.config.js              # adapter-cloudflare
 │   │   ├── vite.config.ts
-│   │   ├── wrangler.toml                 # D1 bindings, KV bindings, env vars
-│   │   ├── drizzle.config.ts             # Drizzle ORM config
+│   │   ├── wrangler.toml                 # D1 bindings, R2, env vars
 │   │   └── src/
-│   │       ├── app.d.ts                  # SvelteKit app types
 │   │       ├── hooks.server.ts           # JWT auth middleware, CORS
 │   │       ├── routes/
-│   │       │   ├── api/
-│   │       │   │   └── v1/
-│   │       │   │       ├── masjids/
-│   │       │   │       │   ├── [id]/                         # admin (JWT required)
-│   │       │   │       │   │   ├── +server.ts                # GET/PATCH masjid profile
-│   │       │   │       │   │   ├── admin/
-│   │       │   │       │   │   │   └── +server.ts            # PUT admin password
-│   │       │   │       │   │   ├── prayer/
-│   │       │   │       │   │   │   ├── +server.ts            # GET/PATCH prayer config
-│   │       │   │       │   │   │   └── rules/
-│   │       │   │       │   │   │       ├── +server.ts        # GET all rules / POST new rule
-│   │       │   │       │   │   │       └── [rule_id]/
-│   │       │   │       │   │   │           └── +server.ts    # PATCH / DELETE rule
-│   │       │   │       │   │   ├── jumuah/
-│   │       │   │       │   │   │   └── +server.ts            # GET all / POST new
-│   │       │   │       │   │   │   └── [session_id]/
-│   │       │   │       │   │   │       └── +server.ts        # PATCH / DELETE session
-│   │       │   │       │   │   ├── announcements/
-│   │       │   │       │   │   │   └── +server.ts            # GET all / POST new
-│   │       │   │       │   │   │   └── [announcement_id]/
-│   │       │   │       │   │   │       └── +server.ts        # PATCH / archive / pin
-│   │       │   │       │   │   └── domains/
-│   │       │   │       │   │       └── +server.ts            # GET all / POST new
-│   │       │   │       │   │       └── [domain_id]/
-│   │       │   │       │   │           └── +server.ts        # DELETE / verify
-│   │       │   │       │   └── [slug]/                        # public (no auth, KV-cached)
-│   │       │   │       │       ├── +server.ts                # GET masjid public profile
-│   │       │   │       │       ├── prayer/
-│   │       │   │       │       │   └── +server.ts            # GET daily/weekly prayer times
-│   │       │   │       │       ├── jumuah/
-│   │       │   │       │       │   └── +server.ts            # GET upcoming jumuah
-│   │       │   │       │       └── announcements/
-│   │       │   │       │           └── +server.ts            # GET feed + pinned
-│   │       │   │       └── auth/
-│   │       │   │           ├── register/
-│   │       │   │           │   └── +server.ts                # POST register (create masjid + admin)
-│   │       │   │           └── login/
-│   │       │   │               └── +server.ts                # POST login → JWT
-│   │       │   └── webhooks/
-│   │       │       └── stripe/
-│   │       │           └── +server.ts                        # POST Stripe webhook
-│   │       └── lib/
-│   │           ├── server/
-│   │           │   ├── db/
-│   │           │   │   ├── index.ts          # D1 client init
-│   │           │   │   ├── schema.ts         # Drizzle schema definitions
-│   │           │   │   └── migrations/       # Drizzle-generated SQL migrations
-│   │           │   ├── auth/
-│   │           │   │   ├── jwt.ts            # sign / verify JWT
-│   │           │   │   ├── password.ts       # bcrypt hash / compare
-│   │           │   │   └── middleware.ts     # extract + validate JWT from request
-│   │           │   ├── prayer/
-│   │           │   │   ├── adhaan.ts         # astronomical calculation
-│   │           │   │   ├── engine.ts         # rules evaluator (sequential apply)
-│   │           │   │   ├── hijri.ts          # Gregorian → Hijri conversion
-│   │           │   │   └── cache.ts          # KV cache helpers (read/write/invalidate)
-│   │           │   ├── cache.ts              # generic KV cache helpers
-│   │           │   └── stripe.ts             # Stripe webhook handler
-│   │           └── shared/                   # re-exports from @masjid/schemas
-│   │               └── index.ts
+│   │       │   ├── api/v1/
+│   │       │   │   ├── auth/             # register, login, me
+│   │       │   │   ├── debug/            # public debug endpoint
+│   │       │   │   ├── status/           # public status endpoint
+│   │       │   │   ├── masjids/[slug]/   # public: profile, board, prayer, jumuah, announcements, posts, pages, nav, maktab
+│   │       │   │   └── admin/masjids/[id]/  # JWT: profile, prayer, jumuah, announcements, posts, pages, nav, maktab, domains, agent, branches, rollback
+│   │       │   └── webhooks/stripe/      # Stripe webhook handler
+│   │       └── lib/server/
+│   │           ├── db/                   # D1 client, Drizzle schema, ensureTables
+│   │           ├── auth/                 # JWT sign/verify, bcrypt, middleware
+│   │           ├── prayer/               # adhaan calc, rules engine, hijri
+│   │           └── maktab/               # Square API, enrollment, email
 │   │
-│   ├── tv/                                  # SvelteKit → Cloudflare Pages (static TV display)
-│   │   ├── package.json                     # name: @masjid/tv
-│   │   ├── tsconfig.json
-│   │   ├── svelte.config.js                 # adapter-static
-│   │   ├── vite.config.ts
-│   │   ├── tailwind.config.ts
-│   │   ├── app.css
-│   │   ├── app.html
+│   ├── tv/                               # @masjid/tv — static SvelteKit kiosk (port 5174)
+│   │   ├── svelte.config.js              # adapter-static
+│   │   └── src/                          # (hand-written CSS, NO Tailwind)
+│   │       ├── routes/display/[masjid_slug]/
+│   │       └── lib/                      # components (PrayerBoard, AnalogClock, SoulColumn, etc.), server-clock, frames, board-cycle, ceremony
+│   │
+│   ├── consumer/                         # @masjid/consumer — static SvelteKit SPA (port 5175)
+│   │   ├── svelte.config.js              # adapter-static
+│   │   ├── static/                       # manifest.json, icons, sw.js (suicide worker)
 │   │   └── src/
-│   │       ├── app.d.ts
 │   │       ├── routes/
-│   │       │   └── display/
-│   │       │       └── [masjid_slug]/
-│   │       │           ├── +page.svelte      # full-screen prayer board
-│   │       │           └── +page.ts          # load() → fetch public API
-│   │       └── lib/
-│   │           ├── components/
-│   │           │   ├── PrayerBoard.svelte    # main prayer times grid
-│   │           │   ├── Announcement.svelte   # pinned announcement banner
-│   │           │   ├── Countdown.svelte      # next-prayer countdown
-│   │           │   └── JumuahNotice.svelte   # Friday jumu'ah info
-│   │           └── api.ts                    # typed fetch wrapper for public API
+│   │       │   ├── +page.svelte          # root: "Please Verify Your URL"
+│   │       │   ├── [masjid_slug]/        # home, prayer, jumuah, announcements, donate, info, news, pages/[page_slug], posts/[post_slug], maktab
+│   │       │   └── +error.svelte
+│   │       └── lib/                      # components (PrayerTable, WeeklyPrayerTable, HeroNiche, etc.), api.ts, time.ts, maktab-validation.ts
 │   │
-│   └── consumer/                            # SvelteKit → Cloudflare Pages (PWA for users)
-│       ├── package.json                     # name: @masjid/consumer
-│       ├── tsconfig.json
-│       ├── svelte.config.js                 # adapter-static + adapter-cloudflare hybrid
-│       ├── vite.config.ts
-│       ├── tailwind.config.ts
-│       ├── app.css
-│       ├── app.html
-│       ├── static/
-│       │   ├── manifest.json                # PWA manifest
-│       │   ├── icon-192.png
-│       │   └── sw.js                        # service worker (push notifications)
+│   └── admin/                            # @masjid/admin — static SvelteKit SPA (port 5176)
+│       ├── svelte.config.js              # adapter-static
 │       └── src/
-│           ├── app.d.ts
 │           ├── routes/
-│           │   └── [masjid_slug]/
-│           │       ├── +layout.svelte       # masjid-branded shell (colors, logo)
-│           │       ├── +layout.ts           # load masjid profile + theme tokens
-│           │       ├── +page.svelte          # home: today's prayer times
-│           │       ├── +page.ts
-│           │       ├── prayer/
-│           │       │   └── +page.svelte      # weekly/monthly timetable
-│           │       ├── announcements/
-│           │       │   └── +page.svelte      # announcement feed
-│           │       ├── jumuah/
-│           │       │   └── +page.svelte      # upcoming jumu'ah sessions
-│           │       └── donate/
-│           │           └── +page.svelte      # Stripe-hosted donation flow
-│           └── lib/
-│               ├── components/
-│               │   ├── MasjidShell.svelte    # branded header/footer
-│               │   ├── PrayerCard.svelte     # single prayer time card
-│               │   ├── PrayerList.svelte     # list of today's prayers
-│               │   ├── AnnouncementCard.svelte
-│               │   └── DonateButton.svelte
-│               └── api.ts                    # typed fetch wrapper for public API
+│           │   ├── login/                # admin login
+│           │   ├── register/             # masjid registration
+│           │   └── admin/[slug]/         # dashboard, bot, settings/{profile,theme,prayer,jumuah,announcements,posts,maktab,navigation,domain,snapshots,account}
+│           └── lib/                      # components (AdminShell, BotChat, DiffReceiptCard, etc.), auth.svelte.ts, api.ts
 │
 ├── workers/
-│   └── push/                                # standalone Cloudflare Worker (push notifications)
-│       ├── package.json                     # name: @masjid/worker-push
-│       ├── tsconfig.json
-│       ├── wrangler.toml                    # cron trigger, D1 bindings, web-push secrets
-│       └── src/
-│           ├── index.ts                     # scheduled() handler (fetch + push)
-│           └── notify.ts                    # web-push send logic
+│   ├── gateway/                          # @masjid/gateway — SPA router (_worker.js in merged Pages deploy)
+│   ├── whatsapp/                         # @masjid/worker-whatsapp — WhatsApp Zero-UI admin (NOT DEPLOYED)
+│   └── push/                             # @masjid/worker-push — push notifications (skeleton, NOT DEPLOYED)
 │
-└── tooling/                                 # (optional) scripts, seed data, etc.
-    ├── seed.ts                              # seed D1 with test data
-    └── sync-schemas.ts                      # (future) generate MCP tool defs from Zod
+├── tooling/
+│   ├── setup.js                          # One-shot npm install + svelte-kit sync + seed
+│   ├── seed.ts                           # DB seed (Al-Noor + Al-Jabal)
+│   ├── merge-pages.js                    # Merge consumer+TV+admin builds → .merged/ for unified deploy
+│   ├── deploy-all.js / deploy-pages.js / deploy-workers.js
+│   ├── check-schema-drift.ts             # Diff schema.sql vs Drizzle schema (CI gate)
+│   ├── check-d1-drift.ts                 # Diff schema.sql vs LIVE D1 database (CI gate)
+│   ├── dump-seed-sql.ts                  # Dump seed data as SQL for staging D1 reseed
+│   └── schema-parse.ts                   # Schema parsing utility
+│
+├── vitest.config.ts                      # API unit tests (node)
+├── vitest.integration.config.ts          # API integration tests
+├── vitest.tv.config.ts                   # TV frontend (jsdom + svelte)
+├── vitest.consumer.config.ts             # Consumer frontend (jsdom + svelte)
+├── vitest.admin.config.ts                # Admin app (jsdom + svelte)
+├── vitest.agent.config.ts                # Agent package (node)
+├── vitest.whatsapp.config.ts             # WhatsApp worker (node)
+├── vitest.tooling.config.ts              # Tooling scripts (node)
+│
+├── tests/
+│   └── e2e/                              # Playwright browser E2E (helpers.js, run.js, api-client.js, wait-for-deploy.js, *.test.js)
+│
+└── .github/workflows/                    # CI/CD: deploy.yml, deploy-staging.yml, deploy-staging-only.yml
+```

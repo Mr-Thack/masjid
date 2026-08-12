@@ -706,7 +706,6 @@ describe('Profile page — save payload', () => {
       youtube_url: null,
       instagram_url: null,
       website_url: null,
-      external_donation_url: null,
       calculation_method: 2,
       asr_madhab: 'shafi',
       high_latitude_rule: 'seventh_of_night',

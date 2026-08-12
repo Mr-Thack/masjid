@@ -4,7 +4,7 @@ import { load } from '../routes/[masjid_slug]/+layout';
 describe('load', () => {
   it('destructures page payload into named keys', async () => {
     const payload = {
-      masjid: { slug: 'test', name: 'Test', address_line1: null, city: null, state: null, country: null, external_donation_url: null, contact_phone: null, contact_email: null },
+      masjid: { slug: 'test', name: 'Test', address_line1: null, city: null, state: null, country: null, contact_phone: null, contact_email: null },
       theme: { primary_color: '#111', accent_color: '#222', font_heading: 'Inter', font_body: 'Inter', layout_preset: 'modern' },
       prayer_times: {
         fajr: { adhaan: '05:00', iqaamah: '05:15' },
@@ -42,7 +42,7 @@ describe('load', () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          masjid: { slug: 'test', name: 'Test', address_line1: null, city: null, state: null, country: null, external_donation_url: null, contact_phone: null, contact_email: null },
+          masjid: { slug: 'test', name: 'Test', address_line1: null, city: null, state: null, country: null, contact_phone: null, contact_email: null },
           theme: { primary_color: '#111', accent_color: '#222', font_heading: 'Inter', font_body: 'Inter', layout_preset: 'modern' },
           prayer_times: { fajr: { adhaan: '05:00', iqaamah: '05:15' }, sunrise: '06:00', dhuhr: { adhaan: '12:00', iqaamah: '12:15' }, asr: { adhaan: '15:00', iqaamah: '15:15' }, maghrib: { adhaan: '18:00', iqaamah: '18:05' }, isha: { adhaan: '19:00', iqaamah: '19:15' } },
           jumuah: [],

@@ -7,7 +7,6 @@ declare global {
         slug: string;
         name: string;
         city?: string | null;
-        external_donation_url?: string | null;
       };
       theme: Theme;
       prayer_times: {

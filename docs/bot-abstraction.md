@@ -24,7 +24,7 @@ Every file in `workers/whatsapp/src/` is classified as one of:
 
 ### 3.1 `agent/tools.ts` — 100% Pure → `packages/agent/src/tools.ts`
 
-23 MCP-style tool definitions. Each tool has a JSON Schema `parameters` block and a `handler`
+47 MCP-style tool definitions. Each tool has a JSON Schema `parameters` block and a `handler`
 function that calls proxy functions. Zero WhatsApp references — not even in strings.
 
 **Changes needed**:
@@ -33,12 +33,9 @@ function that calls proxy functions. Zero WhatsApp references — not even in st
 - Replace `session` import paths with `@masjid/agent/session`
 - The file is otherwise a straight copy.
 
-**23 tools**: `theme_get`, `theme_update`, `profile_get`, `profile_update`,
-`prayer_config_get`, `prayer_config_update`, `prayer_rules_list`, `prayer_rules_create`,
-`prayer_rules_update`, `prayer_rules_delete`, `prayer_rules_reorder`, `jumuah_list`,
-`jumuah_create`, `jumuah_update`, `jumuah_delete`, `announcements_list`,
-`announcements_create`, `announcements_update`, `announcements_delete`,
-`announcements_pin`, `timetable_preview`, `rollback_list_snapshots`, `rollback_restore`.
+**47 tools** (as of 2026-08-11): THEME (2), PROFILE (4), PRAYER_RULES (5), JUMUAH (4),
+ANNOUNCEMENTS (5), POSTS (6), PAGES (4), NAV (5), MAKTAB (4), ROLLBACK (2),
+RULES (2), TIMETABLE (2), WEB (2). See `AGENTS.md` for the full list.
 
 ### 3.2 `agent/runner.ts` — 98% Pure → `packages/agent/src/runner.ts`
 
@@ -292,7 +289,7 @@ regardless of transport. They are the majority of the current 215 WhatsApp tests
 | `api-client.test.ts` | Proxy functions — JWT signing, API call construction, all 18 CRUD functions | `proxy.test.ts` |
 | `media-utils.test.ts` | `bufferToDataUri()`, `uploadToR2()`, `registerAsset()` | `media.test.ts` (partial) |
 
-**Expected test count**: ~175 tests (the 215 current minus ~40 WhatsApp-only tests)
+**Expected test count**: ~40 tests (implemented; the 231 WhatsApp tests include agent-covered logic too)
 
 ### 7.2 Tests that Stay in WhatsApp Worker
 
@@ -332,7 +329,7 @@ that the UI correctly consumes the agent's output, not that the agent works
 3. **Refactor interfaces** — `ToolContext` → `BotContext`, `Env` → `BotEnv`, parameterize `branchName` and `branchPrefix`
 4. **Write `@masjid/agent` tests** — copy the existing tests, update imports, fix any broken references
 5. **Refactor WhatsApp worker** — delete moved files, import from `@masjid/agent`, keep only transport files
-6. **Verify** — `npm run test:whatsapp` still passes (215 tests → ~40 WhatsApp + ~175 agent)
+6. **Verify** — `npm run test:whatsapp` and `npm run test:agent` both pass (231 + 40 tests)
 7. **Wire admin UI** — `apps/admin/` imports `@masjid/agent` for `BotChat` component
 
 ---
@@ -344,4 +341,4 @@ that the UI correctly consumes the agent's output, not that the agent works
 | Breaking WhatsApp worker during extraction | Do step 5 only after step 4 passes. Maintain the same import names. |
 | `BotContext` missing fields needed by one consumer | Both consumers already use the same 24 API endpoints. The context is identical. |
 | Web UI needs cookie auth vs JWT auth | The proxy already supports an `Authorization` header. Both consumers set it — just with different key material. |
-| Double test counting | The agent package tests ~175, the WhatsApp worker tests ~40, the admin app tests ~100+. Total ~315+. No double counting — each test verifies a different layer. |
+| Double test counting | The agent package tests ~40, the WhatsApp worker tests ~231, the admin app tests ~230. Total ~501+. No double counting — each test verifies a different layer. |

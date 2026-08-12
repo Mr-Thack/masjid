@@ -296,16 +296,19 @@ Loading: `display=swap` everywhere. Consumer/admin load synchronously with `<lin
 
 ### Consumer (`apps/consumer/src/lib/components/`)
 
+> **Note (2026-07-30)**: `PrayerCard`, `PrayerList`, and `SkeletonPrayerCard` were deleted and replaced by `PrayerTable` + `WeeklyPrayerTable`. See `AGENTS.md` for the current component inventory.
+
 | Component | Purpose | Key visual details |
 |---|---|---|
-| **PrayerCard** | Single prayer time card | `.glass-card`, current → primary ring + pulse-border, next → accent border, past → 40% opacity |
-| **PrayerList** | Wrapping grid of PrayerCards | Flex-wrap, 2-up mobile / 3-up desktop, current/next index logic |
-| **AnnouncementCard** | Expandable announcement | `.glass-card`, click-to-expand, pinned → accent left border, chevron rotation |
-| **DonateButton** | External donation CTA | Accent bg, heart icon, hover scale 105%, active scale 95% |
+| **PrayerTable** | Classic timetable (one row per prayer, adhaan/iqaamah cols) | Replaced PrayerCard/PrayerList |
+| **WeeklyPrayerTable** | Weekly tab (days × prayers) | Cross-week change accents, styled legend |
+| **HeroNiche** | Mishkaat hero: mihrab arch + apex rosette | Shared arch geometry from @masjid/ui-utils |
+| **HadithCard** | Hadith of the Day | Arabic RTL + English + source, rosette-flanked heading |
+| **AnnouncementCard** | Expandable announcement | `.glass-card`, click-to-expand, pinned → accent left border |
+| **DonateButton** | External donation CTA | Accent bg, heart icon, hover scale 105% |
 | **EmptyState** | Empty/zero state | Centered badge/icon + title + message |
 | **ErrorState** | Error display | Warning triangle + message |
-| **LoadingSpinner** | Spinner | 32px circle, accent border, transparent top |
-| **SkeletonPrayerCard** | Loading placeholder | 6 shimmer bars, `.glass-card` wrapper |
+| **LoadingSpinner** | Spinner | 32px circle, accent border |
 
 ### TV (`apps/tv/src/lib/components/`)
 
@@ -337,20 +340,24 @@ Loading: `display=swap` everywhere. Consumer/admin load synchronously with `<lin
 +layout.svelte         Shell: sticky header + main + bottom nav
   ├── Header: logo (masjid initial) + name + desktop nav links
   ├── Main content area (max-w-7xl, pb-24 on mobile)
-  └── Bottom nav: 5 tabs (Home | Prayer | News | Info | Maktab), fixed, lg:hidden
+  └── Bottom nav: API-fetched nav items (desktop/mobile visibility toggles)
 
 +page.svelte           Home page
-  ├── Hero: masjid name + countdown to next iqaamah
-  ├── PrayerCard grid (PrayerList)
+  ├── Hero: masjid name + countdown to next iqaamah (Mishkaat: HeroNiche)
+  ├── PrayerTable (classic timetable, one row per prayer)
+  ├── HadithCard (Mishkaat only)
   ├── Today's Jumu'ah (if Friday)
   ├── Pinned announcement
   └── DonateButton
 
-prayer/+page.svelte    Weekly prayer times viewer (prev/next week)
+prayer/+page.svelte    Weekly prayer times viewer (prev/next week, WeeklyPrayerTable)
 jumuah/+page.svelte    Jumu'ah sessions list
 announcements/+page.svelte  Announcements feed
-donate/+page.svelte    Donation page with CTA
+news/+page.svelte      Tabbed Posts + Announcements feed
+donate/+page.svelte    Donation page with CTA + optional QR
 info/+page.svelte      Masjid contact info + social links
+pages/[page_slug]/     Custom admin-created page (dynamic)
+posts/[post_slug]/     Single post detail page
 maktab/+page.svelte    Term/pricing card + Enroll CTA
 maktab/enroll/+page.svelte  Square Web Payments enrollment form
 ```

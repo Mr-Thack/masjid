@@ -1,6 +1,8 @@
 ```python
 markdown_content = """# Architectural & Financial Specification: WhatsApp Cloud API Integration
 
+> **⚠️ NOTE (2026-08-11): This document describes a DIFFERENT system — a hypothetical consumer-facing WhatsApp auth/status bot. The ACTUAL WhatsApp integration built in this project is the Zero-UI admin configuration agent described in `docs/whatsapp-zero-ui.md` and implemented in `workers/whatsapp/` + `@masjid/agent`. The architecture here (Express, Python, `!auth`/`!status` commands) has no intersection with the implemented Cloudflare Worker + 47-tool MCP agent.**
+
 **Target Audience:** Engineering Team, System Agents, Technical Product Managers  
 **Document Status:** Approved Architecture & Implementation Spec  
 **Last Updated:** July 2026  

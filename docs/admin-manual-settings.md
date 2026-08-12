@@ -8,8 +8,8 @@ config, the admin remains operational.
 
 - **Route prefix**: `/admin/[slug]` where `[slug]` is the masjid slug (e.g. `masjid-al-noor`)
 - **Auth**: JWT-based login (`POST /api/v1/auth/login`), same as current admin API
-- **CSS**: Tailwind v4 (same as consumer — not the hand-written CSS used by TV)
-- **PWA**: Manifest for installability + minimal push-only service worker (no caching SW)
+- **CSS**: Tailwind v4 (same as consumer)
+- **No service worker**: The admin app does not register a service worker
 - **No AI on this page**: Manual settings only. AI bot is on `/admin/[slug]/bot` (see `docs/admin-ai-capabilities.md`)
 
 ---
@@ -82,7 +82,7 @@ A row of three status chips:
 - **API Health**: green dot + "Healthy" (pinged via `GET /api/v1/masjids/[slug]`)
 
 #### 2.2. Today's Schedule
-A condensed version of the consumer PrayerList showing:
+A condensed version of the consumer PrayerTable showing:
 - Current/next prayer with countdown
 - Jumu'ah sessions if today is Friday
 
@@ -231,7 +231,7 @@ Common presets button: "Indo-Pak" fills Azaan/Iqamah/Zuhr/Jummah.
 
 ### Section: Live Preview
 
-An `<iframe srcdoc="...">` or shadow-DOM div that renders a miniature PrayerCard
+An `<iframe srcdoc="...">` or shadow-DOM div that renders a miniature PrayerTable row
 with the current theme selections. Updates on input change (debounced 300ms).
 
 ```

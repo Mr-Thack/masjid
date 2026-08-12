@@ -409,7 +409,6 @@ describe('PUT /admin/masjids/:id', () => {
       facebook_url: '',
       youtube_url: '',
       instagram_url: '',
-      external_donation_url: '',
     });
     const body = await req.json();
     expect(body.facebook_url).toBe('');
@@ -423,7 +422,6 @@ describe('PUT /admin/masjids/:id', () => {
       facebook_url: null,
       youtube_url: null,
       instagram_url: null,
-      external_donation_url: null,
     });
     const body = await req.json();
     expect(body.facebook_url).toBeNull();

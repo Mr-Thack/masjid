@@ -349,7 +349,7 @@ If Square is not configured, `POST /api/v1/masjids/:slug/maktab/enroll` returns 
 
 ## 10. Implementation Phases
 
-A safe order given that Stripe keys may arrive asynchronously and there is no active term:
+A safe order given that Square keys may arrive asynchronously and there is no active term:
 
 | Phase | Work | Tests |
 |---|---|---|

@@ -14,11 +14,12 @@
 Each `prayer_rules` row:
 
 | Column | Type | Purpose |
-|---|---|---|
+|---|---|---|---|
 | `id` | TEXT | UUID |
 | `masjid_id` | TEXT | FK to masjids |
 | `prayer_name` | TEXT | `fajr` / `dhuhr` / `asr` / `maghrib` / `isha` |
 | `execution_order` | INT | Sequential position. Gaps are allowed, resolved by `ORDER BY ASC`. |
+| `enabled` | INTEGER | 1 = rule active (default), 0 = skip rule entirely |
 | `rule_name` | TEXT | Human-readable label (e.g. "Friday Dhuhr override") |
 | `conditions_json` | TEXT | JSON array of condition objects. **All must match** for the rule to fire. |
 | `action_json` | TEXT | Single action object applied to the running time when conditions match. |
@@ -64,6 +65,27 @@ Matches when the Gregorian date falls within the inclusive range.
 { "type": "date_range", "start": "2026-03-01", "end": "2026-03-30" }
 ```
 
+### `time_of_day`
+Matches when the adhaan falls within a time-of-day window (24h). All prayers across the day see the same adhaan time, so this gates by the prayer's *calculated astronomical time* — not a wall-clock "current time."
+
+```json
+{ "type": "time_of_day", "after": "12:00", "before": "20:00" }
+```
+
+### `hijri_day_range`
+Matches when the Hijri day-of-month is between `start` and `end` (inclusive). Use `days` array for exact day matches.
+
+```json
+{ "type": "hijri_day_range", "start": 1, "end": 10 }
+```
+
+### `month_day_range`
+Matches Gregorian month + inclusive day range. Valid for yearly recurring events (e.g. daylight saving transitions).
+
+```json
+{ "type": "month_day_range", "month": 3, "start_day": 10, "end_day": 20 }
+```
+
 ---
 
 ## Action types
@@ -107,6 +129,34 @@ Overrides the running time to an exact time. Format: `"HH:MM"` 24-hour. Subseque
 
 ```json
 { "type": "set_fixed_time", "time": "13:30" }
+```
+
+### `right_after_adhaan`
+Sets iqaamah to 0 minutes after adhaan (i.e. iqaamah = adhaan time). Only valid when applied to the adhaan row of `maghrib` (where sunset and maghrib adhaan coincide, so iqaamah should be immediate).
+
+```json
+{ "type": "right_after_adhaan" }
+```
+
+### `set_offset_from_prayer`
+Offsets this prayer's iqaamah relative to another prayer's computed iqaamah time. The referenced prayer must already have been processed (appear earlier in the loop order: fajr, dhuhr, asr, maghrib, isha).
+
+```json
+{ "type": "set_offset_from_prayer", "prayer": "asr", "minutes": 15 }
+```
+
+### `cap_min`
+Ensures iqaamah is no earlier than the given HH:MM. If the computed time would be earlier, raises it to the cap.
+
+```json
+{ "type": "cap_min", "time": "13:30" }
+```
+
+### `cap_max`
+Ensures iqaamah is no later than the given HH:MM. If the computed time would be later, lowers it to the cap.
+
+```json
+{ "type": "cap_max", "time": "22:30" }
 ```
 
 ---

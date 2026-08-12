@@ -2,7 +2,7 @@
 
 > **Status:** Canonical. This document is the single source of truth for product naming,
 > style-system architecture, and the Mishkaat flagship specification.
-> All agents MUST follow the terminology and rules here. (2026-07-28)
+> All agents MUST follow the terminology and rules here. (2026-08-11)
 
 ---
 
@@ -85,7 +85,7 @@ plain English — in admin UI labels **and in code identifiers** (`hadithFrame`,
 | Who it's for | "Just the times" | The default for new masjids once shipped |
 
 Existing masjids keep their current settings (their `style_system` stays `sakeenah`). Mishkaat
-becomes the default for **new** masjids once Phase 1 ships.
+becomes the default for new masjids (shipped with Phase 1, 2026-07-29).
 
 ---
 
@@ -400,10 +400,10 @@ style_options TEXT NOT NULL DEFAULT '{}'         -- JSON, interpreted per style 
 
 - All 15 existing `masjid_themes` fields are unchanged and keep working.
 - Mishkaat options live in `style_options`: `metal`, `motif`, `arch`, `numerals`, `density`,
-  `ambient`, `quietHours`, `frames` (enabled list), `emblem`, `donateAppeal` (donate slide
+  `ambient`, `quietHours`, `themeMode`, `frames` (enabled list), `emblem`, `donateAppeal` (donate slide
   wording). Unknown keys are ignored; missing keys fall back to defaults. This avoids column
   sprawl per system.
-- New masjids default to `style_system = 'mishkaat'` once Phase 1 ships.
+- New masjids default to `style_system = 'mishkaat'` (shipped 2026-07-29).
 
 ### Where things live
 
@@ -448,14 +448,14 @@ cryptic "next change" columns, clip-art, fast motion.
 
 ## 10. Phased rollout
 
-| Phase | Contents | Exit criteria |
-|---|---|---|
-| **0. Plumbing** | `style_system` + `style_options` columns (schema.sql + Drizzle), Zod updates, `applyTheme` sets `data-style-system` | Existing tests green; Sakeenah behavior identical |
-| **1. Mishkaat core** | Preset tokens (espresso/gold), RTL layout, Amiri headings, honeycomb hairline + arch, classic clock face, server-time sync | Static flagship board renders on TV; board demo ready |
-| **2. Frames** | Soul column, rotation choreography, hadith collection, schedule-changes board roll, donate QR | Rotation respects all budgets + reduced-motion |
-| **3. Ceremony** | Adhaan/iqaamah states, quiet mode, night calm, ambient palette, Friday/Ramadan/Eid modes | State machine driven by server time; glare solved at Fajr |
-| **4. Vanity** | Logo engraving pipeline, numerals option, density option, admin "Screen Appearance" page | Admin can restyle without an agent |
-| **5. Later** | Displays (roles), federation, anything parked | New decision required |
+| Phase | Contents | Exit criteria | Status |
+|---|---|---|---|
+| **0. Plumbing** | `style_system` + `style_options` columns (schema.sql + Drizzle), Zod updates, `applyTheme` sets `data-style-system` | Existing tests green; Sakeenah behavior identical | ✅ SHIPPED (2026-07-28) |
+| **1. Mishkaat core** | Preset tokens (espresso/gold), RTL layout, Amiri headings, honeycomb hairline + arch, classic clock face, server-time sync | Static flagship board renders on TV; board demo ready | ✅ SHIPPED (2026-07-29) |
+| **2. Frames** | Soul column, rotation choreography, hadith collection, schedule-changes board roll, donate QR | Rotation respects all budgets + reduced-motion | ✅ SHIPPED (2026-07-29) |
+| **3. Ceremony** | Adhaan/iqaamah states, quiet mode, night calm, ambient palette, Friday/Ramadan/Eid modes | State machine driven by server time; glare solved at Fajr | ✅ SHIPPED (2026-07-29) |
+| **4. Vanity** | Logo engraving pipeline, numerals option, density option, admin "Screen Appearance" page | Admin can restyle without an agent | PENDING |
+| **5. Later** | Displays (roles), federation, anything parked | New decision required | PENDING |
 
 ---
 

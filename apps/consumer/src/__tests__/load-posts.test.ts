@@ -12,7 +12,6 @@ describe('layout load with posts', () => {
       state: null,
       postal_code: null,
       country: null,
-      external_donation_url: null,
       contact_phone: null,
       contact_email: null,
       website_url: null,

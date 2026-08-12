@@ -1,5 +1,7 @@
 # LLM / Bot UX Improvements: Prayer Rules
 
+**Status: IMPLEMENTED** — `rules_explain`, `rules_validate`, `timetable_import` tools shipped; `formatZodError` in `@masjid/schemas`; vision prompt improvements applied. This doc is the original spec — see `packages/agent/src/tools.ts` and `packages/agent/src/rules-engine.ts` for implementations.
+
 ## Summary
 
 The agent (used by both WhatsApp bot and admin chat panel) can create, read, update, delete, and reorder prayer rules. These improvements make the LLM more effective at understanding masjid schedules, explaining its reasoning, and self-correcting errors.
