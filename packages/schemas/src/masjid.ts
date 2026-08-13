@@ -69,6 +69,7 @@ export const StyleOptionsSchema = z
       )
       .max(8)
       .optional(),
+    engravedSvg: z.string().max(500000).optional(),
   })
   .passthrough();
 export type StyleOptions = z.infer<typeof StyleOptionsSchema>;

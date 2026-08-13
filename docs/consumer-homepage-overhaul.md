@@ -95,7 +95,10 @@ Each file has exactly ONE owning workstream. Other agents must NOT edit files th
 | `apps/consumer/src/routes/[masjid_slug]/info/+page.svelte` | Workstream F |
 | `apps/consumer/src/routes/[masjid_slug]/news/+page.svelte` | Workstream F |
 | `apps/consumer/src/lib/components/EngravedEmblem.svelte` (new) | Workstream G |
-| `tooling/engrave-photo.ts` (new, optional) | Workstream G |
+| `packages/schemas/src/masjid.ts` (engravedSvg key) | Workstream G |
+| `packages/ui-utils/src/style-options.ts` (engravedSvg key) | Workstream G |
+| `apps/admin/src/routes/admin/[slug]/settings/theme/+page.svelte` (tracing UI) | Workstream G |
+| `tooling/engrave-photo.ts` | **Removed** — generation moved to admin browser |
 
 `+layout.ts` needs no changes (the theme object already flows into `$page.data`). `api.ts` needs no changes for the sprint; if Workstream A wants typed `style_options` instead of `Record<string, unknown>`, that's an optional add-on and is Workstream A's file.
 
@@ -303,21 +306,55 @@ Phase 3 — launch AFTER B and C have shipped (needs the final DOM):
 
 **Worktree:** `~/code/masjid-consumer-overhaul-G` | **Branch:** `consumer-overhaul/G`
 
-**Files owned:** new `apps/consumer/src/lib/components/EngravedEmblem.svelte`, optional new `tooling/engrave-photo.ts`.
+**Files owned:** new `apps/consumer/src/lib/components/EngravedEmblem.svelte`, `packages/schemas/src/masjid.ts` (engravedSvg key), `packages/ui-utils/src/style-options.ts` (engravedSvg key), `apps/admin/.../settings/theme/+page.svelte` (tracing UI). The `tooling/engrave-photo.ts` static script is **removed** — architecture changed per below.
 
-**Context that is already done:** `emblem` is an existing `style_options` key (`'medallion' | 'engraved'`, default `'medallion'`), already typed, resolved, and editable in the admin theme page ("Masjid Logo" section). This workstream only builds the *rendering*.
+**Context that is already done:** `emblem` is an existing `style_options` key (`'medallion' | 'engraved'`, default `'medallion'`), already typed, resolved, and editable in the admin theme page. This workstream builds the *rendering* and the *admin-side generation*.
+
+**Architecture (revised 2026-08-13 — not in the original draft):** The original plan traced the photo client-side on every consumer page load with `imagetracerjs`. This was wrong: the output is deterministic, so we trace **once** in the admin browser and store the SVG string. This eliminates the SSR/canvas problem, CORS concerns, and the 50 KB `imagetracerjs` dependency from the consumer bundle. The consumer just renders pre-computed SVG.
+
+- **`engravedSvg`** is a new `style_options` string key (max 500KB) — added to the Zod schema, the ui-utils resolver (`parseStyleOptions` / `resolveStyleOptions`), and the admin theme page form.
+- **The admin theme page** (`apps/admin/.../settings/theme/+page.svelte`, Masjid Logo section): when `emblem === 'engraved'` and `photoUrl` is set, a "Generate Engraving" button traces the image with `imagetracerjs` client-side and stores the SVG in `engravedSvg`. A preview and regenerate/clear controls are shown.
+- **The consumer** does zero tracing. `EngravedEmblem.svelte` renders `engravedSvg` as raw SVG, or falls back to a CSS filter on the photo (`grayscale(100%) contrast(150%) brightness(90%)`).
+- **`imagetracerjs`** is a dependency of `@masjid/admin` only.
 
 **Tasks:**
-1. `EngravedEmblem.svelte` renders the engraved line-art for the masjid photo. **Preferred approach:** trace `photoUrl` client-side with `imagetracerjs` (pure JS, no native deps) at render time, so it works per-masjid with no build step and no baked asset. Needs a CORS-friendly image.
-2. **Fallback:** CSS-only etched treatment on the photo — `filter: grayscale(100%) contrast(150%) brightness(90%)`. Make `EngravedEmblem` fall back to this when tracing fails or when there is no photo.
-3. *(Optional, static demo path)* `tooling/engrave-photo.ts`: `node tooling/engrave-photo.ts <photo-path>` → writes an SVG. **This bakes a single masjid's engraving** — fine for a one-masjid demo, but it does not generalize; prefer the client-side approach for anything beyond tonight.
-4. Wire into the hero (coordinate with Workstream B): if `opts.emblem === 'engraved'` and a photo exists, show `EngravedEmblem`; otherwise show the photo. Mishkaat only.
+1. Added `engravedSvg` to the Zod schema (`StyleOptionsSchema`), the ui-utils resolver (`MishkaatStyleOptions`, `ResolvedMishkaatOptions`, `parseStyleOptions`, `resolveStyleOptions`, `MISHKAAT_OPTION_DEFAULTS`), and the admin theme page initial form.
+2. Added the "Generate Engraving" button + preview to the admin theme page's Masjid Logo section, using `imagetracerjs` (3 colors, 1.5 stroke, CORS enabled).
+3. `EngravedEmblem.svelte` renders the pre-computed SVG when available, falls back to CSS-etched `<img>` otherwise.
+4. Wire into the hero (coordinate with Workstream B): if `opts.emblem === 'engraved'` and `opts.photoUrl`, show `<EngravedEmblem photoUrl={opts.photoUrl} engravedSvg={opts.engravedSvg} />`; otherwise show the photo normally. Mishkaat only.
 
-**Reality check:** the masjid is plain brick (no minaret), so an engraving may actually *elevate* the building by abstracting away texture and color. But keep the CSS-filter fallback ready for tonight's demo if the tracer output is noisy.
+#### Integration guide for Workstream B (homepage restructure)
+
+In `apps/consumer/src/routes/[masjid_slug]/+page.svelte`, when the hero renders with
+a photo (the `opts.photoUrl` branch), replace the plain `<img>` with:
+
+```svelte
+import EngravedEmblem from '$lib/components/EngravedEmblem.svelte';
+
+let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null)));
+
+// ...inside the hero section:
+{#if opts.emblem === 'engraved' && opts.photoUrl}
+  <section class="c-hero-photo">
+    <EngravedEmblem photoUrl={opts.photoUrl} engravedSvg={opts.engravedSvg} />
+    <!-- overlay, title, countdown as normal -->
+  </section>
+{:else if opts.photoUrl}
+  <section class="c-hero-photo" style="background-image: url({opts.photoUrl})">
+    <!-- overlay, title, countdown as normal -->
+  </section>
+{/if}
+```
+
+`resolveStyleOptions` is already called at the top of `+page.svelte` for
+`ceremony` — reuse that same call. The `engravedSvg` key is already resolved
+by Workstream G and available on the returned `opts` object. Mishkaat only
+(the `emblem` key exists only in the Mishkaat branch; Sakeenah never shows it).
 
 **Acceptance criteria:**
-- `EngravedEmblem` renders an engraving or falls back to the CSS treatment without error.
-- No regressions to existing tests (`npm run test:consumer`).
+- Admin can generate an engraving from a photo URL.
+- No regressions to existing tests (`npm run test:consumer`, `npm run test:admin`, `npm run test:tv`, `npm run check-schema`).
+- **E2E tests added:** ADM-31 (emblem toggle via UI, verify via API, restore) and CON-52 (set emblem=engraved via API, visit consumer homepage, no crash).
 
 ---
 

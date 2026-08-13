@@ -22,7 +22,7 @@ import {
   waitForHydration,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
-import { getPublicMaktab, apiLogin, apiPost, apiDelete } from './api-client.js';
+import { getPublicMaktab, apiLogin, apiGet, apiPut, apiPost, apiDelete } from './api-client.js';
 
 const cfg = targets();
 const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
@@ -1229,6 +1229,58 @@ await testCase(t, 'CON-51', async () => {
     await context.close();
   }
 });
+
+// CON-52 — Engraved emblem: set emblem='engraved' + photoUrl via API, load homepage, no crash
+// (Once Workstream B wires EngravedEmblem into +page.svelte, this test also
+// verifies the component renders without errors. Until then it proves the
+// style_options mutation doesn't break the consumer page.)
+if (!cfg.writes) {
+  t.skip('CON-52', 'engraved emblem test skipped — readonly env');
+} else {
+  await testCase(t, 'CON-52', async () => {
+    let masjidId = null;
+    try { const auth = await apiLogin(cfg); masjidId = auth.masjidId; } catch { /* skip */ }
+    if (!masjidId) { t.assert(true, 'CON-52 skipped (no admin login)'); return; }
+
+    // Snapshot existing theme (to restore after)
+    const themeSnap = await apiGet(cfg, `/api/v1/admin/masjids/${masjidId}`);
+    const prevStyleOptions = themeSnap?.json?.theme?.style_options ?? {};
+    let restored = false;
+    try {
+      // Set emblem=engraved with a photoUrl
+      const r = await apiPut(cfg, `/api/v1/admin/masjids/${masjidId}`, {
+        style_options: { ...prevStyleOptions, emblem: 'engraved', photoUrl: '/uploads/test-placeholder.jpg' },
+      });
+      t.assert(r.status >= 200 && r.status < 300,
+        `CON-52 style_options set (status ${r.status})`);
+      if (r.status < 200 || r.status >= 300) return;
+
+      // Visit the consumer homepage — must not crash
+      const context = await newContext(browser);
+      const page = await context.newPage();
+      const b = collectPage(page, cfg);
+      await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}`, {
+        waitUntil: 'load',
+        allowFailures: [/test-placeholder\.jpg/],
+      });
+      await waitForHydration(page, 10000);
+      await settlePage(page, b, 2000);
+
+      t.assert(b.pageErrors.length === 0,
+        `CON-52 consumer homepage with emblem=engraved no page errors — ${JSON.stringify(b.pageErrors)}`);
+      t.assert(b.failedRequests.length === 0,
+        `CON-52 consumer homepage no failed requests — ${JSON.stringify(b.failedRequests)}`);
+      await context.close();
+    } finally {
+      if (!restored) {
+        const ok = await apiPut(cfg, `/api/v1/admin/masjids/${masjidId}`, { style_options: prevStyleOptions });
+        if (!(ok.status >= 200 && ok.status < 300)) {
+          console.warn(`  CON-52 API restore FAILED`);
+        }
+      }
+    }
+  });
+}
 
 await browser.close();
 process.exit((await t.done()) > 0 ? 1 : 0);
