@@ -298,7 +298,7 @@ if (!cfg.adminEmail || !authState) {
       '/settings/theme',
       '/settings/prayer',
       '/settings/jumuah',
-      '/settings/posts',
+      '/settings/content',
       '/settings/navigation',
       '/settings/maktab',
       '/settings/announcements',
