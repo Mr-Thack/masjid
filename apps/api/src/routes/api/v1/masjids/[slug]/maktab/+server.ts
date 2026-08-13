@@ -2,6 +2,8 @@ import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
 import { masjids, mktSettings, mktTerms } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { getSquareEnv } from '$lib/server/maktab/integrations';
+import { hasSquare } from '$lib/server/maktab/square';
 import type { RequestHandler } from './$types';
 
 function parseProgramInfo(raw: string): Record<string, unknown> {
@@ -37,8 +39,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           .get()
       : null;
 
-    const env = (platform?.env ?? {}) as Record<string, string | undefined>;
-    const hasSquare = !!(env.SQUARE_ACCESS_TOKEN && env.SQUARE_APP_ID && env.SQUARE_LOCATION_ID);
+    const squareEnv = await getSquareEnv(db, masjid.id);
 
     return JsonResponse({
       open: !!activeTerm && !!settings?.enrollmentOpen,
@@ -57,11 +58,11 @@ export const GET: RequestHandler = async ({ params, platform }) => {
         : null,
       status_message: settings?.statusMessage ?? null,
       program_info: settings?.programInfo ? parseProgramInfo(settings.programInfo) : {},
-      square_config: hasSquare
+      square_config: hasSquare(squareEnv)
         ? {
-            app_id: env.SQUARE_APP_ID,
-            location_id: env.SQUARE_LOCATION_ID,
-            environment: env.ENVIRONMENT === 'production' ? 'production' : 'sandbox',
+            app_id: squareEnv.SQUARE_APP_ID,
+            location_id: squareEnv.SQUARE_LOCATION_ID,
+            environment: squareEnv.ENVIRONMENT === 'production' ? 'production' : 'sandbox',
           }
         : null,
     });

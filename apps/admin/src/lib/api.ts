@@ -185,6 +185,15 @@ export const api = {
   reorderNavItems: (masjidId: string, itemIds: string[]) =>
     request('PUT', `/api/v1/admin/masjids/${masjidId}/nav/reorder`, { item_ids: itemIds }),
 
+  getIntegrations: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/integrations`),
+
+  updateIntegrations: (masjidId: string, data: Record<string, unknown>) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/integrations`, data),
+
+  testIntegration: (masjidId: string, provider: string, config: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/integrations`, { provider, [provider]: config }),
+
   getPages: (masjidId: string) =>
     request('GET', `/api/v1/admin/masjids/${masjidId}/content`),
 

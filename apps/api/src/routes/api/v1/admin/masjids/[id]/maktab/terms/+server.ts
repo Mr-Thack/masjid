@@ -3,6 +3,7 @@ import { getDb } from '$lib/server/db';
 import { mktTerms } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { createSquareTermPlan } from '$lib/server/maktab/square';
+import { getSquareEnv } from '$lib/server/maktab/integrations';
 import type { RequestHandler } from './$types';
 
 function termToPublic(term: typeof mktTerms.$inferSelect) {
@@ -50,12 +51,14 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
     return ErrorJsonResponse('FORBIDDEN', 'You can only manage your own masjid');
   }
 
-  try {
+try {
     const body = TermCreateSchema.parse(await request.json());
-    const env = (platform?.env ?? {}) as Record<string, unknown>;
+
+    const db = getDb(platform?.env?.DB);
+    const squareEnv = await getSquareEnv(db, params.id);
 
     // 1. Create Square plan FIRST — if this fails, nothing is persisted
-const refs = await createSquareTermPlan(
+    const refs = await createSquareTermPlan(
       {
         id: '',
         name: body.name,
@@ -65,16 +68,10 @@ const refs = await createSquareTermPlan(
         price_cents_2: body.price_cents_2,
         price_cents_3plus: body.price_cents_3plus,
       },
-      {
-        SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN as string | undefined,
-        SQUARE_APP_ID: env.SQUARE_APP_ID as string | undefined,
-        SQUARE_LOCATION_ID: env.SQUARE_LOCATION_ID as string | undefined,
-        ENVIRONMENT: env.ENVIRONMENT as string | undefined,
-      },
+      squareEnv,
     );
 
     // 2. Only now insert into DB — atomic: everything or nothing
-    const db = getDb(platform?.env?.DB);
     const termId = crypto.randomUUID();
     await db.insert(mktTerms).values({
       id: termId,

@@ -9,5 +9,6 @@ export * from './zero-ui.js';
 export * from './maktab.js';
 export * from './content.js';
 export * from './nav.js';
+export * from './integrations.js';
 export { formatZodError, formatPrayerRuleError } from './format-zod-error.js';
 export type { FormattedZodError } from './format-zod-error.js';

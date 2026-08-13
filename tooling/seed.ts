@@ -37,6 +37,7 @@ function clearSeed() {
   db.delete(schema.mktOutbox).run();
   db.delete(schema.mktTerms).run();
   db.delete(schema.mktSettings).run();
+  db.delete(schema.masjidIntegrations).run();
   db.delete(schema.admins).run();
   db.delete(schema.masjidThemes).run();
   db.delete(schema.masjids).run();
@@ -361,6 +362,21 @@ async function seed() {
       ],
     }),
   }).run();
+
+  // ── Integrations — Suffah Masjid values ──────────────────────────────────
+  // Sensitive keys (access_token, api_key) are left empty — fill them in
+  // through the admin dashboard at Settings > Integrations.
+  db.insert(schema.masjidIntegrations).values([
+    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'access_token', value: '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'app_id', value: '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'location_id', value: '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'api_key', value: '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'sender_email', value: 'automated@masjidsuffah.com' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'sender_name', value: 'Masjid Suffah' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'forward_to_email', value: 'suffahmasjid@gmail.com' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'logging_email', value: 'masjidsuffahlogging@gmail.com' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'bot_name', value: 'masjid-api/1.0' },
+  ]).run();
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Masjid Al-Jabal — Kennesaw, GA
