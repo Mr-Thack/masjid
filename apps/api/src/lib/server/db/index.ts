@@ -191,16 +191,6 @@ export function ensureTables(sqlite: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_nav_items_masjid ON nav_items(masjid_id, sort_order);
 
-    CREATE TABLE IF NOT EXISTS mkt_registrations (
-      id TEXT PRIMARY KEY,
-      masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
-      student_name TEXT NOT NULL,
-      parent_email TEXT NOT NULL,
-      payment_status TEXT NOT NULL DEFAULT 'PENDING',
-      stripe_session_id TEXT UNIQUE,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
     CREATE TABLE IF NOT EXISTS admins (
       id TEXT PRIMARY KEY,
       masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
