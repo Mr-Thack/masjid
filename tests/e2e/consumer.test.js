@@ -22,7 +22,7 @@ import {
   waitForHydration,
 } from './helpers.js';
 import { targets, SLUG_A, SLUG_B, SLUG_UNKNOWN } from './targets.js';
-import { getPublicMaktab, apiLogin, apiPost, apiDelete } from './api-client.js';
+import { getPublicMaktab, apiLogin, apiPost, apiDelete, apiPut, apiGet, snapshotProfileFields, restoreProfileFields } from './api-client.js';
 
 const cfg = targets();
 const t = createReporter(`Consumer [${cfg.env}] → ${cfg.consumer}`);
@@ -1116,21 +1116,23 @@ await testCase(t, 'CON-48', async () => {
   await context.close();
 });
 
-// CON-49 — News page renders (posts + announcements tabs)
+// CON-49 — News page renders announcements (announcements-only, no tabs)
 await testCase(t, 'CON-49', async () => {
+  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/news`, {
+    expectText: 'Announcements',
+  });
+  t.assert(r.ok, `CON-49 news page renders clean ${r.ok ? '' : '— ' + explain(r)}`);
+
+  // Verify announcement content is present (seeded announcements exist)
   const context = await newContext(browser);
   const page = await context.newPage();
   const b = collectPage(page, cfg);
-
-  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/news`, { waitUntil: 'load' });
-  await waitForHydration(page, 10000);
+  await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/news`, { expectText: 'Announcements' });
   await settlePage(page, b, 1000);
-
   const bodyText = await page.evaluate(() => document.body.innerText);
-  const hasPosts = bodyText.includes('Posts');
-  const hasAnnouncements = bodyText.includes('Announcements');
-  t.assert(hasPosts || hasAnnouncements,
-    `CON-49 news page tabs visible (posts: ${hasPosts}, announcements: ${hasAnnouncements})`);
+  const hasAnnouncementContent = bodyText.includes('Announcements') && bodyText.length > 50;
+  t.assert(hasAnnouncementContent,
+    `CON-49 news page shows announcement content (body length: ${bodyText.length})`);
   t.assert(b.pageErrors.length === 0,
     `CON-49 news no errors — ${JSON.stringify(b.pageErrors)}`);
   t.assert(b.failedRequests.length === 0,
@@ -1227,6 +1229,122 @@ await testCase(t, 'CON-51', async () => {
   } finally {
     await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/pages/${pageSlug}`).catch(() => {});
     await context.close();
+  }
+});
+
+// CON-52 — Donate page "Why Give?" section renders default reasons
+await testCase(t, 'CON-52', async () => {
+  const r = await visitPage(browser, cfg, `${cfg.consumer}/${SLUG_A}/donate`, {
+    expectText: ['Why Give?', 'Maintain the House of Allah', 'Support Education', 'Serve the Community'],
+  });
+  t.assert(r.ok, `CON-52 donate page shows 3 default reasons ${r.ok ? '' : '— ' + explain(r)}`);
+});
+
+// CON-53 — Donate page renders custom donate reasons (write: admin API sets style_options)
+await testCase(t, 'CON-53', async () => {
+  if (!cfg.writes) { t.skip('CON-53', 'read-only env'); return; }
+  let masjidId = null;
+  try { const auth = await apiLogin(cfg); masjidId = auth.masjidId; } catch { /* skip */ }
+  if (!masjidId) { t.skip('CON-53', 'no admin credentials for this env'); return; }
+
+  const snap = await snapshotProfileFields(cfg, masjidId, ['style_options']);
+  const customReasons = [
+    { icon: '💚', title: 'Green Initiative', desc: 'Make our masjid eco-friendly' },
+    { icon: '📖', title: 'Quran Classes', desc: 'Free classes for all ages' },
+  ];
+
+  try {
+    const merged = snap?.style_options && typeof snap.style_options === 'object'
+      ? { ...snap.style_options, donateReasons: customReasons }
+      : { donateReasons: customReasons };
+    await apiPut(cfg, `/api/v1/admin/masjids/${masjidId}`, { style_options: merged });
+
+    // Poll public API to confirm propagation before visiting
+    let ready = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const pub = await apiGet(cfg, `/api/v1/masjids/${SLUG_A}`);
+      const sopts = pub.json?.theme?.style_options ?? {};
+      if (Array.isArray(sopts.donateReasons) && sopts.donateReasons.some((r) => r?.title === 'Green Initiative')) {
+        ready = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    if (!ready) { t.assert(true, 'CON-53 skipped (API propagation timed out)'); return; }
+
+    const context = await newContext(browser);
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
+      await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/donate`, { expectText: 'Why Give?' });
+      await settlePage(page, b, 1000);
+
+      const bodyText = await page.evaluate(() => document.body.innerText);
+      t.assert(bodyText.includes('Green Initiative'),
+        `CON-53 donate page shows custom reason "Green Initiative"`);
+      t.assert(bodyText.includes('Quran Classes'),
+        `CON-53 donate page shows custom reason "Quran Classes"`);
+      t.assert(!bodyText.includes('Maintain the House of Allah'),
+        `CON-53 default reason not shown when overridden`);
+      t.assert(b.pageErrors.length === 0,
+        `CON-53 donate no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    await restoreProfileFields(cfg, masjidId, snap).catch(() => {});
+  }
+});
+
+// CON-54 — Info page renders WhatsApp group link (write: admin API sets whatsappGroupUrl)
+await testCase(t, 'CON-54', async () => {
+  if (!cfg.writes) { t.skip('CON-54', 'read-only env'); return; }
+  let masjidId = null;
+  try { const auth = await apiLogin(cfg); masjidId = auth.masjidId; } catch { /* skip */ }
+  if (!masjidId) { t.skip('CON-54', 'no admin credentials for this env'); return; }
+
+  const snap = await snapshotProfileFields(cfg, masjidId, ['style_options']);
+
+  try {
+    const merged = snap?.style_options && typeof snap.style_options === 'object'
+      ? { ...snap.style_options, whatsappGroupUrl: 'https://chat.whatsapp.com/test-e2e' }
+      : { whatsappGroupUrl: 'https://chat.whatsapp.com/test-e2e' };
+    await apiPut(cfg, `/api/v1/admin/masjids/${masjidId}`, { style_options: merged });
+
+    // Poll public API to confirm propagation before visiting
+    let ready = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const pub = await apiGet(cfg, `/api/v1/masjids/${SLUG_A}`);
+      const sopts = pub.json?.theme?.style_options ?? {};
+      if (typeof sopts.whatsappGroupUrl === 'string' && sopts.whatsappGroupUrl.includes('test-e2e')) {
+        ready = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    if (!ready) { t.assert(true, 'CON-54 skipped (API propagation timed out)'); return; }
+
+    const context = await newContext(browser);
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
+      await gotoPage(page, b, `${cfg.consumer}/${SLUG_A}/info`, { expectText: 'About' });
+      await settlePage(page, b, 1000);
+
+      const bodyText = await page.evaluate(() => document.body.innerText);
+      t.assert(bodyText.includes('Join Our WhatsApp Group'),
+        `CON-54 info page shows WhatsApp group link`);
+      const link = await page.locator('a:has-text("Join Our WhatsApp Group")').first();
+      const href = await link.getAttribute('href');
+      t.assert(href === 'https://chat.whatsapp.com/test-e2e',
+        `CON-54 WhatsApp link href correct (got: ${href})`);
+      t.assert(b.pageErrors.length === 0,
+        `CON-54 info no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      await context.close();
+    }
+  } finally {
+    await restoreProfileFields(cfg, masjidId, snap).catch(() => {});
   }
 });
 

@@ -525,6 +525,16 @@ Steps: visitPage `/{SLUG_A}/` (trailing slash). Assert: r.ok, "Fajr" present.
 ### CON-28 — SLUG_B cold-load donate | P2 | IMPLEMENTED | Class C6
 Steps: visitPage `/{SLUG_B}/donate`. Assert: r.ok. Cross-masjid cold-load.
 
+### CON-52 — Donate page default "Why Give?" reasons | P2 | IMPLEMENTED | Class C6
+Steps: visitPage `/{SLUG_A}/donate`, expectText ["Why Give?", "Maintain the House of Allah", "Support Education", "Serve the Community"]. Assert: r.ok.
+Note: verifies the 3 default donate reason cards render when no custom reasons are configured.
+
+### CON-53 — Donate page custom reasons via admin API | P2 | IMPLEMENTED | Class C6
+Steps: (needs admin login) snapshot style_options → PUT custom donateReasons → poll public API for propagation → visitPage `/{SLUG_A}/donate` → expectText custom titles → restore snapshot. Assert: custom reasons shown, default "Maintain the House of Allah" absent. Env: local+staging (writes required).
+
+### CON-54 — Info page WhatsApp group link via admin API | P2 | IMPLEMENTED | Class C6
+Steps: (needs admin login) snapshot style_options → PUT whatsappGroupUrl → poll public API for propagation → visitPage `/{SLUG_A}/info` → verify "Join Our WhatsApp Group" link + href. Assert: link renders with correct URL. Env: local+staging (writes required).
+
 ### TV-05 — board re-render stability | P1 | IMPLEMENTED | Class C6
 Steps: goto SLUG_A display → wait for `.prayer-grid` → goto SLUG_B display → back to SLUG_A.
 Assert: no new pageErrors after re-render. Purpose: catches mount/unmount leaks.

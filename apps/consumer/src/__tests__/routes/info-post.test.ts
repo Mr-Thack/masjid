@@ -27,9 +27,14 @@ type InfoPost = {
   created_at: string;
 };
 
+type ThemeData = {
+  style_options?: Record<string, unknown>;
+};
+
 type PageData = {
   masjid: MasjidData | null;
   info_post?: InfoPost | null;
+  theme?: ThemeData;
 };
 
 const emptyData: PageData = {
@@ -227,5 +232,66 @@ describe('Info page post pin card', () => {
     expect(screen.getByText('info@testmasjid.org')).toBeInTheDocument();
     expect(screen.getByText('Website')).toBeInTheDocument();
     expect(screen.getByText('About Our Masjid')).toBeInTheDocument();
+  });
+
+  it('shows WhatsApp link when whatsappGroupUrl is set', () => {
+    setPageData({
+      masjid: { slug: 'test-masjid', name: 'Test Masjid' },
+      theme: {
+        style_options: { whatsappGroupUrl: 'https://chat.whatsapp.com/abc123' },
+      },
+    });
+
+    render(InfoPage);
+
+    const link = screen.getByText('Join Our WhatsApp Group');
+    expect(link).toBeInTheDocument();
+    expect(link.closest('a')?.getAttribute('href')).toBe('https://chat.whatsapp.com/abc123');
+  });
+
+  it('does not show WhatsApp link when whatsappGroupUrl is empty', () => {
+    setPageData({
+      masjid: { slug: 'test-masjid', name: 'Test Masjid' },
+      theme: {
+        style_options: {},
+      },
+    });
+
+    render(InfoPage);
+
+    expect(screen.queryByText('Join Our WhatsApp Group')).not.toBeInTheDocument();
+  });
+
+  it('shows WhatsApp link alongside social links', () => {
+    setPageData({
+      masjid: {
+        slug: 'test-masjid',
+        name: 'Test Masjid',
+        website_url: 'https://testmasjid.org',
+      },
+      theme: {
+        style_options: { whatsappGroupUrl: 'https://chat.whatsapp.com/abc123' },
+      },
+    });
+
+    render(InfoPage);
+
+    expect(screen.getByText('Website')).toBeInTheDocument();
+    expect(screen.getByText('Join Our WhatsApp Group')).toBeInTheDocument();
+  });
+
+  it('does not crash when theme is undefined (resolver defaults kick in)', () => {
+    setPageData({
+      masjid: {
+        slug: 'test-masjid',
+        name: 'Test Masjid',
+        website_url: 'https://testmasjid.org',
+      },
+    });
+
+    render(InfoPage);
+
+    expect(screen.queryByText('Join Our WhatsApp Group')).not.toBeInTheDocument();
+    expect(screen.getByText('Website')).toBeInTheDocument();
   });
 });

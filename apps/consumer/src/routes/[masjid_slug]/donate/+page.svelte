@@ -1,9 +1,11 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import QRCode from 'qrcode';
+  import { parseStyleOptions, resolveStyleOptions } from '@masjid/ui-utils';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
+  let opts = $derived(resolveStyleOptions(parseStyleOptions(data.theme?.style_options)));
 
   function parseDonationLinks(raw: string | null | undefined): { label: string; url: string }[] {
     if (!raw) return [];
@@ -119,21 +121,13 @@
   <div class="glass-card p-6 space-y-4">
     <h2 class="text-lg font-semibold font-heading" style="color: var(--color-text);">Why Give?</h2>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div class="text-center p-4">
-        <div class="text-2xl mb-2">🕌</div>
-        <p class="text-sm font-medium" style="color: var(--color-text-muted);">Maintain the House of Allah</p>
-        <p class="text-xs mt-1" style="color: var(--color-text-dim);">Keep our masjid clean, safe, and welcoming</p>
-      </div>
-      <div class="text-center p-4">
-        <div class="text-2xl mb-2">📚</div>
-        <p class="text-sm font-medium" style="color: var(--color-text-muted);">Support Education</p>
-        <p class="text-xs mt-1" style="color: var(--color-text-dim);">Fund classes, lectures, and youth programs</p>
-      </div>
-      <div class="text-center p-4">
-        <div class="text-2xl mb-2">🤝</div>
-        <p class="text-sm font-medium" style="color: var(--color-text-muted);">Serve the Community</p>
-        <p class="text-xs mt-1" style="color: var(--color-text-dim);">Help those in need through outreach programs</p>
-      </div>
+      {#each opts.donateReasons as reason}
+        <div class="text-center p-4">
+          <div class="text-2xl mb-2">{reason.icon}</div>
+          <p class="text-sm font-medium" style="color: var(--color-text-muted);">{reason.title}</p>
+          <p class="text-xs mt-1" style="color: var(--color-text-dim);">{reason.desc}</p>
+        </div>
+      {/each}
     </div>
   </div>
 
