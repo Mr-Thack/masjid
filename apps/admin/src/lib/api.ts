@@ -22,6 +22,8 @@ async function request(method: string, path: string, body?: unknown) {
     throw new Error(err.error?.message || err.message || `Request failed (${res.status})`);
   }
 
+  if (res.status === 204) return null;
+
   return res.json();
 }
 

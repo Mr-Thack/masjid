@@ -3,7 +3,7 @@
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
   import {
-    Loader, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, X, Check,
+    Loader, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, X, Check, Pencil,
     Clock, Newspaper, Info, GraduationCap, Heart, Users, Megaphone, ExternalLink, FileText, Globe
   } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
@@ -27,6 +27,8 @@
   let newRoute = $state({ route_segment: '', label: '', icon: '' });
   let newLink = $state({ external_url: '', label: '', icon: '' });
   let newPage = $state({ slug: '', title: '', raw_markdown: '' });
+  let editingPageSlug = $state<string | null>(null);
+  let editPageForm = $state({ slug: '', title: '', raw_markdown: '' });
 
   $effect(() => { load(); });
 
@@ -158,6 +160,26 @@
     } finally {
       saving = false;
     }
+  }
+
+  async function saveEditPage(e: Event) {
+    e.preventDefault();
+    saving = true;
+    try {
+      await api.updatePage(auth.admin!.masjid_id, editingPageSlug!, editPageForm);
+      toast.success('Page updated');
+      editingPageSlug = null;
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed');
+    } finally {
+      saving = false;
+    }
+  }
+
+  function startEditPage(page: any) {
+    editingPageSlug = page.slug;
+    editPageForm = { slug: page.slug, title: page.title, raw_markdown: page.raw_markdown };
   }
 
   async function toggleField(item: any, field: string, value: boolean) {
@@ -505,6 +527,12 @@
               </div>
               <div class="flex items-center gap-1">
                 <button
+                  class="text-xs text-text-muted hover:text-accent"
+                  onclick={() => startEditPage(page)}
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
                   class="text-xs text-text-muted hover:text-red-400"
                   onclick={async () => {
                     const inNav = navItems.some(i => i.kind === 'page' && i.page_slug === page.slug);
@@ -527,6 +555,28 @@
             </div>
           {/each}
         </div>
+
+        {#if editingPageSlug}
+          <form onsubmit={saveEditPage} class="bg-surface border border-accent rounded-xl p-4 mt-4 space-y-3">
+            <h3 class="font-heading font-semibold text-sm">Edit Page</h3>
+            <div class="form-group">
+              <label>Slug</label>
+              <input type="text" class="w-full text-sm font-mono" bind:value={editPageForm.slug} />
+            </div>
+            <div class="form-group">
+              <label>Title</label>
+              <input type="text" class="w-full text-sm" bind:value={editPageForm.title} />
+            </div>
+            <div class="form-group">
+              <label>Content (Markdown)</label>
+              <textarea class="w-full text-sm font-mono" bind:value={editPageForm.raw_markdown} rows={6}></textarea>
+            </div>
+            <div class="flex gap-2">
+              <button type="submit" class="btn-primary text-sm" disabled={saving}>Save</button>
+              <button type="button" class="btn-secondary text-sm" onclick={() => editingPageSlug = null}>Cancel</button>
+            </div>
+          </form>
+        {/if}
       </div>
     {/if}
   {/if}
