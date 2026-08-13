@@ -378,3 +378,15 @@ CREATE TABLE nav_items (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_nav_items_masjid ON nav_items(masjid_id, sort_order);
+
+-- ============================================================
+-- Table 16: Per-Masjid Integration Keys (Square, Brevo, etc.)
+-- ============================================================
+CREATE TABLE masjid_integrations (
+    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,         -- 'square' | 'brevo'
+    key_name TEXT NOT NULL,         -- 'access_token' | 'app_id' | 'location_id' | 'api_key' | 'sender_email' | 'sender_name'
+    value TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (masjid_id, provider, key_name)
+);

@@ -300,3 +300,13 @@ export const navItems = sqliteTable('nav_items', {
 }, (table) => ({
   masjidIdx: index('idx_nav_items_masjid').on(table.masjidId, table.sortOrder),
 }));
+
+export const masjidIntegrations = sqliteTable('masjid_integrations', {
+  masjidId: text('masjid_id').notNull().references(() => masjids.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  keyName: text('key_name').notNull(),
+  value: text('value').notNull().default(''),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => ({
+  pk: index('idx_integrations_pk').on(table.masjidId, table.provider, table.keyName),
+}));

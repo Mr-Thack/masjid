@@ -4,6 +4,7 @@ import { masjids, mktRegistrations, mktSettings, mktTerms } from '$lib/server/db
 import { eq } from 'drizzle-orm';
 import { createSquareSubscription, hasSquare } from '$lib/server/maktab/square';
 import { sendParentConfirmation } from '$lib/server/maktab/email';
+import { getMaktabConfig } from '$lib/server/maktab/integrations';
 import type { PaymentRefs } from '$lib/server/maktab/types';
 import type { RequestHandler } from './$types';
 
@@ -56,7 +57,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
     const refs: PaymentRefs = JSON.parse(term.paymentRefsJson || '{}');
 
-    const env = (platform?.env ?? {}) as Record<string, string | undefined>;
+    const maktabConfig = await getMaktabConfig(db, masjid.id);
 
     const childrenCount = body.children.length;
     const monthlyAmountCents = monthlyAmount(term, childrenCount);
@@ -85,14 +86,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
         return ErrorJsonResponse('INTERNAL_ERROR', 'Active term is not linked to Square plans');
       }
 
-      const squareEnv = {
-        SQUARE_ACCESS_TOKEN: env.SQUARE_ACCESS_TOKEN,
-        SQUARE_APP_ID: env.SQUARE_APP_ID,
-        SQUARE_LOCATION_ID: env.SQUARE_LOCATION_ID,
-        ENVIRONMENT: env.ENVIRONMENT,
-      };
-
-      if (!hasSquare(squareEnv)) {
+      if (!hasSquare(maktabConfig)) {
         return ErrorJsonResponse('INTERNAL_ERROR', 'Square is not configured');
       }
 
@@ -112,7 +106,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
             cardHolderName: body.card_holder_name,
             refs: refs.square,
           },
-          squareEnv,
+          maktabConfig,
         );
         subscriptionId = result.subscriptionId;
         customerId = result.customerId;
@@ -165,15 +159,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
           length_months: term.lengthMonths,
           monthly_cost_cents: isAssistance ? 0 : monthlyAmountCents,
         },
-        {
-          BREVO_API_KEY: env.BREVO_API_KEY as string | undefined,
-          SENDER_EMAIL: env.SENDER_EMAIL as string | undefined,
-          SENDER_NAME: env.SENDER_NAME as string | undefined,
-          FORWARD_TO_EMAIL: env.FORWARD_TO_EMAIL as string | undefined,
-          LOGGING_EMAIL: env.LOGGING_EMAIL as string | undefined,
-          BOT_NAME: env.BOT_NAME as string | undefined,
-          ENVIRONMENT: env.ENVIRONMENT as string | undefined,
-        },
+        maktabConfig,
       );
     } catch (e) {
       console.error('Failed to send Maktab confirmation email:', e);

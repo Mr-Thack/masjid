@@ -190,6 +190,59 @@ export function getD1Shim(): D1Database {
   return db;
 }
 
+// ── Integration helpers ─────────────────────────────────────────────────────
+
+export async function getMasjidIntegrations(
+  db: ReturnType<typeof drizzleSqlite>,
+  masjidId: string,
+): Promise<Record<string, Record<string, string>>> {
+  const rows = await db
+    .select()
+    .from(schema.masjidIntegrations)
+    .where(eq(schema.masjidIntegrations.masjidId, masjidId))
+    .all();
+  const result: Record<string, Record<string, string>> = {};
+  for (const row of rows) {
+    if (!result[row.provider]) result[row.provider] = {};
+    result[row.provider]![row.keyName] = row.value;
+  }
+  return result;
+}
+
+export async function upsertIntegrationValue(
+  db: ReturnType<typeof drizzleSqlite>,
+  masjidId: string,
+  provider: string,
+  keyName: string,
+  value: string,
+): Promise<void> {
+  const existing = await db
+    .select()
+    .from(schema.masjidIntegrations)
+    .where(
+      eq(schema.masjidIntegrations.masjidId, masjidId)
+    )
+    .all();
+  const match = existing.find((r) => r.provider === provider && r.keyName === keyName);
+  const now = new Date().toISOString();
+  if (match) {
+    await db
+      .update(schema.masjidIntegrations)
+      .set({ value, updatedAt: now })
+      .where(
+        eq(schema.masjidIntegrations.masjidId, masjidId),
+      );
+  } else {
+    await db.insert(schema.masjidIntegrations).values({
+      masjidId,
+      provider,
+      keyName,
+      value,
+      updatedAt: now,
+    });
+  }
+}
+
 export function getAgentDb(platformDb: D1Database | undefined): D1Database {
   // In local Node.js dev, bypass the adapter's mock D1 (same as getDb() does).
   // The mock D1 points to a different SQLite file than our .masjid/local.db.

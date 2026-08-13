@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { getDb } from '$lib/server/db';
-import { masjids, masjidThemes, admins, mktTerms, mktSettings, mktRegistrations } from '$lib/server/db/schema';
+import { masjids, masjidThemes, admins, mktTerms, mktSettings, mktRegistrations, masjidIntegrations } from '$lib/server/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { GET as getMaktabInfo } from '../../routes/api/v1/masjids/[slug]/maktab/+server';
 import { POST as postEnrollment } from '../../routes/api/v1/masjids/[slug]/maktab/enroll/+server';
@@ -90,6 +90,18 @@ function squareEnv() {
     SQUARE_LOCATION_ID: 'LTEST',
     ENVIRONMENT: 'development',
   };
+}
+
+async function seedIntegrations(masjidId: string) {
+  const vals = squareEnv();
+  await db.insert(masjidIntegrations).values([
+    { masjidId, provider: 'square', keyName: 'access_token', value: vals.SQUARE_ACCESS_TOKEN },
+    { masjidId, provider: 'square', keyName: 'app_id', value: vals.SQUARE_APP_ID },
+    { masjidId, provider: 'square', keyName: 'location_id', value: vals.SQUARE_LOCATION_ID },
+    { masjidId, provider: 'brevo', keyName: 'api_key', value: 'brevo-test-key' },
+    { masjidId, provider: 'brevo', keyName: 'sender_email', value: 'test@example.com' },
+    { masjidId, provider: 'brevo', keyName: 'sender_name', value: 'Test Masjid' },
+  ]);
 }
 
 const ENROLL_PAYLOAD = {
@@ -200,6 +212,7 @@ describe('GET /masjids/:slug/maktab', () => {
   it('returns square_config when env vars are present', async () => {
     const slug = `mkt-squarecfg-${Date.now()}`;
     const id = await seedMasjid(slug);
+    await seedIntegrations(id);
     const termId = crypto.randomUUID();
     await db.insert(mktTerms).values({
       id: termId, masjidId: id, name: 'Term', lengthMonths: 3,
@@ -210,19 +223,20 @@ describe('GET /masjids/:slug/maktab', () => {
     const req = createRequest('GET', `/api/v1/masjids/${slug}/maktab`);
     const res = await getMaktabInfo({
       params: { slug }, request: req, url: new URL(req.url), locals: {},
-      platform: { env: { SQUARE_ACCESS_TOKEN: 'x', SQUARE_APP_ID: 'app', SQUARE_LOCATION_ID: 'loc', ENVIRONMENT: 'production' } },
+      platform: { env: {} },
       cookies: {} as any, fetch: globalThis.fetch,
     } as any);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.square_config.app_id).toBe('app');
-    expect(body.square_config.location_id).toBe('loc');
-    expect(body.square_config.environment).toBe('production');
+    expect(body.square_config.app_id).toBe('sq0id-test');
+    expect(body.square_config.location_id).toBe('LTEST');
+    expect(body.square_config.environment).toBe('sandbox');
   });
 
   it('returns square_config as sandbox when not production', async () => {
     const slug = `mkt-sq-sandbox-${Date.now()}`;
     const id = await seedMasjid(slug);
+    await seedIntegrations(id);
     const termId = crypto.randomUUID();
     await db.insert(mktTerms).values({
       id: termId, masjidId: id, name: 'Term', lengthMonths: 3,
@@ -233,7 +247,7 @@ describe('GET /masjids/:slug/maktab', () => {
     const req = createRequest('GET', `/api/v1/masjids/${slug}/maktab`);
     const res = await getMaktabInfo({
       params: { slug }, request: req, url: new URL(req.url), locals: {},
-      platform: { env: { SQUARE_ACCESS_TOKEN: 'x', SQUARE_APP_ID: 'app', SQUARE_LOCATION_ID: 'loc' } },
+      platform: { env: {} },
       cookies: {} as any, fetch: globalThis.fetch,
     } as any);
     const body = await res.json();
@@ -258,6 +272,7 @@ describe('GET /masjids/:slug/maktab', () => {
 describe('POST /masjids/:slug/maktab/enroll', () => {
   async function enrollSetup(slug: string) {
     const id = await seedMasjid(slug);
+    await seedIntegrations(id);
     const termId = crypto.randomUUID();
     await db.insert(mktTerms).values({
       id: termId, masjidId: id, name: 'Term', lengthMonths: 3,
@@ -277,7 +292,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
     vi.stubGlobal('fetch', mockFetch);
     try {
       const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, ENROLL_PAYLOAD);
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe('payment_succeeded');
@@ -325,7 +340,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
     await db.insert(mktSettings).values({ masjidId: id, activeTermId: termId, enrollmentOpen: true });
 
     const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, ENROLL_PAYLOAD);
-    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
     expect(res.status).toBe(500);
   });
 
@@ -340,7 +355,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       postal_code: '30303',
       children: [{ name: 'Child One', dob: '2015-01-01', sex: 'male' }],
     });
-    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
     expect(res.status).toBe(400);
   });
 
@@ -357,7 +372,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       source_id: 'cnon:token',
       card_holder_name: 'Dad',
     });
-    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
     expect(res.status).toBe(400);
   });
 
@@ -369,7 +384,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       ...ENROLL_PAYLOAD,
       children: [],
     });
-    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
     expect(res.status).toBe(400);
   });
 
@@ -381,7 +396,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       ...ENROLL_PAYLOAD,
       postal_code: 'abcde',
     });
-    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
     expect(res.status).toBe(400);
   });
 
@@ -399,7 +414,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
     vi.stubGlobal('fetch', mockFetch);
     try {
       const req = createRequest('POST', `/api/v1/masjids/${slug}/maktab/enroll`, ENROLL_PAYLOAD);
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(500);
     } finally {
       vi.unstubAllGlobals();
@@ -449,7 +464,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         ...ENROLL_PAYLOAD,
         children: [{ name: 'Kid', dob: '2015-01-01', sex: 'male' }],
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
     } finally {
       vi.unstubAllGlobals();
@@ -470,7 +485,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
           { name: 'Kid B', dob: '2017-03-15', sex: 'female' },
         ],
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
     } finally {
       vi.unstubAllGlobals();
@@ -493,7 +508,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
           { name: 'Kid D', dob: '2021-11-10', sex: 'female' },
         ],
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
     } finally {
       vi.unstubAllGlobals();
@@ -516,7 +531,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         source_id: 'cnon:card_token',
         card_holder_name: 'Test Mom',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
     } finally {
       vi.unstubAllGlobals();
@@ -534,7 +549,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         ...ENROLL_PAYLOAD,
         postal_code: '30303-1234',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
     } finally {
       vi.unstubAllGlobals();
@@ -561,7 +576,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         source_id: 'cnon:card_token',
         card_holder_name: 'Ali Baba',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
 
@@ -611,7 +626,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         source_id: 'cnon:card_token',
         card_holder_name: 'HELP42',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe('aid_granted');
@@ -635,9 +650,9 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       expect(children).toHaveLength(1);
       expect(children[0].name).toBe('Student Aid');
 
-      // Square should never have been called
+      // Square should never have been called (Brevo email may fire since integrations are seeded)
       const fetchCalls = mockFetch.mock.calls.filter(
-        ([url]: [string]) => !url.includes('localhost')
+        ([url]: [string]) => !url.includes('localhost') && !url.includes('brevo')
       );
       expect(fetchCalls).toHaveLength(0);
     } finally {
@@ -660,7 +675,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         ...ENROLL_PAYLOAD,
         card_holder_name: 'help42',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe('payment_succeeded');
@@ -680,7 +695,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         ...ENROLL_PAYLOAD,
         card_holder_name: 'SOME_RANDOM_CODE',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe('payment_succeeded');
@@ -712,7 +727,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         ...ENROLL_PAYLOAD,
         card_holder_name: 'Normal Parent',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe('payment_succeeded');
@@ -751,7 +766,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         source_id: 'cnon:card_token',
         card_holder_name: 'AID123',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
 
       const regs = await db.select().from(mktRegistrations)
@@ -792,7 +807,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         children: [{ name: 'Student NoCard', dob: '2016-07-01', sex: 'female' }],
         card_holder_name: 'NO-CARD',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe('aid_granted');
@@ -808,7 +823,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       expect(reg.monthlyAmountCents).toBe(0);
 
       const fetchCalls = mockFetch.mock.calls.filter(
-        ([url]: [string]) => !url.includes('localhost')
+        ([url]: [string]) => !url.includes('localhost') && !url.includes('brevo')
       );
       expect(fetchCalls).toHaveLength(0);
     } finally {
@@ -831,7 +846,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
         children: [{ name: 'Student', dob: '2015-05-05', sex: 'male' }],
         card_holder_name: 'Normal Name',
       });
-      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error.code).toBe('VALIDATION_ERROR');
@@ -852,7 +867,7 @@ describe('POST /masjids/:slug/maktab/enroll', () => {
       children: [{ name: 'S', dob: '2015-05-05', sex: 'male' }],
       card_holder_name: 'Normal Name',
     });
-    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: squareEnv() }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    const res = await postEnrollment({ params: { slug }, request: req, url: new URL(req.url), locals: {}, platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error.code).toBe('VALIDATION_ERROR');
@@ -1059,6 +1074,7 @@ describe('Admin terms', () => {
   it('POST creates term with Square plan when env is configured', async () => {
     const slug = `terms-sq-${Date.now()}`;
     const id = await seedMasjid(slug);
+    await seedIntegrations(id);
 
     const mockFetch = squareMockFetch();
     vi.stubGlobal('fetch', mockFetch);
@@ -1070,7 +1086,7 @@ describe('Admin terms', () => {
         price_cents_2: 15000,
         price_cents_3plus: 19000,
       });
-      const res = await postTerms({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postTerms({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(201);
 
       const term = await db.select().from(mktTerms).where(eq(mktTerms.masjidId, id)).orderBy(desc(mktTerms.createdAt)).get();
@@ -1085,6 +1101,7 @@ describe('Admin terms', () => {
   it('POST returns error when Square plan creation fails', async () => {
     const slug = `terms-sqfail-${Date.now()}`;
     const id = await seedMasjid(slug);
+    await seedIntegrations(id);
 
     const mockFetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ errors: [{ detail: 'Bad request' }] }), { status: 400 }));
     vi.stubGlobal('fetch', mockFetch);
@@ -1093,7 +1110,7 @@ describe('Admin terms', () => {
         name: 'Fallback Term', length_months: 2,
         price_cents_1: 5000, price_cents_2: 8000, price_cents_3plus: 10000,
       });
-      const res = await postTerms({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: squareEnv() }, cookies: {} as any, fetch: mockFetch } as any);
+      const res = await postTerms({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: mockFetch } as any);
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body.error.message).toContain('Square API error');

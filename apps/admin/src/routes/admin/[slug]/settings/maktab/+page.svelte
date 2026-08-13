@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { BookOpen, Users, ExternalLink, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2 } from 'lucide-svelte';
+  import { BookOpen, Users, ExternalLink, Download, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Plus, Trash2, AlertTriangle, ShieldOff } from 'lucide-svelte';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
   import ErrorCard from '$lib/components/ErrorCard.svelte';
   import {
@@ -43,6 +43,12 @@
   let registrations = $state<Registration[]>([]);
   let selectedTermId = $state<string>('');
   let error = $state<string | null>(null);
+
+  let integrationStatus = $state<{
+    square: boolean;
+    brevo: boolean;
+    loaded: boolean;
+  }>({ square: false, brevo: false, loaded: false });
 
   let saving = $state(false);
   let creating = $state(false);
@@ -137,6 +143,7 @@
   $effect(() => {
     if (!masjidId) return;
     loadAll();
+    loadIntegrationStatus();
   });
 
   $effect(() => {
@@ -309,6 +316,19 @@
     toast.success('Applications CSV downloaded');
   }
 
+  async function loadIntegrationStatus() {
+    try {
+      const data = await api.getIntegrations(masjidId);
+      integrationStatus = {
+        square: data.square.configured,
+        brevo: data.brevo.configured,
+        loaded: true,
+      };
+    } catch {
+      integrationStatus = { square: false, brevo: false, loaded: true };
+    }
+  }
+
   function formatCents(cents: number): string {
     return `$${(cents / 100).toFixed(2)}`;
   }
@@ -392,6 +412,43 @@
     <h1 class="text-2xl font-heading font-bold">Maktab Settings</h1>
   </div>
   <p class="text-text-muted text-sm mb-6">Manage enrollment terms, pricing, and registrations.</p>
+
+  {#if integrationStatus.loaded && (!integrationStatus.square || !integrationStatus.brevo)}
+    <div class="mb-6 p-4 border-2 border-amber-500/40 bg-amber-500/10 rounded-xl">
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 flex-shrink-0">
+          <AlertTriangle class="text-amber-500" size={20} />
+        </div>
+        <div class="space-y-2 text-sm">
+          <p class="font-semibold text-amber-600">Integrations Not Fully Configured</p>
+          <p class="text-text-muted">
+            Maktab enrollment won't work correctly until payment and email integrations are set up.
+          </p>
+          <ul class="list-disc list-inside space-y-1 text-text-muted">
+            {#if !integrationStatus.square}
+              <li>
+                <span class="text-amber-600 font-medium">Square is missing</span>
+                &mdash; parents cannot pay online. Enrollment form will show an error.
+              </li>
+            {/if}
+            {#if !integrationStatus.brevo}
+              <li>
+                <span class="text-amber-600 font-medium">Brevo (email) is missing</span>
+                &mdash; confirmation emails won't be sent to parents after enrollment.
+              </li>
+            {/if}
+          </ul>
+          <a
+            href="/admin/{data.masjidSlug}/settings/integrations"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition-colors"
+          >
+            <ShieldOff size={14} />
+            Configure Integrations
+          </a>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   {#if loading}
     <SkeletonForm fields={8} />
