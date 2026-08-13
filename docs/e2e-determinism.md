@@ -234,6 +234,38 @@ done
 000 = hang. If tomorrow this returns 12×200, it was quota/limits — re-run
 the staging pipeline (workflow_dispatch) and it should go green.
 
+### 2026-08-13 update — relapse is egress-specific, not account-wide
+
+Run 31655884481 (deploy of `ee08fa7`): `e2e-api` ✓ (42s), `e2e-admin` ✓,
+`e2e-tv` ✓, `e2e-deploy` ✓ — but `e2e-consumer` hung across **three
+consecutive attempts** (00:54, 01:08, 01:22 UTC), each time with a
+*different* random case set (CON-07/10/15b/17/21, then CON-03/10/11/14/15,
+then CON-08/14/15b/26), bucket-clean missing-text failures, watchdog abort
+at 480s. New evidence that reshapes the diagnosis:
+
+1. **The probe itself saw worker hangs from the CI runner** — attempt 2:
+   `api /api/v1/status → 0 (timeout)` twice, interleaved with clean rounds,
+   while the Pages page-checks passed. So CI→worker hangs, CI→Pages fine.
+2. **Same window, same worker, other runners green**: `e2e-admin` made
+   dozens of authed worker calls (00:54–00:57) while `e2e-consumer`'s
+   runner hung. So the throttle keys on the runner's egress IP/colo, not
+   the account.
+3. **Dev machine was 100% healthy throughout**: 12×200 + 8×200 sequential,
+   then 30/30 under full concurrency against the worker, 30/30 against
+   Pages — measured while CI attempt 3 was hanging.
+4. The UTC day rolled over before the first attempt (00:52 UTC), so a
+   midnight-reset daily quota doesn't fit either (rolling-24h still
+   possible but weakened by 1–3).
+
+Working theory: Cloudflare sheds/queues worker invocations for parts of the
+GitHub Actions IP pool under burst (the consumer suite is the heaviest:
+~50 cold browser contexts × shell+chunks+API). The CF-side ask from §7
+stands — Workers Logs for `mapi-staging` during 00:54–01:32 UTC would
+settle whether hung requests reach the worker at all. Note: the admin fix
+validation (ADM-22) DID land green on staging in this run; the consumer
+suite's CON-51 validation is only blocked by this infra issue, not by the
+fix (proven locally + by the `badApiOrigins` mechanism).
+
 ### Remaining work, in order
 
 1. **Resolve the staging hang** (above). If it was quota: nothing to fix in
