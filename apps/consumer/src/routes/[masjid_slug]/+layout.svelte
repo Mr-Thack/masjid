@@ -33,11 +33,13 @@
   let masjid = $derived($page.data.masjid);
   let theme = $derived($page.data.theme);
 
+  let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null)));
+
   let devicePref = $derived(deviceThemePref.current);
   // Mishkaat reads light/dark from style_options.themeMode; Sakeenah uses
   // layout_preset ('minimal-light' vs 'glass-dark').
   let adminMode = $derived(resolveStyleSystem(theme) === 'mishkaat'
-    ? (resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null))).themeMode
+    ? opts.themeMode
     : theme?.layout_preset === 'minimal-light' ? 'light' : 'dark');
   let effectiveMode = $derived(deviceThemePref.resolve(adminMode));
 
@@ -183,7 +185,9 @@
     >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
       <a href={navHref('')} class="flex items-center gap-3 no-underline min-w-0">
-        {#if mishkaat}
+        {#if opts.logoUrl}
+          <img class="c-logo-img" src={opts.logoUrl} alt="{masjid?.name ?? 'Masjid'} logo" />
+        {:else if mishkaat}
           <div class="c-header-rosette" aria-hidden="true">
             <Rosette size={20} stroke />
           </div>
@@ -243,6 +247,22 @@
   </main>
 
   {#if !embed}
+  <footer class="c-ftr">
+    <div class="c-ftr-band" aria-hidden="true">
+      <StarBand band={16} />
+    </div>
+    <div class="c-ftr-body" style="color: var(--color-text-muted); font-size: 0.8rem;">
+      <span class="c-ftr-name" style="font-weight: 600;">{masjid?.name ?? 'Masjid'}</span>
+      {#if masjid?.city || masjid?.state}
+        <Rosette size={12} />
+        <span>{[masjid?.city, masjid?.state].filter(Boolean).join(', ')}</span>
+      {/if}
+      {#if masjid?.contact_phone || masjid?.contact_email}
+        <span>{[masjid?.contact_phone, masjid?.contact_email].filter(Boolean).join(' · ')}</span>
+      {/if}
+    </div>
+  </footer>
+
   <nav
     class="fixed bottom-0 left-0 right-0 z-50 glass border-t lg:hidden"
     style="padding-bottom: var(--safe-bottom); border-color: var(--color-border);"
