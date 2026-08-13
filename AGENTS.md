@@ -1,6 +1,6 @@
 # AGENTS.md
 
-## Current state (2026-08-11)
+## Current state (2026-08-13)
 The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 673 tests)
 - **Working TV frontend** (SvelteKit static, 266 tests — no Tailwind, hand-written CSS)
@@ -9,6 +9,7 @@ The project is a fully implemented monorepo with:
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — 47 tools, runner, prompts, api-client, session, media)
 - **Admin app** (SvelteKit static/SPA on port 5176 — auth, dashboard, 11 settings pages, bot chat panel — 230 tests)
 - **Tooling tests** (23 tests covering merge-pages, build integrity, schema drift)
+- **Runtime D1 schema checks removed (2026-08-13)**: `ensureD1Columns`, `waitForD1Migrations`, `COLUMN_MIGRATIONS`, and all runtime `ALTER TABLE` logic removed from the Worker (see "Schema management" below). The isolated D1 binding hang that caused intermittent staging E2E failures (consumer suite bucket-clean missing-text with zero CPU, §deploy-lessons-55) is eliminated — the Worker no longer awaits D1 calls before routing requests. Schema correctness is enforced entirely by the CI pipeline: `check-schema` (static) + `check-d1-drift` (live D1) + staging reseed — the Worker is a pure consumer, never a schema manager.
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
 - **Prayer tables shipped (2026-07-30)** — the homepage prayer section is the classic masjid timetable (`PrayerTable`: one row per prayer, adhaan/iqaamah columns, sunrise row, current-row highlight + rosette, next chip, right-after-adhaan and dual-Asr notes) and the Times tab is the weekly timetable (`WeeklyPrayerTable`: days × prayers, iqaamah over adhaan per cell, today row, cross-week change accents, styled legend) — BOTH style systems, replacing the card grid and the stacked day cards. `PrayerCard`/`PrayerList`/`SkeletonPrayerCard` deleted.
 - **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
@@ -19,7 +20,7 @@ The project is a fully implemented monorepo with:
 - **Build ID (2026-08-05)**: every frontend app injects `<meta name="build-id" content="<git-hash>">` via `hooks.server.ts` `transformPageChunk`. The API `/status` endpoint also returns `build_id`. Check from any device: View Source or `curl /api/v1/status | jq .build_id`.
 - **E2E hydration signal (2026-08-05)**: each root layout sets `document.documentElement.dataset.hydrated="true"` in `$effect()`. The `visitPage()` helper waits for `html[data-hydrated]` before checking `expectText`/`expectSelector`. Tests use `waitUntil: 'load'` (never `networkidle` — breaks on Square SDK/polling pages).
 - **E2E determinism rework (2026-08-05)**: the harness (`tests/e2e/helpers.js`) is condition-based, not sleep-based. Key rules: (1) every case runs inside `testCase(t, id, fn)` — a thrown timeout becomes a FAIL line, never a process-killing uncaught exception; (2) `loginAdmin()` logs in ONCE per admin run (hydration awaited before touching the form — a pre-hydration submit click triggers a NATIVE form submit, which was the `waitForURL('**/admin/**')` CI flake — and `waitForURL` is registered before the click); the navigation is raced against the app's error banner so a 500ing login API fails FAST with the real message; later authed cases reuse `context.storageState()` (JWT lives in localStorage); (3) fixed `waitForTimeout` only for stress pacing, never readiness — use `gotoPage`/`settlePage` (adaptive network-quiet settle); (4) ceilings: nav 30s, expectation 15s, login 45s, settle ≤2s; visitPage expectations run concurrently; (5) suite watchdog `E2E_SUITE_WATCHDOG_MS` (default 8min) aborts stuck suites with the in-flight case name; (6) all non-browser fetches use `AbortSignal.timeout` and return `status: 0` on failure; (7) `run.js` honors multiple `--suite=` flags and prints per-suite timings; (8) CI browser/deploy jobs run `tests/e2e/wait-for-deploy.js <app>` first — a readiness probe that polls until the edge serves the fresh deploy (build-id meta == `GITHUB_SHA`, chunks are real assets) and warms it, replacing the blind `sleep 30` (mixed-version edge serving flaked consumer/tv for minutes post-deploy, 2026-08-06). Full local run ≈ 3.5 min; CI splits suites across parallel jobs. See `docs/integration-testing.md` §5.2.
-- **D1 column-order fix (2026-08-05)**: `fetchThemeRow()` in `apps/api/src/lib/server/db/index.ts` bypasses Drizzle's position-based `.raw()` mapping by using raw D1 binding (`.all()` → named objects) in production, falling back to Drizzle locally. The Drizzle schema column order now matches `schema.sql` migration order. Do NOT insert new columns in the middle of `masjidThemes` — always append them (D1's `ALTER TABLE ADD COLUMN` puts them at the end).
+- **D1 column-order fix (2026-08-05)**: `fetchThemeRow()` in `apps/api/src/lib/server/db/index.ts` bypasses Drizzle's position-based `.raw()` mapping by using raw D1 binding (`.all()` → named objects) in production, falling back to Drizzle locally. The Drizzle schema column order now matches `schema.sql` creation order. Do NOT insert new columns in the middle of tables — always append them.
 - **E2E determinism restructure (2026-08-09)**: the post-lessons-36-46 flakes were shared-STATE races, not readiness. Fixes (full rationale: `docs/e2e-determinism.md`): (1) transient gateway codes 502/503/520-524 from our origins are `warnings`, not `failedRequests` — a 503 that breaks a page still fails via missing expectations; (2) mutation tests are hermetic — one `testCase` per mutation, unique per-run entity names, UI creates but **API restores/cleanup in `finally`** via `tests/e2e/api-client.js` (`snapshotProfileFields`/`restoreProfileFields`, `restoreEnrollmentOpen`, `delete*ByPrefix`); ADM-16..22 are separate cases, ADM-18/19 now really open the create forms (they were silently dead); (3) **staging D1 is reseeded on every staging deploy** (`tooling/dump-seed-sql.ts` → `wrangler d1 execute --file`) — no run inherits drift; (4) `wait-for-deploy.js api` mode gates the `e2e-api` job and checks the worker's `build_id` == `GITHUB_SHA` (a 200 from a mid-propagation old worker is not readiness); (5) ALL `/maktab/enroll` loads use `waitUntil: 'domcontentloaded'` (Square iframes stall `load`); CON-46 asserts the enrollment-open precondition via API first; (6) `loginAdminWithRetry` retries once (cold bcrypt) — attach request listeners at CONTEXT level so they survive the retry. Two latent app bugs found and fixed along the way: admin profile/theme pages rendered saveable default forms when the initial GET failed (now a load-error state), and `ensureTables` still created the dropped `external_donation_url` column locally. Note: the announcement DELETE endpoint ARCHIVES (soft delete) — API cleanup means "archived", residue rows are wiped by the staging reseed.
 
 ## First-time setup (fresh clone or worktree)
@@ -108,8 +109,8 @@ there was learned from a production or staging incident.
 Also:
 - `git status` — only stage intended files, never `git add -A`
 - No `console.log`, `debugger`, or commented-out code unless intentional
-- Drizzle schema changes? Run `npm run check-schema` and update `schema.sql`
-- New columns on Drizzle tables? **Append at the end**, never insert in the middle
+- Schema changes: update `schema.sql` AND `schema.ts` together, then run `npm run check-schema`. The CI pipeline enforces zero drift at deploy time (`check-schema` + `check-d1-drift`). There is NO runtime schema migration — see "Schema management" below.
+- New columns on Drizzle tables? **Append at the end** of the `CREATE TABLE` and Drizzle column list, never insert in the middle
 - New API route? Check `docs/adding-api-routes.md` for the checklist
 
 ## Seed data
@@ -283,7 +284,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 | `ceremony.ts` | Ceremony state machine (§7.6) + ambient palette phases (§7.4) + Hijri helpers — pure, fully unit-tested |
 
 ### Mishkaat implementation notes
-- **Style systems**: `masjid_themes.style_system` ('sakeenah' default, 'mishkaat' flagship) + `style_options` JSON column (metal/motif/arch/numerals/density/ambient/quietHours/frames/emblem/donateAppeal; unknown keys ignored, missing keys → defaults). Synced across `schema.sql`, Drizzle schema, and `ensureTables`/`addColumnIfMissing`.
+- **Style systems**: `masjid_themes.style_system` ('sakeenah' default, 'mishkaat' flagship) + `style_options` JSON column (metal/motif/arch/numerals/density/ambient/quietHours/frames/emblem/donateAppeal; unknown keys ignored, missing keys → defaults). Synced across `schema.sql` and Drizzle schema.
 - **`applyTheme` / `buildThemeVars`** (ui-utils) branch per style system and set `data-style-system` on `<html>`; all Mishkaat CSS keys off that attribute. Metal palettes recolor accents (gold default); stock Sakeenah colors (`#1e3a8a`/`#10b981`) are treated as unset under Mishkaat; explicit custom colors are raw overrides on top of metal (§7.4). Amiri is the display default unless `font_heading` was explicitly changed from Inter (§7.2).
 - **New registrations default to Mishkaat** (gold + `layout_preset='mishkaat'` + Amiri headings). **Al-Noor seeds to Mishkaat; Al-Jabal stays Sakeenah** — one seed masjid per style system.
 - **Hadith collection**: `packages/ui-utils/src/hadith.ts` — 24 curated entries (Arabic + English + canonical source), date-seeded daily rotation, occasion tags (jumu'ah/ramadan/fajr/prayer) for context seeding.
@@ -615,3 +616,44 @@ Multiple agents can work simultaneously using `git worktree`. Each worktree is a
 
 Every one of these was a production incident. Read the relevant section before touching
 deploy scripts, CI workflows, E2E tests, or the API worker.
+
+## Schema management
+
+**The Worker is a pure consumer, never a schema manager.** There is NO runtime
+`ALTER TABLE` or column-migration code in the application. Schema correctness is
+enforced entirely by the CI pipeline, which has three layers:
+
+| Layer | What it checks | Where it runs | Blocks deploy? |
+|---|---|---|---|
+| `check-schema` | `schema.sql` ↔ Drizzle `schema.ts` agree | CI (`npm run check-schema`) + deploy workflows | Yes (both staging and prod) |
+| `check-d1-drift` | `schema.sql` ↔ the LIVE D1 database | Deploy workflows (`deploy-staging.yml`, `deploy.yml`) | Yes (both staging and prod) |
+| Staging reseed | Wipes + rebuilds staging D1 from `schema.sql` via `tooling/dump-seed-sql.ts` | Deploy workflow (staging only) | Runs after deploy, guarantees hermetic state |
+
+**The invariant**: by the time the Worker receives its first request, the D1
+database matches `schema.sql` exactly. A worker can never encounter a database
+that is missing tables or columns — if one did, the deploy would have been
+blocked.
+
+**History**: this replaced a previous design where the Worker ran `ALTER TABLE
+ADD COLUMN` at runtime via `ensureD1Columns`/`waitForD1Migrations`. That
+approach caused intermittent E2E failures when D1 binding calls hung at
+cold-start (2026-08-09 and 2026-08-13). See `docs/deploy-lessons.md` lesson 55.
+
+### How to add a new column
+
+1. Add the column to `schema.sql` at the end of the `CREATE TABLE` statement
+2. Add the column to `schema.ts` (Drizzle schema) — append to the column list
+3. Run `npm run check-schema` — must pass locally
+4. Run `npx tsx tooling/check-d1-drift.ts masjid-db-staging` — live D1 check against staging
+5. For local dev: delete `.masjid/local.db` and re-run `npm run seed`
+6. For production: the column is added by `wrangler d1 execute schema.sql` — run this BEFORE the worker deploy
+
+### Three authoritative files
+
+| File | Role |
+|---|---|
+| `schema.sql` | Canonical DDL — the source of truth for D1 (19 tables) |
+| `apps/api/src/lib/server/db/schema.ts` | Drizzle ORM schema — must match `schema.sql` exactly |
+| `apps/api/src/lib/server/db/index.ts` `ensureTables()` | Local SQLite table creation — mirrors `schema.sql` for local dev only |
+
+All three must agree. The CI gates enforce this.

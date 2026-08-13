@@ -1,6 +1,6 @@
 import { error } from '@masjid/schemas';
 import { verifyAccessToken } from '$lib/server/auth/jwt';
-import { getDb, waitForD1Migrations } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { admins } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Handle } from '@sveltejs/kit';
@@ -54,8 +54,6 @@ function jsonResponse(data: unknown, status = 200): Response {
 }
 
 export const handle: Handle = async ({ event, resolve }) => {
-  await waitForD1Migrations(event.platform?.env?.DB);
-
   const origin = event.request.headers.get('origin');
   const pathname = new URL(event.request.url).pathname;
 

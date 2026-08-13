@@ -37,85 +37,6 @@ function getLocalSqlite(): Database.Database {
   return localSqlite!;
 }
 
-function addColumnIfMissing(
-  sqlite: Database.Database,
-  table: string,
-  column: string,
-  def: string,
-) {
-  const existing = sqlite
-    .prepare(`PRAGMA table_info(${table})`)
-    .all() as Array<{ name: string }>;
-  if (!existing.some((c) => c.name === column)) {
-    sqlite.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
-  }
-}
-
-function tableHasColumn(sqlite: Database.Database, table: string, column: string): boolean {
-  const existing = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
-  return existing.some((c) => c.name === column);
-}
-
-function migrateMktTables(sqlite: Database.Database) {
-  // The old mkt_registrations stub had only a few columns. If it exists, drop the
-  // whole Maktab schema so we can recreate the real tables.
-  if (
-    sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='mkt_registrations'").get()
-    && tableHasColumn(sqlite, 'mkt_registrations', 'student_name')
-  ) {
-    sqlite.exec(`
-      DROP TABLE IF EXISTS mkt_outbox;
-      DROP TABLE IF EXISTS mkt_registrations;
-      DROP TABLE IF EXISTS mkt_settings;
-      DROP TABLE IF EXISTS mkt_terms;
-    `);
-  }
-}
-
-// Shared column migrations — applied to BOTH local SQLite and production D1.
-// When you add a column to the Drizzle schema, ADD IT HERE.
-const COLUMN_MIGRATIONS: Array<[table: string, column: string, def: string]> = [
-  // masjid_themes
-  ['masjid_themes', 'time_format', "TEXT NOT NULL DEFAULT '24h'"],
-  ['masjid_themes', 'label_adhaan', "TEXT NOT NULL DEFAULT 'Adhaan'"],
-  ['masjid_themes', 'label_iqaamah', "TEXT NOT NULL DEFAULT 'Iqaamah'"],
-  ['masjid_themes', 'label_jumuah', "TEXT NOT NULL DEFAULT 'Jumu''ah'"],
-  ['masjid_themes', 'label_speech', "TEXT NOT NULL DEFAULT 'Speech'"],
-  ['masjid_themes', 'label_sunrise', "TEXT NOT NULL DEFAULT 'Sunrise'"],
-  ['masjid_themes', 'label_fajr', "TEXT NOT NULL DEFAULT 'Fajr'"],
-  ['masjid_themes', 'label_dhuhr', "TEXT NOT NULL DEFAULT 'Dhuhr'"],
-  ['masjid_themes', 'label_asr', "TEXT NOT NULL DEFAULT 'Asr'"],
-  ['masjid_themes', 'label_maghrib', "TEXT NOT NULL DEFAULT 'Maghrib'"],
-  ['masjid_themes', 'label_isha', "TEXT NOT NULL DEFAULT 'Isha'"],
-  // admins
-  ['admins', 'whatsapp_phone', 'TEXT'],
-  // mkt_terms
-  ['mkt_terms', 'billing_months', 'INTEGER'],
-  // mkt_settings
-  ['mkt_settings', 'program_info', "TEXT NOT NULL DEFAULT '{}'"],
-  ['mkt_settings', 'assistance_code', 'TEXT'],
-  // jumuah_sessions
-  ['jumuah_sessions', 'speech_time', 'TEXT'],
-  // masjids
-  ['masjids', 'asr_madhab', "TEXT NOT NULL DEFAULT 'shafi'"],
-  ['masjids', 'high_latitude_rule', "TEXT NOT NULL DEFAULT 'seventh_of_night'"],
-  ['masjids', 'show_dual_asr', 'INTEGER NOT NULL DEFAULT 0'],
-  ['masjids', 'fajr_angle', 'REAL'],
-  ['masjids', 'isha_angle', 'REAL'],
-  ['masjids', 'adjust_fajr', 'INTEGER NOT NULL DEFAULT 0'],
-  ['masjids', 'adjust_sunrise', 'INTEGER NOT NULL DEFAULT 0'],
-  ['masjids', 'adjust_dhuhr', 'INTEGER NOT NULL DEFAULT 0'],
-  ['masjids', 'adjust_asr', 'INTEGER NOT NULL DEFAULT 0'],
-  ['masjids', 'adjust_maghrib', 'INTEGER NOT NULL DEFAULT 0'],
-  ['masjids', 'adjust_isha', 'INTEGER NOT NULL DEFAULT 0'],
-  // prayer_rules
-  ['prayer_rules', 'enabled', 'INTEGER NOT NULL DEFAULT 1'],
-  // about_markdown and donation_links (2026-08-09)
-  ['masjids', 'about_markdown', 'TEXT'],
-  ['masjids', 'donation_links', 'TEXT'],
-  ['masjids', 'show_donate_qr', 'INTEGER NOT NULL DEFAULT 1'],
-];
-
 export function ensureTables(sqlite: Database.Database) {
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS masjids (
@@ -354,8 +275,6 @@ export function ensureTables(sqlite: Database.Database) {
     );
   `);
 
-  migrateMktTables(sqlite);
-
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS mkt_terms (
       id TEXT PRIMARY KEY,
@@ -423,12 +342,7 @@ export function ensureTables(sqlite: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_mkt_outbox_poll ON mkt_outbox(status, scheduled_at);
   `);
 
-  // Migrate existing databases created before these columns existed.
-  // This is the SINGLE source of truth — used by both local SQLite and D1.
-  for (const [table, column, def] of COLUMN_MIGRATIONS) {
-    addColumnIfMissing(sqlite, table, column, def);
   }
-}
 
 export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
   // In local Node.js dev: always use our local SQLite, not the adapter's mock D1.
@@ -438,55 +352,9 @@ export function getDb(d1?: unknown): ReturnType<typeof drizzleSqlite> {
   }
   // In Cloudflare Workers: use the real D1 binding.
   if (d1) {
-    ensureD1Columns(d1 as D1Database);
     return drizzle(d1 as D1Database, { schema }) as unknown as ReturnType<typeof drizzleSqlite>;
   }
   throw new Error('D1 database binding not available');
-}
-
-let d1MigrationPromise: Promise<void> | null = null;
-
-function ensureD1Columns(d1db: D1Database) {
-  if (d1MigrationPromise) return;
-  d1MigrationPromise = (async () => {
-    // Group migrations by table — one PRAGMA per table instead of one
-    // blind ALTER per column (31 failing round-trips → 7 cheap pragmas).
-    const tableCols = new Map<string, Array<{ column: string; def: string }>>();
-    for (const [table, column, def] of COLUMN_MIGRATIONS) {
-      if (!tableCols.has(table)) tableCols.set(table, []);
-      tableCols.get(table)!.push({ column, def });
-    }
-    for (const [table, cols] of tableCols) {
-      try {
-        const result = await d1db
-          .prepare(`SELECT name FROM pragma_table_info('${table}') ORDER BY cid`)
-          .all<{ name: string }>();
-        const existing = new Set(result.results.map((c) => c.name));
-        for (const { column, def } of cols) {
-          if (!existing.has(column)) {
-            await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
-            console.log(`[migration] D1: added ${table}.${column}`);
-          }
-        }
-      } catch {
-        // pragma_table_info unavailable; fall back to blind ALTER (should not happen).
-        for (const { column, def } of cols) {
-          try {
-            await d1db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
-            console.log(`[migration] D1: added ${table}.${column}`);
-          } catch {
-            // Column likely exists
-          }
-        }
-      }
-    }
-  })();
-}
-
-/** Await this in hooks.server.ts before any route runs to ensure columns exist. */
-export async function waitForD1Migrations(d1?: unknown) {
-  if (d1) ensureD1Columns(d1 as D1Database);
-  if (d1MigrationPromise) await d1MigrationPromise;
 }
 
 /**
