@@ -448,9 +448,9 @@ short bounded `max-age`; missing assets 404. See
 
 ### 35. `schema.sql` ≠ the actual D1 databases — gate deploys with a live drift check (2026-08-06)
 
-**Pitfall**: The post-engine's `posts` table existed in both `schema.sql` and
+**Pitfall**: The post-engine's `content` table existed in both `schema.sql` and
 the Drizzle schema, so the CI "Schema drift check" passed — but the staging
-D1 had never had `CREATE TABLE posts` applied, and every masjid endpoint
+D1 had never had `CREATE TABLE content` applied, and every masjid endpoint
 500'd after the staging deploy. The file-based checker
 (`tooling/check-schema-drift.ts`) only compares the two repo files against
 each other; real D1 instances only change when someone manually runs

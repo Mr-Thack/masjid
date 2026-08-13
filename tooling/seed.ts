@@ -31,7 +31,7 @@ function clearSeed() {
   db.delete(schema.prayerRules).run();
   db.delete(schema.announcements).run();
   db.delete(schema.jumuahSessions).run();
-  db.delete(schema.masjidPages).run();
+  db.delete(schema.content).run();
   db.delete(schema.mktRegistrations).run();
   db.delete(schema.mktOutbox).run();
   db.delete(schema.mktTerms).run();
@@ -567,23 +567,36 @@ async function seed() {
     },
   ]).run();
 
-  // Masjid pages (CMS feature) — not used by Masjid Al-Noor seed data.
-  db.insert(schema.masjidPages).values([
+  // Content items (CMS pages) — not used by Masjid Al-Noor seed data.
+  const now = new Date().toISOString();
+  db.insert(schema.content).values([
     {
-      id: 'page-jabal-about',
+      id: 'content-jabal-about',
       masjidId: JABAL_MASJID_ID,
       slug: 'about',
       title: 'About Masjid Al-Jabal',
-      rawMarkdown: '# About Masjid Al-Jabal\n\nMasjid Al-Jabal is a Hanafi congregation in Kennesaw, Georgia. We serve the Muslim community of Cobb and Cherokee counties with daily prayers, Jummah, weekend madrasah, and family programs.',
+      contentMarkdown: '# About Masjid Al-Jabal\n\nMasjid Al-Jabal is a Hanafi congregation in Kennesaw, Georgia. We serve the Muslim community of Cobb and Cherokee counties with daily prayers, Jummah, weekend madrasah, and family programs.',
       compiledHtml: '<h1>About Masjid Al-Jabal</h1><p>Masjid Al-Jabal is a Hanafi congregation in Kennesaw, Georgia. We serve the Muslim community of Cobb and Cherokee counties with daily prayers, Jummah, weekend madrasah, and family programs.</p>',
+      contentType: 'page',
+      showOnHomepage: false,
+      showOnInfo: false,
+      isHidden: false,
+      createdAt: now,
+      updatedAt: now,
     },
     {
-      id: 'page-jabal-services',
+      id: 'content-jabal-services',
       masjidId: JABAL_MASJID_ID,
       slug: 'services',
       title: 'Services',
-      rawMarkdown: '# Services\n\n- Daily five-time prayers\n- Friday Jummah (English, Urdu, Arabic)\n- Weekend Madrasah (Quran, Tajweed, Fiqh, Urdu)\n- Nikkah and funeral services by appointment\n- Zakat and sadaqah distribution',
+      contentMarkdown: '# Services\n\n- Daily five-time prayers\n- Friday Jummah (English, Urdu, Arabic)\n- Weekend Madrasah (Quran, Tajweed, Fiqh, Urdu)\n- Nikkah and funeral services by appointment\n- Zakat and sadaqah distribution',
       compiledHtml: '<h1>Services</h1><ul><li>Daily five-time prayers</li><li>Friday Jummah (English, Urdu, Arabic)</li><li>Weekend Madrasah (Quran, Tajweed, Fiqh, Urdu)</li><li>Nikkah and funeral services by appointment</li><li>Zakat and sadaqah distribution</li></ul>',
+      contentType: 'page',
+      showOnHomepage: false,
+      showOnInfo: false,
+      isHidden: false,
+      createdAt: now,
+      updatedAt: now,
     },
   ]).run();
 

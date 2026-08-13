@@ -141,7 +141,7 @@ Also:
 masjid/
   packages/schemas/          — Shared Zod types (Theme, Announcement, Jumuah, etc.)
   packages/ui-utils/         — Shared UI helpers: theme presets, applyTheme, prayer-change utilities, Mishkaat shared modules (components/Rosette + StarBand, arch.ts geometry, ceremony.ts state machine, hadith.ts collection)
-  packages/agent/            — Shared bot logic: LLM runner, 47 MCP tools, prompts, api-client, session, media
+  packages/agent/            — Shared bot logic: LLM runner, 43 MCP tools, prompts, api-client, session, media
   apps/api/                  — SvelteKit API + Drizzle ORM + Prayer engine
   apps/tv/                   — SvelteKit static, display-only (kiosk/TV)
   apps/consumer/              — SvelteKit static/SPA, PWA (user-facing)
@@ -245,7 +245,7 @@ its `/*.js`/`/*.json` immutable patterns were a standalone-deploy footgun).
 | `info/+page.svelte` | Masjid contact info, address, and social links |
 | `maktab/+page.svelte` | Minimal term/pricing card with **Enroll Now** CTA |
 | `maktab/enroll/+page.svelte` | Square Web Payments SDK enrollment form (parent, address, children, card) |
-| `pages/[page_slug]/` | Dynamic custom page (admin-created, rendered by slug) |
+| `pages/[page_slug]/` | Dynamic custom page (admin-created via Content, rendered by slug) |
 | `posts/[post_slug]/` | Single post page (renders compiled HTML body) |
 
 ### Other known items
@@ -349,7 +349,7 @@ and LLM-powered configuration via OpenAI-compatible API.
 - Worker receives WhatsApp webhooks from Meta, resolves tenant by `admins.whatsapp_phone`
 - All admin mutations are staged in `config_branches` → `config_mutations` (git-style branches)
 - Worker calls the *existing* SvelteKit admin API via JWT proxy (no business logic duplication)
-- Stage 3: LLM agent interprets messages, calls 47 MCP-style tools (theme, profile, prayer rules, jumu'ah, announcements, posts, pages, nav, maktab, rollback, rules, timetable, web), stores mutations, presents diff receipt, confirms on `/confirm`
+- Stage 3: LLM agent interprets messages, calls 43 MCP-style tools (theme, profile, prayer rules, jumu'ah, announcements, content, nav, maktab, rollback, rules, timetable, web), stores mutations, presents diff receipt, confirms on `/confirm`
 - Stage 4 (completed): Vision LLM for timetable photos, time-travel rollback, RTL handling
 
 ### Agent module (`src/agent/`)
@@ -368,8 +368,7 @@ and LLM-powered configuration via OpenAI-compatible API.
 | PRAYER_RULES | `prayer_rules_list`, `prayer_rules_create`, `prayer_rules_update`, `prayer_rules_delete`, `prayer_rules_reorder` |
 | JUMUAH | `jumuah_list`, `jumuah_create`, `jumuah_update`, `jumuah_delete` |
 | ANNOUNCEMENTS | `announcements_list`, `announcements_create`, `announcements_update`, `announcements_delete`, `announcements_pin` |
-| POSTS | `posts_list`, `posts_create`, `posts_update`, `posts_delete`, `posts_pin_homepage`, `posts_pin_info` |
-| PAGES | `pages_list`, `pages_create`, `pages_update`, `pages_delete` |
+| CONTENT | `content_list`, `content_create`, `content_update`, `content_delete`, `content_pin_homepage`, `content_pin_info` |
 | NAV | `nav_list`, `nav_create`, `nav_update`, `nav_delete`, `nav_reorder` |
 | MAKTAB | `maktab_get`, `maktab_update`, `maktab_terms_list`, `maktab_term_activate` |
 | ROLLBACK | `rollback_list_snapshots`, `rollback_restore` |
@@ -418,7 +417,7 @@ The core bot logic extracted from WhatsApp worker. Used by both WhatsApp worker 
 ### Exports
 | Module | Purpose |
 |--------|---------|
-| `getToolDefinitions()` | 47 MCP tool definitions (theme, profile, prayer rules, jumu'ah, announcements, posts, pages, nav, maktab, rollback, rules, timetable, web) |
+| `getToolDefinitions()` | 43 MCP tool definitions (theme, profile, prayer rules, jumu'ah, announcements, content, nav, maktab, rollback, rules, timetable, web) |
 | `runAgent()` | LLM agent loop: send message → call LLM → execute tool calls → repeat → return structured `AgentResult` |
 | `runVisionAgent()` | Vision LLM agent for timetable photo extraction |
 | `buildSystemPrompt()` | System prompt builder with domain guides and examples |
@@ -448,7 +447,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 | `/admin/[slug]/settings/jumuah` | Jumu'ah sessions management |
 | `/admin/[slug]/settings/maktab` | Maktab term/pricing management + registrations |
 | `/admin/[slug]/settings/announcements` | Announcements with markdown editor |
-| `/admin/[slug]/settings/posts` | Posts with markdown editor + homepage/info pins |
+| `/admin/[slug]/settings/content` | Unified content management (posts + pages) with markdown editor, homepage/info pins, type badges |
 | `/admin/[slug]/settings/navigation` | Nav items (add/reorder built-in routes, custom pages, external links; desktop/mobile toggles) |
 | `/admin/[slug]/settings/domain` | Custom domain management |
 | `/admin/[slug]/settings/snapshots` | Configuration snapshots + rollback |

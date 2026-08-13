@@ -1,6 +1,6 @@
 import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
-import { posts, masjids as masjidsTable } from '$lib/server/db/schema';
+import { content, masjids as masjidsTable } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { invalidatePageCache } from '$lib/server/prayer/cache';
 import type { RequestHandler } from './$types';
@@ -18,37 +18,38 @@ export const PUT: RequestHandler = async ({ params, locals, platform }) => {
 
     const existing = await db
       .select()
-      .from(posts)
+      .from(content)
       .where(
         and(
-          eq(posts.masjidId, params.id),
-          eq(posts.slug, params.slug),
+          eq(content.masjidId, params.id),
+          eq(content.slug, params.contentSlug),
         ),
       )
       .get();
 
     if (!existing) {
-      return ErrorJsonResponse('NOT_FOUND', 'Post not found');
+      return ErrorJsonResponse('NOT_FOUND', 'Content not found');
     }
 
     const newValue = !existing.showOnHomepage;
 
     if (newValue) {
       await db
-        .update(posts)
+        .update(content)
         .set({ showOnHomepage: false })
         .where(
           and(
-            eq(posts.masjidId, params.id),
-            eq(posts.showOnHomepage, true),
+            eq(content.masjidId, params.id),
+            eq(content.showOnHomepage, true),
+            eq(content.contentType, 'post'),
           ),
         );
     }
 
     await db
-      .update(posts)
+      .update(content)
       .set({ showOnHomepage: newValue, updatedAt: new Date().toISOString() })
-      .where(and(eq(posts.masjidId, params.id), eq(posts.slug, params.slug)));
+      .where(and(eq(content.masjidId, params.id), eq(content.slug, params.contentSlug)));
 
     const masjid = await db
       .select({ slug: masjidsTable.slug })

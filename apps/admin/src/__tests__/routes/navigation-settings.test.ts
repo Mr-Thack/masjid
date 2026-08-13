@@ -18,9 +18,9 @@ let mockUpdateNavItem: ReturnType<typeof vi.fn>;
 let mockDeleteNavItem: ReturnType<typeof vi.fn>;
 let mockReorderNavItems: ReturnType<typeof vi.fn>;
 let mockGetPages: ReturnType<typeof vi.fn>;
-let mockCreatePage: ReturnType<typeof vi.fn>;
-let mockUpdatePage: ReturnType<typeof vi.fn>;
-let mockDeletePage: ReturnType<typeof vi.fn>;
+let mockCreateContent: ReturnType<typeof vi.fn>;
+let mockUpdateContent: ReturnType<typeof vi.fn>;
+let mockDeleteContent: ReturnType<typeof vi.fn>;
 
 function createMocks() {
   mockGetNavItems = vi.fn().mockResolvedValue({ nav_items: [] });
@@ -28,10 +28,10 @@ function createMocks() {
   mockUpdateNavItem = vi.fn().mockResolvedValue({ id: 'updated' });
   mockDeleteNavItem = vi.fn().mockResolvedValue({});
   mockReorderNavItems = vi.fn().mockResolvedValue({ nav_items: [] });
-  mockGetPages = vi.fn().mockResolvedValue({ pages: [] });
-  mockCreatePage = vi.fn().mockResolvedValue({ id: 'page-id', slug: 'test', title: 'Test' });
-  mockUpdatePage = vi.fn().mockResolvedValue({});
-  mockDeletePage = vi.fn().mockResolvedValue({});
+  mockGetPages = vi.fn().mockResolvedValue({ content: [] });
+  mockCreateContent = vi.fn().mockResolvedValue({ id: 'page-id', slug: 'test', title: 'Test' });
+  mockUpdateContent = vi.fn().mockResolvedValue({});
+  mockDeleteContent = vi.fn().mockResolvedValue({});
 }
 
 createMocks();
@@ -44,9 +44,9 @@ vi.mock('$lib/api', () => ({
     deleteNavItem: (...args: unknown[]) => mockDeleteNavItem(...args),
     reorderNavItems: (...args: unknown[]) => mockReorderNavItems(...args),
     getPages: (...args: unknown[]) => mockGetPages(...args),
-    createPage: (...args: unknown[]) => mockCreatePage(...args),
-    updatePage: (...args: unknown[]) => mockUpdatePage(...args),
-    deletePage: (...args: unknown[]) => mockDeletePage(...args),
+    createContent: (...args: unknown[]) => mockCreateContent(...args),
+    updateContent: (...args: unknown[]) => mockUpdateContent(...args),
+    deleteContent: (...args: unknown[]) => mockDeleteContent(...args),
   },
 }));
 

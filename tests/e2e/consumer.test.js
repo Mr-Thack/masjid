@@ -1151,9 +1151,10 @@ await testCase(t, 'CON-50', async () => {
 
   let created = false;
   try {
-    await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/posts`, {
+    await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/content`, {
       title,
       content_markdown: '**E2E** test content for consumer rendering.',
+      content_type: 'post',
     });
     created = true;
   } catch { /* skip */ }
@@ -1173,7 +1174,7 @@ await testCase(t, 'CON-50', async () => {
     t.assert(b.pageErrors.length === 0,
       `CON-50 post page no errors — ${JSON.stringify(b.pageErrors)}`);
   } finally {
-    await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/posts/${slug}`).catch(() => {});
+    await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/content/${slug}`).catch(() => {});
     await context.close();
   }
 });
@@ -1188,10 +1189,11 @@ await testCase(t, 'CON-51', async () => {
 
   let created = false;
   try {
-    await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/pages`, {
+    await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/content`, {
       slug: pageSlug,
       title,
-      raw_markdown: '# E2E Custom Page\n\nTest content for consumer rendering.',
+      content_markdown: '# E2E Custom Page\n\nTest content for consumer rendering.',
+      content_type: 'page',
     });
     created = true;
   } catch { /* skip */ }
@@ -1227,7 +1229,7 @@ await testCase(t, 'CON-51', async () => {
     t.assert(badApiOrigins.length === 0,
       `CON-51 all /api/* requests went to allowed origins (got ${JSON.stringify([...new Set(b.apiOrigins)])})`);
   } finally {
-    await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/pages/${pageSlug}`).catch(() => {});
+    await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/content/${pageSlug}`).catch(() => {});
     await context.close();
   }
 });

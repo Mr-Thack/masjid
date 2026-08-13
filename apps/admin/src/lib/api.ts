@@ -22,6 +22,8 @@ async function request(method: string, path: string, body?: unknown) {
     throw new Error(err.error?.message || err.message || `Request failed (${res.status})`);
   }
 
+  if (res.status === 204) return null;
+
   return res.json();
 }
 
@@ -97,23 +99,26 @@ export const api = {
   pinAnnouncement: (masjidId: string, slug: string) =>
     request('PUT', `/api/v1/admin/masjids/${masjidId}/announcements/${slug}/pin`),
 
+  getContent: (masjidId: string) =>
+    request('GET', `/api/v1/admin/masjids/${masjidId}/content`),
+
+  createContent: (masjidId: string, data: Record<string, unknown>) =>
+    request('POST', `/api/v1/admin/masjids/${masjidId}/content`, data),
+
+  updateContent: (masjidId: string, slug: string, data: Record<string, unknown>) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/content/${slug}`, data),
+
+  deleteContent: (masjidId: string, slug: string) =>
+    request('DELETE', `/api/v1/admin/masjids/${masjidId}/content/${slug}`),
+
+  pinContentHomepage: (masjidId: string, slug: string) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/content/${slug}/homepage`),
+
+  pinContentInfo: (masjidId: string, slug: string) =>
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/content/${slug}/info`),
+
   getPosts: (masjidId: string) =>
-    request('GET', `/api/v1/admin/masjids/${masjidId}/posts`),
-
-  createPost: (masjidId: string, data: Record<string, unknown>) =>
-    request('POST', `/api/v1/admin/masjids/${masjidId}/posts`, data),
-
-  updatePost: (masjidId: string, slug: string, data: Record<string, unknown>) =>
-    request('PUT', `/api/v1/admin/masjids/${masjidId}/posts/${slug}`, data),
-
-  deletePost: (masjidId: string, slug: string) =>
-    request('DELETE', `/api/v1/admin/masjids/${masjidId}/posts/${slug}`),
-
-  pinPostHomepage: (masjidId: string, slug: string) =>
-    request('PUT', `/api/v1/admin/masjids/${masjidId}/posts/${slug}/homepage`),
-
-  pinPostInfo: (masjidId: string, slug: string) =>
-    request('PUT', `/api/v1/admin/masjids/${masjidId}/posts/${slug}/info`),
+    request('GET', `/api/v1/admin/masjids/${masjidId}/content`),
 
   getDomains: (masjidId: string) =>
     request('GET', `/api/v1/admin/masjids/${masjidId}/domains`),
@@ -181,14 +186,14 @@ export const api = {
     request('PUT', `/api/v1/admin/masjids/${masjidId}/nav/reorder`, { item_ids: itemIds }),
 
   getPages: (masjidId: string) =>
-    request('GET', `/api/v1/admin/masjids/${masjidId}/pages`),
+    request('GET', `/api/v1/admin/masjids/${masjidId}/content`),
 
   createPage: (masjidId: string, data: Record<string, unknown>) =>
-    request('POST', `/api/v1/admin/masjids/${masjidId}/pages`, data),
+    request('POST', `/api/v1/admin/masjids/${masjidId}/content`, { ...data, content_type: 'page' }),
 
   updatePage: (masjidId: string, slug: string, data: Record<string, unknown>) =>
-    request('PUT', `/api/v1/admin/masjids/${masjidId}/pages/${slug}`, data),
+    request('PUT', `/api/v1/admin/masjids/${masjidId}/content/${slug}`, data),
 
   deletePage: (masjidId: string, slug: string) =>
-    request('DELETE', `/api/v1/admin/masjids/${masjidId}/pages/${slug}`),
+    request('DELETE', `/api/v1/admin/masjids/${masjidId}/content/${slug}`),
 };

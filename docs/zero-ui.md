@@ -76,7 +76,7 @@ As the conversational flow processes multiple edits (e.g., modifying an accent c
 Before presenting results back to the user, the branch engine executes a **Deterministic Dry Run**. It fetches the baseline data from production, runs through the mutation sequence, and feeds the resulting schema into the native calculation engine (`apps/api/src/lib/server/prayer/engine.ts`). The system evaluates the computed layouts for calendar milestones across the year to check for systemic failures (such as overlapping prayer windows or layout alignment breaks).
 
 ### 4. Atomic Merge & Cache Flush
-Once the administrator reviews the generated delta receipt and transmits an explicit confirmation text, the API initiates a coordinated database transaction. The old records inside the primary tables (`masjids`, `masjid_themes`, `prayer_rules`, `masjid_pages`) are safely removed, the newly compiled workspace states are populated in their place, the branch status transitions to `'MERGED'`, and an invalidation hook purges the global Cloudflare KV cache.
+Once the administrator reviews the generated delta receipt and transmits an explicit confirmation text, the API initiates a coordinated database transaction. The old records inside the primary tables (`masjids`, `masjid_themes`, `prayer_rules`, `content`) are safely removed, the newly compiled workspace states are populated in their place, the branch status transitions to `'MERGED'`, and an invalidation hook purges the global Cloudflare KV cache.
 
 ---
 
@@ -232,7 +232,7 @@ CREATE TABLE announcement_attachments (
     announcement_id TEXT NOT NULL,
     asset_id TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(announcement_id) REFERENCES masjid_pages(id) ON DELETE CASCADE,
+    FOREIGN KEY(announcement_id) REFERENCES announcements(id) ON DELETE CASCADE,
     FOREIGN KEY(asset_id) REFERENCES masjid_assets(id) ON DELETE CASCADE
 );
 

@@ -19,12 +19,13 @@ import {
   updateAnnouncement,
   deleteAnnouncement,
   pinAnnouncement,
-  getPosts,
-  createPost,
-  updatePost,
-  deletePost,
-  pinPostHomepage,
-  pinPostInfo,
+  getContent,
+  createContent,
+  updateContent,
+  deleteContent,
+  pinContentHomepage,
+  pinContentInfo,
+  dryRunPrayerTimes,
   dryRunPrayerTimes,
   rollbackRestore,
   explainPrayerRules,
@@ -82,14 +83,14 @@ function describeMutation(domain: string, action: string, args: Record<string, u
       if (action === 'UPDATE') return `Update announcement`;
       if (action === 'DELETE') return `Delete announcement`;
       if (action === 'PIN') return `Pin/unpin announcement`;
-      return 'Announcement change';
-case 'POSTS':
-      if (action === 'CREATE') return `Create post "${args.title || 'untitled'}"`;
-      if (action === 'UPDATE') return `Update post`;
-      if (action === 'DELETE') return `Delete post ${args.slug || ''}`;
-      if (action === 'PIN_HOMEPAGE') return 'Toggle homepage pin for post';
-      if (action === 'PIN_INFO') return 'Toggle info pin for post';
-      return 'Post change';
+return 'Announcement change';
+    case 'CONTENT':
+      if (action === 'CREATE') return `Create ${args.content_type || 'content'} "${args.title || 'untitled'}"`;
+      if (action === 'UPDATE') return `Update content "${args.slug || ''}"`;
+      if (action === 'DELETE') return `Delete content "${args.slug || ''}"`;
+      if (action === 'PIN_HOMEPAGE') return 'Toggle homepage pin';
+      if (action === 'PIN_INFO') return 'Toggle info pin';
+      return 'Content change';
     case 'TIMETABLE_IMPORT':
       if (action === 'IMPORT') return `Import timetable rules`;
       return 'Timetable change';
@@ -103,11 +104,6 @@ case 'POSTS':
       if (action === 'DELETE') return 'Delete nav item';
       if (action === 'REORDER') return 'Reorder nav items';
       return 'Nav change';
-    case 'PAGES':
-      if (action === 'CREATE') return `Create page "${args.title || args.slug || 'untitled'}"`;
-      if (action === 'UPDATE') return `Update page "${args.slug || ''}"`;
-      if (action === 'DELETE') return `Delete page "${args.slug || ''}"`;
-      return 'Page change';
     default:
       return `${domain} ${action}: ${truncate(args)}`;
   }
@@ -610,111 +606,114 @@ If is_pinned is true, any previously pinned announcement will be unpinned.`,
       },
     },
     {
-      name: 'posts_list',
-      description: 'List all posts for the masjid (including hidden).',
+      name: 'content_list',
+      description: 'List all content items (posts and pages) for the masjid.',
       parameters: {
         type: 'object',
         properties: {},
         required: [],
       },
       handler: async (_args, ctx) => {
-        const data = await getPosts(ctx);
+        const data = await getContent(ctx);
         return { success: true, data };
       },
     },
     {
-      name: 'posts_create',
-      description: `Create a new post. Posts are rich, permanent content that can be pinned to the homepage or Info page. Use markdown for formatting (supports **bold**, *italic*, headings, links, images via ![alt](url)).`,
+      name: 'content_create',
+      description: 'Create a new content item. For posts (content_type="post"): auto-generated slug from title, can be pinned to homepage or Info page, supports hidden flag. For pages (content_type="page"): admin-chosen URL-safe slug (lowercase, hyphens), no pins/hidden flags.',
       parameters: {
         type: 'object',
         properties: {
-          title: stringProp('Post title'),
+          title: stringProp('Content title'),
           content_markdown: stringProp('Content in markdown format (supports **bold**, *italic*, headings, links, images)'),
-          show_on_homepage: { type: 'boolean', description: 'Pin to homepage (default false). Only one post can be homepage-pinned at a time.', default: false },
-          show_on_info: { type: 'boolean', description: 'Pin to Info page (default false). Only one post can be info-pinned at a time.', default: false },
-          is_hidden: { type: 'boolean', description: 'Hide post without deleting (default false)' },
+          content_type: { type: 'string', enum: ['post', 'page'], description: 'Type of content. "post" for blog-like articles, "page" for static CMS pages.', default: 'post' },
+          slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', description: 'URL-safe slug (lowercase letters, numbers, hyphens). Required for pages — choose something descriptive e.g. "about-us". For posts, a slug is auto-generated from the title if not provided.' },
+          show_on_homepage: { type: 'boolean', description: 'Pin to homepage (post only, default false). Only one post can be homepage-pinned.', default: false },
+          show_on_info: { type: 'boolean', description: 'Pin to Info page (post only, default false). Only one post can be info-pinned.', default: false },
+          is_hidden: { type: 'boolean', description: 'Hide post without deleting (post only, default false)' },
         },
         required: ['title', 'content_markdown'],
       },
       handler: async (args, ctx) => {
-        const data = await createPost(args as Record<string, unknown>, ctx);
+        const data = await createContent(args as Record<string, unknown>, ctx);
         const slug = (data as Record<string, unknown>).slug as string || NOWHERE;
-        const summary = describeMutation('POSTS', 'CREATE', args);
-        await storeMutation(ctx.branchId, 'POSTS', 'CREATE', `post:${slug}`, args, ctx.db);
+        const summary = describeMutation('CONTENT', 'CREATE', args);
+        await storeMutation(ctx.branchId, 'CONTENT', 'CREATE', `content:${slug}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
       },
     },
     {
-      name: 'posts_update',
-      description: 'Update an existing post by slug. Send only fields to change. Re-compiles HTML if content_markdown changes.',
+      name: 'content_update',
+      description: 'Update an existing content item by slug. Send only fields to change. Re-compiles HTML if content_markdown changes.',
       parameters: {
         type: 'object',
         properties: {
-          slug: stringProp('Slug of the post to update'),
+          slug: stringProp('Slug of the content item to update'),
           title: stringProp('New title (optional)'),
           content_markdown: stringProp('New markdown content (optional)'),
-          show_on_homepage: { type: 'boolean', description: 'Homepage pin status (optional)' },
-          show_on_info: { type: 'boolean', description: 'Info pin status (optional)' },
-          is_hidden: { type: 'boolean', description: 'Hidden status (optional)' },
+          content_type: { type: 'string', enum: ['post', 'page'], description: 'Change content type (optional)' },
+          show_on_homepage: { type: 'boolean', description: 'Homepage pin status (post only, optional)' },
+          show_on_info: { type: 'boolean', description: 'Info pin status (post only, optional)' },
+          is_hidden: { type: 'boolean', description: 'Hidden status (post only, optional)' },
         },
         required: ['slug'],
       },
       handler: async (args, ctx) => {
         const { slug, ...body } = args;
-        const data = await updatePost(slug as string, body as Record<string, unknown>, ctx);
-        const summary = describeMutation('POSTS', 'UPDATE', args);
-        await storeMutation(ctx.branchId, 'POSTS', 'UPDATE', `post:${slug}`, args, ctx.db);
+        const data = await updateContent(slug as string, body as Record<string, unknown>, ctx);
+        const summary = describeMutation('CONTENT', 'UPDATE', args);
+        await storeMutation(ctx.branchId, 'CONTENT', 'UPDATE', `content:${slug}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
       },
     },
     {
-      name: 'posts_delete',
-      description: 'Permanently delete a post by slug. This is irreversible.',
+      name: 'content_delete',
+      description: 'Permanently delete a content item by slug. This is irreversible.',
       parameters: {
         type: 'object',
         properties: {
-          slug: stringProp('Slug of the post to delete'),
+          slug: stringProp('Slug of the content item to delete'),
         },
         required: ['slug'],
       },
       handler: async (args, ctx) => {
-        await deletePost(args.slug as string, ctx);
-        const summary = describeMutation('POSTS', 'DELETE', args);
-        await storeMutation(ctx.branchId, 'POSTS', 'DELETE', `post:${args.slug}`, {}, ctx.db);
+        await deleteContent(args.slug as string, ctx);
+        const summary = describeMutation('CONTENT', 'DELETE', args);
+        await storeMutation(ctx.branchId, 'CONTENT', 'DELETE', `content:${args.slug}`, {}, ctx.db);
         return { success: true, mutationSummary: summary };
       },
     },
     {
-      name: 'posts_pin_homepage',
-      description: 'Toggle the homepage pin status of a post. If pinning, any other homepage-pinned post is unpinned first. Only one post can be pinned to the homepage at a time.',
+      name: 'content_pin_homepage',
+      description: 'Toggle the homepage pin status of a content item (post only). If pinning, any other homepage-pinned item is unpinned first. Only one item can be pinned to the homepage at a time.',
       parameters: {
         type: 'object',
         properties: {
-          slug: stringProp('Slug of the post to pin/unpin'),
+          slug: stringProp('Slug of the content item to pin/unpin'),
         },
         required: ['slug'],
       },
       handler: async (args, ctx) => {
-        const data = await pinPostHomepage(args.slug as string, ctx);
-        const summary = describeMutation('POSTS', 'PIN_HOMEPAGE', args);
-        await storeMutation(ctx.branchId, 'POSTS', 'PIN_HOMEPAGE', `post:${args.slug}`, args, ctx.db);
+        const data = await pinContentHomepage(args.slug as string, ctx);
+        const summary = describeMutation('CONTENT', 'PIN_HOMEPAGE', args);
+        await storeMutation(ctx.branchId, 'CONTENT', 'PIN_HOMEPAGE', `content:${args.slug}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
       },
     },
     {
-      name: 'posts_pin_info',
-      description: 'Toggle the Info page pin status of a post. If pinning, any other info-pinned post is unpinned first. Only one post can be pinned to the Info page at a time.',
+      name: 'content_pin_info',
+      description: 'Toggle the Info page pin status of a content item (post only). If pinning, any other info-pinned item is unpinned first. Only one item can be pinned to the Info page at a time.',
       parameters: {
         type: 'object',
         properties: {
-          slug: stringProp('Slug of the post to pin/unpin on Info page'),
+          slug: stringProp('Slug of the content item to pin/unpin on Info page'),
         },
         required: ['slug'],
       },
       handler: async (args, ctx) => {
-        const data = await pinPostInfo(args.slug as string, ctx);
-        const summary = describeMutation('POSTS', 'PIN_INFO', args);
-        await storeMutation(ctx.branchId, 'POSTS', 'PIN_INFO', `post:${args.slug}`, args, ctx.db);
+        const data = await pinContentInfo(args.slug as string, ctx);
+        const summary = describeMutation('CONTENT', 'PIN_INFO', args);
+        await storeMutation(ctx.branchId, 'CONTENT', 'PIN_INFO', `content:${args.slug}`, args, ctx.db);
         return { success: true, data, mutationSummary: summary };
       },
     },
@@ -1034,7 +1033,7 @@ Program info (all optional — leave empty to hide that section on the public pa
       name: 'nav_create',
       description: `Add a navigation item to the public website.
 Kind "route" (built-in page): route_segment must be one of "prayer", "news", "info", "maktab", "donate", "jumuah", "announcements".
-Kind "page" (custom page): use page_slug from pages_list.
+Kind "page" (custom page): use page_slug from content_list (items with content_type="page").
 Kind "link" (external URL): use external_url (must be valid URL).
 All kinds: label (display text), icon (one of: book, calendar, clock, compass, donate, graduation-cap, heart, home, info, megaphone, message-square, palette, users — optional), show_on_desktop_header (default true), show_on_mobile_bottom (default true), is_highlighted (default false, only one at a time).`,
       parameters: {
@@ -1116,77 +1115,7 @@ All kinds: label (display text), icon (one of: book, calendar, clock, compass, d
         return { success: true, data, mutationSummary: summary };
       },
     },
-    // ── Custom Pages ─────────────────────────────────────────────────────────
-    {
-      name: 'pages_list',
-      description: 'List all custom pages. Custom pages are permanent informational content (About Us, Services, Programs, etc.).',
-      parameters: {
-        type: 'object',
-        properties: {},
-        required: [],
-      },
-      handler: async (_args, ctx) => {
-        const data = await getPages(ctx);
-        return { success: true, data };
-      },
-    },
-    {
-      name: 'pages_create',
-      description: 'Create a custom page. Provide a URL-safe slug (lowercase, hyphens), a title, and markdown content. The page is compiled to HTML and can be added to the navigation via nav_create.',
-      parameters: {
-        type: 'object',
-        properties: {
-          slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', description: 'URL-safe slug (lowercase letters, numbers, hyphens). e.g. "about-us", "weekend-school", "food-pantry"' },
-          title: stringProp('Page title (1-200 characters)'),
-          raw_markdown: stringProp('Markdown content (supports headings, bold, italic, links, images, lists)'),
-        },
-        required: ['slug', 'title', 'raw_markdown'],
-      },
-      handler: async (args, ctx) => {
-        const data = await createPage(args as Record<string, unknown>, ctx);
-        const summary = describeMutation('PAGES', 'CREATE', args);
-        await storeMutation(ctx.branchId, 'PAGES', 'CREATE', `page:${args.slug}`, args, ctx.db);
-        return { success: true, data, mutationSummary: summary };
-      },
-    },
-    {
-      name: 'pages_update',
-      description: 'Update a custom page. Send only the fields you want to change. If you change the content, the HTML is recompiled.',
-      parameters: {
-        type: 'object',
-        properties: {
-          slug: stringProp('Slug of the page to update (from pages_list)'),
-          title: stringProp('New title'),
-          raw_markdown: stringProp('New markdown content'),
-        },
-        required: ['slug'],
-      },
-      handler: async (args, ctx) => {
-        const { slug, ...body } = args;
-        const data = await updatePage(slug as string, body as Record<string, unknown>, ctx);
-        const summary = describeMutation('PAGES', 'UPDATE', args);
-        await storeMutation(ctx.branchId, 'PAGES', 'UPDATE', `page:${slug}`, args, ctx.db);
-        return { success: true, data, mutationSummary: summary };
-      },
-    },
-    {
-      name: 'pages_delete',
-      description: 'Permanently delete a custom page by its slug. This also removes any nav items that reference this page.',
-      parameters: {
-        type: 'object',
-        properties: {
-          slug: stringProp('Slug of the page to delete'),
-        },
-        required: ['slug'],
-      },
-      handler: async (args, ctx) => {
-        await deletePage(args.slug as string, ctx);
-        const summary = describeMutation('PAGES', 'DELETE', args);
-        await storeMutation(ctx.branchId, 'PAGES', 'DELETE', `page:${args.slug}`, args, ctx.db);
-        return { success: true, mutationSummary: summary };
-      },
-    },
-    // ── Web ──────────────────────────────────────────────────────────────────
+// ── Web ──────────────────────────────────────────────────────────────────
     {
       name: 'web_search',
       description: `Search the web using DuckDuckGo. Returns up to ${/* MAX_SEARCH_RESULTS */ 8} results with titles, URLs, and snippets. Use this to find information the masjid admin needs — prayer timetables from other masjids, contact details for organizations, reference material (hadith, Quran verses, fatwas), or general research. Results are plain text snippets. To read a full page, use web_fetch with one of the returned URLs.`,
