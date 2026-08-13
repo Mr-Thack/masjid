@@ -103,7 +103,7 @@ describe('POST /admin/content — create', () => {
   it('rejects missing markdown', async () => {
     const req = createRequest('POST', `/api/v1/admin/masjids/${masjidId}/content`, { title: 'No markdown' });
     const res = await postAdminContent({ params: { id: masjidId }, request: req, locals: adminLocals(masjidId), platform: {} });
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(400);
   });
 
   it('rejects duplicate slug', async () => {
@@ -235,10 +235,11 @@ describe('PUT /admin/content/:slug/homepage — toggle homepage', () => {
   });
 
   it('unpins existing when pinning new', async () => {
-    const old = await seedContent({ slug: 'old-pin', showOnHomepage: true });
-    const c = await seedContent({ slug: 'new-pin', showOnHomepage: false });
-    const req = createRequest('PUT', `/api/v1/admin/masjids/${masjidId}/content/new-pin/homepage`, {});
-    await putHomepagePin({ params: { id: masjidId, contentSlug: 'new-pin' }, request: req, locals: adminLocals(masjidId), platform: {} });
+    const tag = Date.now();
+    const old = await seedContent({ slug: `old-pin-${tag}`, showOnHomepage: true });
+    const c = await seedContent({ slug: `new-pin-${tag}`, showOnHomepage: false });
+    const req = createRequest('PUT', `/api/v1/admin/masjids/${masjidId}/content/${c.slug}/homepage`, {});
+    await putHomepagePin({ params: { id: masjidId, contentSlug: c.slug }, request: req, locals: adminLocals(masjidId), platform: {} });
 
     const rows = await db.select().from(content).where(eq(content.masjidId, masjidId));
     const oldRow = rows.find((r) => r.id === old.id);

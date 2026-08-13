@@ -249,10 +249,6 @@ export async function pinContentInfo(
 ): Promise<Record<string, unknown>> {
   return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/content/${slug}/info`, {}, config);
 }
-): Promise<Record<string, unknown>> {
-  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/info`, {}, config);
-}
-
 export async function explainPrayerRules(
   date: string | undefined,
   config: ApiClientConfig,

@@ -576,7 +576,7 @@ describe('Admin Pages CRUD', () => {
     } as any);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.pages).toEqual([]);
+    expect(body.content).toEqual([]);
   });
 
   it('creates a page with compiled HTML', async () => {
@@ -665,7 +665,7 @@ describe('Admin Pages CRUD', () => {
       content_markdown: 'New **content**',
     });
     const res = await putAdminContent({
-      params: { id, slug: 'page-update', pageSlug: page.slug },
+      params: { id, contentSlug: page.slug },
       request: req,
       url: new URL(req.url),
       locals: adminLocals(id),
@@ -690,7 +690,7 @@ describe('Admin Pages CRUD', () => {
 
     const req = createRequest('DELETE', `/api/v1/admin/masjids/${id}/content/${page.slug}`);
     const res = await deleteAdminContent({
-      params: { id, slug: 'page-delete', pageSlug: page.slug },
+      params: { id, contentSlug: page.slug },
       request: req,
       url: new URL(req.url),
       locals: adminLocals(id),
