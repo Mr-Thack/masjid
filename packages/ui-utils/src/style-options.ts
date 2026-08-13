@@ -24,6 +24,12 @@ export interface QuietHoursOptions {
   wakeBeforeFajrMinutes?: number;
 }
 
+export interface DonateReason {
+  icon: string;
+  title: string;
+  desc: string;
+}
+
 export interface MishkaatStyleOptions {
   metal?: MetalName;
   motif?: MotifName;
@@ -38,6 +44,14 @@ export interface MishkaatStyleOptions {
   emblem?: EmblemOption;
   /** Wording of the donate appeal slide (admin-customizable). */
   donateAppeal?: string;
+  /** URL to the masjid photo for the homepage hero. */
+  photoUrl?: string;
+  /** URL to the masjid logo image for the header. */
+  logoUrl?: string;
+  /** WhatsApp group invite link shown on the About/Info page. */
+  whatsappGroupUrl?: string;
+  /** Cards shown in the "Why Give?" section on the Donate page. */
+  donateReasons?: DonateReason[];
 }
 
 export interface ResolvedMishkaatOptions {
@@ -53,7 +67,17 @@ export interface ResolvedMishkaatOptions {
   frames: string[] | null;
   emblem: EmblemOption;
   donateAppeal: string;
+  photoUrl: string;
+  logoUrl: string;
+  whatsappGroupUrl: string;
+  donateReasons: DonateReason[];
 }
+
+export const DONATE_REASON_DEFAULTS: DonateReason[] = [
+  { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Keep our masjid clean, safe, and welcoming' },
+  { icon: '📚', title: 'Support Education', desc: 'Fund classes, lectures, and youth programs' },
+  { icon: '🤝', title: 'Serve the Community', desc: 'Help those in need through outreach programs' },
+];
 
 export const MISHKAAT_OPTION_DEFAULTS: ResolvedMishkaatOptions = {
   metal: 'gold',
@@ -72,6 +96,10 @@ export const MISHKAAT_OPTION_DEFAULTS: ResolvedMishkaatOptions = {
   frames: null,
   emblem: 'medallion',
   donateAppeal: 'Every contribution makes a difference',
+  photoUrl: '',
+  logoUrl: '',
+  whatsappGroupUrl: '',
+  donateReasons: [...DONATE_REASON_DEFAULTS],
 };
 
 const METALS: readonly MetalName[] = ['gold', 'silver', 'copper', 'rose'];
@@ -129,6 +157,34 @@ export function parseStyleOptions(
     const appeal = input.donateAppeal.trim();
     if (appeal.length >= 1 && appeal.length <= 80) out.donateAppeal = appeal;
   }
+  if (typeof input.photoUrl === 'string') {
+    const v = input.photoUrl.trim();
+    if (v.length >= 1) out.photoUrl = v;
+  }
+  if (typeof input.logoUrl === 'string') {
+    const v = input.logoUrl.trim();
+    if (v.length >= 1) out.logoUrl = v;
+  }
+  if (typeof input.whatsappGroupUrl === 'string') {
+    const v = input.whatsappGroupUrl.trim();
+    if (v.length >= 1) out.whatsappGroupUrl = v;
+  }
+  if (Array.isArray(input.donateReasons)) {
+    out.donateReasons = input.donateReasons
+      .filter((r: unknown): r is Record<string, unknown> => r != null && typeof r === 'object')
+      .map((r) => ({
+        icon: typeof r.icon === 'string' ? r.icon.trim() : '',
+        title: typeof r.title === 'string' ? r.title.trim() : '',
+        desc: typeof r.desc === 'string' ? r.desc.trim() : '',
+      }))
+      .filter(
+        (r) =>
+          r.icon.length >= 1 && r.icon.length <= 10 &&
+          r.title.length >= 1 && r.title.length <= 100 &&
+          r.desc.length >= 1 && r.desc.length <= 200,
+      )
+      .slice(0, 8) as DonateReason[];
+  }
   if (input.quietHours && typeof input.quietHours === 'object' && !Array.isArray(input.quietHours)) {
     const qh = input.quietHours as Record<string, unknown>;
     const quietHours: QuietHoursOptions = {};
@@ -172,6 +228,12 @@ export function resolveStyleOptions(
     frames: input?.frames ?? defaults.frames,
     emblem: input?.emblem ?? defaults.emblem,
     donateAppeal: input?.donateAppeal ?? defaults.donateAppeal,
+    photoUrl: input?.photoUrl ?? defaults.photoUrl,
+    logoUrl: input?.logoUrl ?? defaults.logoUrl,
+    whatsappGroupUrl: input?.whatsappGroupUrl ?? defaults.whatsappGroupUrl,
+    donateReasons: (input?.donateReasons && input.donateReasons.length > 0)
+      ? input.donateReasons
+      : [...defaults.donateReasons],
   };
 }
 

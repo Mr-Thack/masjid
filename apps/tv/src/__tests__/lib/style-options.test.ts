@@ -4,6 +4,7 @@ import {
   resolveStyleOptions,
   metalPalettes,
   MISHKAAT_OPTION_DEFAULTS,
+  DONATE_REASON_DEFAULTS,
   STOCK_ACCENT_COLOR,
   STOCK_PRIMARY_COLOR,
 } from '@masjid/ui-utils';
@@ -184,6 +185,52 @@ describe('resolveStyleOptions', () => {
     expect(parseStyleOptions({ donateAppeal: 'x'.repeat(81) }).donateAppeal).toBeUndefined();
     expect(parseStyleOptions({ donateAppeal: 42 }).donateAppeal).toBeUndefined();
     expect(resolveStyleOptions({ donateAppeal: 'Barakah in giving' }).donateAppeal).toBe('Barakah in giving');
+  });
+
+  it('parses photoUrl, logoUrl, whatsappGroupUrl (trimmed, non-empty)', () => {
+    expect(parseStyleOptions({ photoUrl: '  https://example.com/photo.jpg  ' }).photoUrl).toBe('https://example.com/photo.jpg');
+    expect(parseStyleOptions({ photoUrl: '' }).photoUrl).toBeUndefined();
+    expect(parseStyleOptions({ photoUrl: '   ' }).photoUrl).toBeUndefined();
+    expect(parseStyleOptions({ logoUrl: '/uploads/logo.png' }).logoUrl).toBe('/uploads/logo.png');
+    expect(parseStyleOptions({ whatsappGroupUrl: 'https://chat.whatsapp.com/abc' }).whatsappGroupUrl).toBe('https://chat.whatsapp.com/abc');
+    expect(resolveStyleOptions({ photoUrl: 'https://a.jpg' }).photoUrl).toBe('https://a.jpg');
+    expect(resolveStyleOptions({}).photoUrl).toBe('');
+    expect(resolveStyleOptions({}).logoUrl).toBe('');
+    expect(resolveStyleOptions({}).whatsappGroupUrl).toBe('');
+  });
+
+  it('parses donateReasons (validates icon/title/desc, drops invalid, caps at 8)', () => {
+    expect(parseStyleOptions({
+      donateReasons: [
+        { icon: '🕌', title: 'House of Allah', desc: 'Keep it running' },
+        { icon: '', title: 'Bad', desc: 'Missing icon' },
+        { icon: 'x'.repeat(11), title: 'Good', desc: 'Icon too long' },
+        { icon: '✅', title: '', desc: 'Missing title' },
+        { icon: '✅', title: 'OK', desc: '' },
+        { icon: '✅', title: 'OK', desc: 'OK' },
+        null,
+        'not an object',
+      ],
+    }).donateReasons).toEqual([
+      { icon: '🕌', title: 'House of Allah', desc: 'Keep it running' },
+      { icon: '✅', title: 'OK', desc: 'OK' },
+    ]);
+  });
+
+  it('caps donateReasons at 8 entries', () => {
+    const nine = Array.from({ length: 9 }, (_, i) => ({ icon: '✅', title: `Title ${i}`, desc: `Desc ${i}` }));
+    const parsed = parseStyleOptions({ donateReasons: nine });
+    expect(parsed.donateReasons).toHaveLength(8);
+  });
+
+  it('resolves donateReasons to defaults when empty or invalid', () => {
+    expect(resolveStyleOptions({}).donateReasons).toEqual(DONATE_REASON_DEFAULTS);
+    expect(resolveStyleOptions({ donateReasons: [] }).donateReasons).toEqual(DONATE_REASON_DEFAULTS);
+  });
+
+  it('resolves donateReasons to provided values when valid', () => {
+    const custom = [{ icon: '❤️', title: 'Love', desc: 'Give with love' }];
+    expect(resolveStyleOptions({ donateReasons: custom }).donateReasons).toEqual(custom);
   });
 });
 

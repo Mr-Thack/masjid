@@ -61,9 +61,10 @@ All new markup uses these exact class names. CSS in `app.css` targets these name
 
 Photo, logo, and WhatsApp-link are **`style_options` JSON keys** on `masjid_themes`. There are **no new columns**, no schema migration, and no `check-schema` step. The keys:
 
-- `photoUrl` — URL to the masjid photo (absolute URL, or a `/uploads/...` path served from dev static).
+- `photoUrl` — URL to the masjid photo (absolute URL, or a `/uploads/...` path).
 - `logoUrl` — URL to the masjid logo image.
 - `whatsappGroupUrl` — WhatsApp group invite link shown on the About/Info page.
+- `donateReasons` — array of `{ icon, title, desc }` cards for the "Why Give?" section on the Donate page (max 8). Defaults to the three current hardcoded cards.
 
 **How the key actually flows — this is the part agents get wrong:**
 
@@ -140,6 +141,35 @@ done
 
 Then in each worktree: `cd ~/code/masjid-consumer-overhaul-X && npm run setup`
 
+### Agent launch order
+
+Worktrees are independent filesystems but the workstreams have data dependencies. Launch agents in this order:
+
+```
+Phase 1 — launch all three in parallel NOW (no deps on other streams):
+
+  Agent A  ~/code/masjid-consumer-overhaul-A   style_options keys + admin UI
+  Agent F  ~/code/masjid-consumer-overhaul-F   wording fixes + WhatsApp + Resources
+  Agent G  ~/code/masjid-consumer-overhaul-G   engraved emblem (optional)
+
+Phase 2 — launch AFTER Agent A commits (B/C read photoUrl/logoUrl from resolveStyleOptions):
+
+  Agent B  ~/code/masjid-consumer-overhaul-B   homepage restructure
+  Agent C  ~/code/masjid-consumer-overhaul-C   header logo + footer
+
+Phase 3 — launch AFTER B and C have shipped (needs the final DOM):
+
+  Agent D  ~/code/masjid-consumer-overhaul-D   visual polish CSS
+```
+
+**Phase 1 agents**: start immediately. Write code against the `resolveStyleOptions` shape that Workstream A will ship (keys: `photoUrl`, `logoUrl`, `whatsappGroupUrl`, `donateAppeal`, `emblem` — all already typed in `@masjid/ui-utils` after A lands). For development, hardcode test URLs and switch to the real resolver when A's branch is merged.
+
+**Phase 2 agents**: wait for A's branch to be merged to master, then `git pull` (or rebase onto master) before starting. This ensures `resolveStyleOptions` returns `photoUrl`/`logoUrl` typed.
+
+**Phase 3 agent**: wait for B + C to be merged so the DOM structure (`.c-hero-photo`, `.c-announce-prominent`, `.c-prayer-compact`, `.c-ftr`) is concrete.
+
+**After all agents are done**: merge every branch back into master (see AGENTS.md branching model — `master` = dev, commit freely).
+
 ---
 
 ### Workstream A — Backend: style_options keys + admin "Images" UI
@@ -149,27 +179,27 @@ Then in each worktree: `cd ~/code/masjid-consumer-overhaul-X && npm run setup`
 **Files owned:** see Contract 3.
 
 **Tasks:**
-1. Add three optional keys to `StyleOptionsSchema` in `packages/schemas/src/masjid.ts` (append to the `.object({...})`, before `.passthrough()`):
+1. Add these keys to `StyleOptionsSchema` in `packages/schemas/src/masjid.ts` (append to the `.object({...})`, before `.passthrough()`):
    - `photoUrl: z.string().min(1).max(2000).optional()`
    - `logoUrl: z.string().min(1).max(2000).optional()`
    - `whatsappGroupUrl: z.string().min(1).max(2000).optional()`
+   - `donateReasons: z.array(z.object({ icon: z.string().max(10), title: z.string().max(100), desc: z.string().max(200) })).max(8).optional()`
    Use plain-string validation (not `.url()`) so relative `/uploads/...` paths are allowed.
-2. Add the same three keys to `packages/ui-utils/src/style-options.ts`:
-   - `MishkaatStyleOptions`: `photoUrl?: string; logoUrl?: string; whatsappGroupUrl?: string;`
-   - `ResolvedMishkaatOptions`: `photoUrl: string; logoUrl: string; whatsappGroupUrl: string;`
-   - `MISHKAAT_OPTION_DEFAULTS`: empty-string defaults.
-   - `parseStyleOptions`: copy the existing `donateAppeal` pattern (trim, non-empty guard) for each of the three keys.
-   - `resolveStyleOptions`: `photoUrl: input?.photoUrl ?? defaults.photoUrl`, etc.
-3. Admin theme page (`apps/admin/.../settings/theme/+page.svelte`): add an **"Images"** section (render it for *both* style systems, not just Mishkaat — the homepage photo and header logo are style-system-agnostic). Fields:
-   - Homepage photo: URL text input (`form.style_options.photoUrl`) + preview thumbnail when set.
-   - Logo: URL text input (`form.style_options.logoUrl`) + preview thumbnail when set.
-   - Add `photoUrl: ''` and `logoUrl: ''` to the initial `form.style_options` object. The existing `deepMerge` already round-trips unknown keys, and `style_options` already flows through `handleSave`, so no other wiring is needed.
+2. Add the same keys to `packages/ui-utils/src/style-options.ts`:
+   - `MishkaatStyleOptions`: add `photoUrl`, `logoUrl`, `whatsappGroupUrl`, and a `DonateReason` interface + `donateReasons?: DonateReason[]`.
+   - `ResolvedMishkaatOptions`: same fields with resolved types. Default `donateReasons` to the three current hardcoded cards (🕌 Maintain the House of Allah, 📚 Support Education, 🤝 Serve the Community).
+   - `parseStyleOptions`: copy the existing `donateAppeal` pattern (trim, non-empty guard) for the string keys. For `donateReasons`, validate it's an array of objects with non-empty `icon`/`title`/`desc`.
+   - `resolveStyleOptions`: fill defaults for all new keys.
+3. Admin theme page (`apps/admin/.../settings/theme/+page.svelte`):
+   - Add an **"Images"** section (both style systems): photo URL + logo URL text inputs with preview thumbnails. Add `photoUrl: ''`, `logoUrl: ''` to the initial `form.style_options`.
+   - Add a **"Donate Reasons"** section (both style systems): up to 8 rows, each with Icon (emoji input, short), Title, and Description. Replace or extend the existing "Donate Appeal" section. Default to the three emoji cards.
+   The existing `deepMerge` round-trips unknown keys, and `style_options` flows through `handleSave` — no other wiring needed.
 4. *(Optional, stretch — skip unless there is spare time.)* File upload via R2. **Do not use binding name `ASSETS`** — it is already taken by SvelteKit's static-assets binding in `apps/api/wrangler.toml`. Use a distinct binding (e.g. `MEDIA`) pointed at the existing `masjid-assets` bucket the WhatsApp worker uses. In local dev, `platform.env.MEDIA` is undefined; write to `apps/consumer/static/uploads/` and return `/uploads/{filename}` (dev-only — a production build will not serve runtime-written files; R2 is the only prod path). This is deliberately out of scope for the demo.
 
 **Acceptance criteria:**
 - `npm run test` (API), `npm run test:tv` (ui-utils consumers), `npm run test:admin` all green.
-- Admin theme page can set photo/logo URLs and they persist and reload.
-- `resolveStyleOptions(parseStyleOptions({ photoUrl: 'x' })).photoUrl === 'x'` — add/verify a unit test in `apps/tv/src/__tests__/lib/style-options.test.ts` (it is the existing home for these tests).
+- Admin theme page can set photo/logo URLs and donate reason cards; they persist and reload.
+- Unit test in `apps/tv/src/__tests__/lib/style-options.test.ts` verifies new resolver keys.
 
 ---
 
@@ -254,15 +284,15 @@ Then in each worktree: `cd ~/code/masjid-consumer-overhaul-X && npm run setup`
 **Files owned:** see Contract 3 (donate, info, news pages).
 
 **Tasks:**
-1. **Donate page messaging.** The Donate page (`donate/+page.svelte`) currently has a hardcoded blurb ("Your generous contributions help maintain our masjid…", lines ~82–85) that cannot be edited by the board. Make it admin-editable by reading `resolveStyleOptions(parseStyleOptions($page.data.theme?.style_options)).donateAppeal` — `donateAppeal` already exists in `style_options` and is editable in the admin theme page ("Donate Appeal" section). Use it instead of (or alongside) the hardcoded text. Falls back to the current hardcoded blurb when `donateAppeal` is empty. **No new field, no schema change.**
-2. **Hide the Posts tab.** The "Posts tab" is not a nav item — it's a hardcoded tab on the `/news` page (`news/+page.svelte`, tabs `Posts` / `Announcements`). Hide the Posts tab and make **Announcements the default (and only) tab**. Keep the posts *engine* and the `/posts/[slug]` routes intact. (Alternatively, keep both tabs but default to Announcements — pick the simpler change and note it.)
-3. **Nav label changes.** The nav engine already supports custom labels/order per masjid (`docs/nav-config.md`). For the demo, apply the board's preferred labels via the admin Navigation settings — no code change. Verify the mechanism and document the exact labels to set in your summary.
-4. **WhatsApp group link on About Us.** `whatsappGroupUrl` is a new `style_options` key (Workstream A). In `info/+page.svelte`, read it via `resolveStyleOptions(parseStyleOptions($page.data.theme?.style_options))` and render a "Join Our WhatsApp Group" link (with a WhatsApp icon) in the existing "Links" section when set. Note `info/+page.svelte` does not currently read `theme` — `$page.data.theme` is available (it flows from `+layout.ts`), so just reference it.
-5. **Resources page — use the existing custom-page engine (no new route, no nav schema change).** Create a "Resources" page via the admin custom-pages flow (`docs/nav-config.md` §3.3 — `kind: 'page'`, markdown body), and add it to the nav as a `page` item. Content is markdown-driven (nikah officiation, financial help, etc.) and changeable without code. If a dedicated `/resources` route is preferred instead, that additionally requires a new `route_segment` in the nav enum (`packages/schemas` + layout) — treat that as out of scope unless explicitly asked.
+1. **Donate page "Why Give?" messaging.** The Donate page has a "Why Give?" section (`donate/+page.svelte`, lines ~119–137) — three cards with emoji logos (🕌, 📚, 🤝) and hardcoded blurbs. The board wants both the emojis AND the text to be customizable. **Use `donateReasons`** — a new `style_options` array (Workstream A adds it to schema + resolver + admin UI). Each entry: `{ icon, title, desc }`. Replace the three hardcoded cards with a dynamic `.map()` over `resolveStyleOptions(...).donateReasons`. The old `donateAppeal` field (single string) is used elsewhere (TV) and stays untouched. Default values match the current hardcoded cards.
+2. **Hide the Posts tab.** The "Posts tab" is not a nav item — it's a hardcoded tab on the `/news` page (`news/+page.svelte`, tabs `Posts` / `Announcements`). Hide the Posts tab and make **Announcements the default (and only) tab**. Keep the posts *engine* and the `/posts/[slug]` routes intact.
+3. **Nav label changes.** The nav engine already supports custom labels/order per masjid (`docs/nav-config.md`). For the demo, apply the board's preferred labels via the admin Navigation settings — no code change. Document the exact labels to set in your summary.
+4. **WhatsApp group link on About Us.** `whatsappGroupUrl` is a new `style_options` key (Workstream A). In `info/+page.svelte`, read it via `resolveStyleOptions(parseStyleOptions($page.data.theme?.style_options))` and render a "Join Our WhatsApp Group" link (with a WhatsApp icon) in the existing "Links" section when set. `info/+page.svelte` does not currently read `theme` — `$page.data.theme` is available (it flows from `+layout.ts`), so just reference it.
+5. **Resources page — use the existing custom-page engine (no new route, no nav schema change).** Create a "Resources" page via the admin custom-pages flow (`docs/nav-config.md` §3.3 — `kind: 'page'`, markdown body), and add it to the nav as a `page` item. Content is markdown-driven (nikah officiation, financial help, etc.) and changeable without code. If a dedicated `/resources` route is preferred, that requires a new `route_segment` in the nav enum (`packages/schemas` + layout) — out of scope unless explicitly asked.
 
 **Acceptance criteria:**
-- Donate page shows the admin-editable `donateAppeal`.
-- Posts tab hidden (announcements-only or announcements-first) on the News page.
+- Donate page "Why Give?" cards driven by `donateReasons`, with emoji + title + desc all configurable via admin.
+- Posts tab hidden (announcements-only) on the News page.
 - About Us shows a WhatsApp group link when `whatsappGroupUrl` is set.
 - A Resources page exists and is reachable via nav (custom page).
 - `npm run test:consumer` passes.

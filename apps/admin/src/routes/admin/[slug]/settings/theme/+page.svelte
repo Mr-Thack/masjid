@@ -34,6 +34,13 @@
       frames: [] as string[],
       emblem: 'medallion' as string,
       donateAppeal: '',
+      photoUrl: '',
+      logoUrl: '',
+      donateReasons: [
+        { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Keep our masjid clean, safe, and welcoming' },
+        { icon: '📚', title: 'Support Education', desc: 'Fund classes, lectures, and youth programs' },
+        { icon: '🤝', title: 'Serve the Community', desc: 'Help those in need through outreach programs' },
+      ] as Array<{ icon: string; title: string; desc: string }>,
     },
     layout_preset: 'glass-dark',
     primary_color: '#1e3a8a',
@@ -644,6 +651,106 @@
               <button type="button" class="btn-secondary text-xs" onclick={malayPreset} title="Azan, Iqamat, Zohor, Jumaat, Khutbah, Asar">Malay</button>
               <button type="button" class="btn-secondary text-xs" onclick={bosnianPreset} title="Ezan, Ikamet, Podne, Džuma, Hutba, Ikindija, Akšam, Jacija · 24h">Bosnian</button>
             </div>
+          </div>
+        </div>
+
+        <!-- Images -->
+        <div class="bg-surface border border-border rounded-xl p-6">
+          <h2 class="font-heading font-semibold text-text mb-4">Images</h2>
+          <p class="text-xs text-text-muted mb-4">Upload or link a homepage photo and a header logo image.</p>
+          <div class="space-y-4">
+            <div class="form-group">
+              <label for="photoUrl">Homepage Photo URL</label>
+              <p class="text-xs text-text-muted mb-1">Shown as the hero banner on the homepage.</p>
+              <input
+                id="photoUrl"
+                type="text"
+                class="w-full"
+                bind:value={form.style_options.photoUrl}
+                oninput={handleChange}
+                placeholder="https://example.com/masjid-photo.jpg"
+              />
+              {#if form.style_options.photoUrl}
+                <img src={form.style_options.photoUrl} alt="Homepage photo preview" class="mt-2 rounded-lg max-h-32 border border-border" onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              {/if}
+            </div>
+            <div class="form-group">
+              <label for="logoUrl">Header Logo URL</label>
+              <p class="text-xs text-text-muted mb-1">Replaces the default rosette/avatar in the header.</p>
+              <input
+                id="logoUrl"
+                type="text"
+                class="w-full"
+                bind:value={form.style_options.logoUrl}
+                oninput={handleChange}
+                placeholder="https://example.com/masjid-logo.png"
+              />
+              {#if form.style_options.logoUrl}
+                <img src={form.style_options.logoUrl} alt="Logo preview" class="mt-2 rounded-lg max-h-12 border border-border" onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+              {/if}
+            </div>
+          </div>
+        </div>
+
+        <!-- Donate Reasons -->
+        <div class="bg-surface border border-border rounded-xl p-6">
+          <h2 class="font-heading font-semibold text-text mb-4">Donate Reasons</h2>
+          <p class="text-xs text-text-muted mb-4">Customize the "Why Give?" cards on the Donate page (icon, title, description). Up to 8 cards.</p>
+          <div class="space-y-3">
+            {#each form.style_options.donateReasons as reason, i (i)}
+              <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 items-start p-3 rounded-lg border border-border">
+                <input
+                  type="text"
+                  class="w-full text-center text-lg"
+                  bind:value={reason.icon}
+                  oninput={handleChange}
+                  maxlength="10"
+                  placeholder="🕌"
+                  aria-label="Card {i + 1} icon"
+                />
+                <div class="space-y-1">
+                  <input
+                    type="text"
+                    class="w-full text-sm"
+                    bind:value={reason.title}
+                    oninput={handleChange}
+                    maxlength="100"
+                    placeholder="Title"
+                    aria-label="Card {i + 1} title"
+                  />
+                  <input
+                    type="text"
+                    class="w-full text-xs"
+                    bind:value={reason.desc}
+                    oninput={handleChange}
+                    maxlength="200"
+                    placeholder="Description"
+                    aria-label="Card {i + 1} description"
+                  />
+                </div>
+                <button
+                  type="button"
+                  class="text-xs text-red-400 hover:text-red-300 self-center"
+                  onclick={() => {
+                    form.style_options.donateReasons = form.style_options.donateReasons.filter((_, idx) => idx !== i);
+                    dirty = true;
+                  }}
+                  title="Remove card"
+                >Remove</button>
+              </div>
+            {/each}
+            {#if form.style_options.donateReasons.length < 8}
+              <button
+                type="button"
+                class="btn-secondary text-xs w-full"
+                onclick={() => {
+                  form.style_options.donateReasons = [...form.style_options.donateReasons, { icon: '❤️', title: '', desc: '' }];
+                  dirty = true;
+                }}
+              >+ Add Reason</button>
+            {:else}
+              <p class="text-xs text-text-dim">Maximum 8 cards reached.</p>
+            {/if}
           </div>
         </div>
 
