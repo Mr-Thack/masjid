@@ -475,6 +475,265 @@ html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-
 html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='amber']   { background-color: #f4e6cc; }
 html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-phase='night']   { background-color: #eae1cf; }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Hero photo (§consumer-homepage-overhaul)
+   Full-width photo hero with gradient dissolve into the page body.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-hero-photo {
+  position: relative;
+  min-height: clamp(260px, 55vh, 460px);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.c-hero-photo-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2rem 1.5rem clamp(1.5rem, 4vh, 2.5rem);
+  background: linear-gradient(
+    to bottom,
+    transparent 30%,
+    color-mix(in srgb, var(--color-primary) 12%, transparent) 55%,
+    color-mix(in srgb, var(--color-primary) 30%, transparent) 75%,
+    var(--color-bg) 100%
+  );
+  text-align: center;
+}
+
+.c-hero-photo-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 5vw, 2.2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+.c-hero-photo-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.c-hero-photo-count span:first-child {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.c-hero-photo-count span:last-child {
+  font-family: ui-monospace, monospace;
+  font-size: clamp(1.6rem, 7vw, 2.6rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-accent);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.c-hero-photo-dates {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.c-hero-photo-dates p {
+  margin: 0;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Mobile hero: tighter vertical, deeper overlay, smaller type. */
+@media (max-width: 640px) {
+  .c-hero-photo {
+    min-height: clamp(200px, 42vh, 320px);
+    border-radius: 0;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    width: calc(100% + 2rem);
+  }
+  .c-hero-photo-overlay {
+    background: linear-gradient(
+      to bottom,
+      transparent 15%,
+      color-mix(in srgb, var(--color-primary) 18%, transparent) 40%,
+      color-mix(in srgb, var(--color-primary) 40%, transparent) 65%,
+      var(--color-bg) 100%
+    );
+    padding: 1.25rem 1rem 1.25rem;
+  }
+  .c-hero-photo-title {
+    font-size: clamp(1.15rem, 6vw, 1.5rem);
+  }
+  .c-hero-photo-count span:last-child {
+    font-size: clamp(1.3rem, 8vw, 2rem);
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Prominent announcement card
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-announce-prominent {
+  position: relative;
+}
+
+.c-announce-prominent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  pointer-events: none;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Section divider — thin StarBand row between major sections
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-section-divider {
+  position: relative;
+  height: 18px;
+  overflow: hidden;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Compact prayer section — de-emphasized, sits below hero and announcements
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-prayer-compact {
+  position: relative;
+  padding: 0;
+}
+
+.c-prayer-compact::before {
+  content: '';
+  position: absolute;
+  inset: -1.5rem -1.5rem;
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--color-primary) 3%, transparent);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Footer
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-ftr {
+  margin-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.c-ftr-band {
+  position: relative;
+  height: 16px;
+  overflow: hidden;
+}
+
+.c-ftr-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem 1.5rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.c-ftr-name {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.c-ftr-body span {
+  color: var(--color-text-muted);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Header logo image
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-logo-img {
+  max-height: 38px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Hover micro-effects — subtle lift on glass-card containers
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.glass-card {
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease,
+    border-color 0.25s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card-hover);
+  border-color: var(--color-border-hover);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Loading skeleton — shimmer block that mirrors the hero + prayer layout
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-skeleton-hero {
+  width: 100%;
+  min-height: clamp(260px, 55vh, 400px);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(90deg, var(--color-surface) 25%, color-mix(in srgb, var(--color-primary) 15%, var(--color-surface)) 50%, var(--color-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.c-skeleton-block {
+  width: 100%;
+  height: 5rem;
+  border-radius: var(--radius-card);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Engraved emblem — full-bleed hero treatment
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-hero-engraved {
+  position: relative;
+  min-height: clamp(260px, 55vh, 460px);
+  overflow: hidden;
+  border-radius: var(--radius-card);
+}
+
+.c-hero-engraved :global(.c-engraved-svg) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
