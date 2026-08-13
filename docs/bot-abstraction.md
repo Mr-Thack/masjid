@@ -33,8 +33,8 @@ function that calls proxy functions. Zero WhatsApp references — not even in st
 - Replace `session` import paths with `@masjid/agent/session`
 - The file is otherwise a straight copy.
 
-**47 tools** (as of 2026-08-11): THEME (2), PROFILE (4), PRAYER_RULES (5), JUMUAH (4),
-ANNOUNCEMENTS (5), POSTS (6), PAGES (4), NAV (5), MAKTAB (4), ROLLBACK (2),
+**47 tools** (as of 2026-08-13): THEME (2), PROFILE (4), PRAYER_RULES (5), JUMUAH (4),
+ANNOUNCEMENTS (5), CONTENT (10), NAV (5), MAKTAB (4), ROLLBACK (2),
 RULES (2), TIMETABLE (2), WEB (2). See `AGENTS.md` for the full list.
 
 ### 3.2 `agent/runner.ts` — 98% Pure → `packages/agent/src/runner.ts`

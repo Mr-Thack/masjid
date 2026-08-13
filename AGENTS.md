@@ -333,7 +333,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 | **Maktab / enrollment** | `docs/maktab-integration.md` |
 | **Posts / custom pages / nav** | `docs/post-engine.md` + `docs/nav-config.md` |
 | **Service worker / caching** | `docs/consumer-service-worker.md` + `docs/admin-cache-poisoning.md` |
-| **API schema** | `schema.sql` — canonical D1 schema (19 tables) |
+| **API schema** | `schema.sql` — canonical D1 schema (18 tables) |
 | **Original vision** | `Background.md` |
 | **File tree** | `STRUCTURE.md` |
 
@@ -651,7 +651,7 @@ cold-start (2026-08-09 and 2026-08-13). See `docs/deploy-lessons.md` lesson 55.
 
 | File | Role |
 |---|---|
-| `schema.sql` | Canonical DDL — the single source of truth for D1 and local SQLite (19 tables) |
+| `schema.sql` | Canonical DDL — the single source of truth for D1 and local SQLite (18 tables) |
 | `apps/api/src/lib/server/db/schema.ts` | Drizzle ORM schema — must match `schema.sql` exactly |
 
 Local dev reads and executes `schema.sql` directly at startup (`getLocalDb()`). No more hand-maintained embedded DDL. `check-schema` CI enforces that these two files never drift.
