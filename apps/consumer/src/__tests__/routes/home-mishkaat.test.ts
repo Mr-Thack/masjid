@@ -1,14 +1,19 @@
-// Mishkaat consumer adaptation (docs/design-language.md §7.11): under the
 // Mishkaat style system the homepage gains the mihrab hero niche, the Hadith
 // of the Day card, Thursday–Friday Jumu'ah pinning, adhaan/iqaamah hero
 // moments, and the current-prayer rosette marker in the prayer table. Under
 // Sakeenah none of this renders. (The prayer table itself is shared by both
 // style systems — only the Mishkaat extras branch.)
+//
+// Note (2026-08-13): HadithCard was removed from the homepage per the
+// consumer homepage overhaul. The announcement moved from the sidebar to
+// a prominent position in the main content column (.c-announce-prominent).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
 import { page } from '$app/stores';
 import HomePage from '../../routes/[masjid_slug]/+page.svelte';
+
+const PRAYER_HEADING = 'Today\u2019s Prayer Times';
 
 type ThemeData = {
   style_system?: string;
@@ -87,52 +92,64 @@ describe('homepage — Mishkaat (§7.11)', () => {
     const niche = container.querySelector('.c-hero-niche');
     expect(niche).not.toBeNull();
     expect(niche!.querySelector('svg.c-hero-arch')).not.toBeNull();
-    // Canonical mihrab geometry: outer + inner echo paths and the apex rosette
     expect(niche!.querySelectorAll('path.c-hero-arch-line')).toHaveLength(2);
     expect(niche!.querySelector('.c-hero-arch-rosette')).not.toBeNull();
-    // The Sakeenah blurred-pattern backdrop is gone
     expect(container.querySelector('.geometric-pattern')).toBeNull();
 
-    // Normal countdown content, inside the niche
     expect(niche!.textContent).toContain('Dhuhr in');
     expect(niche!.textContent).toContain('2:15:00');
     expect(niche!.textContent).toContain('Thursday, July 30, 2026');
   });
 
-  it('shows the Hadith of the Day (Arabic + English + source)', () => {
-    vi.setSystemTime(new Date('2026-07-30T10:00:00'));
+  it('renders the announcement prominently in the main content column', () => {
+    vi.setSystemTime(new Date('2026-07-30T10:00:00')); // Thursday
+
     render(HomePage);
 
-    expect(screen.getByText('Hadith of the Day')).toBeInTheDocument();
-    const arabic = document.querySelector('.c-hadith-arabic');
-    expect(arabic).not.toBeNull();
-    expect(arabic!.getAttribute('dir')).toBe('rtl');
-    expect(document.querySelector('.c-hadith-source')?.textContent).toMatch(/\w/);
+    expect(screen.getByRole('heading', { name: 'Announcement' })).toBeInTheDocument();
+    expect(screen.getByText('Eid Announcement')).toBeInTheDocument();
+    expect(screen.getByText('Eid Mubarak')).toBeInTheDocument();
+
+    const prominent = document.querySelector('.c-announce-prominent');
+    expect(prominent).not.toBeNull();
+    expect(prominent!.textContent).toContain('Eid Announcement');
   });
 
-  it('picks the hadith deterministically by date from the full collection', () => {
-    vi.setSystemTime(new Date('2026-07-31T10:00:00')); // Friday 10:00
-    render(HomePage);
-
-    // dayOfYear(2026-07-31) = 212; 212 % 24 = 20
-    expect(
-      screen.getByText('When Ramadan begins, the gates of Paradise are opened, the gates of the Fire are closed, and the devils are chained.'),
-    ).toBeInTheDocument();
-  });
-
-  it('pins Jumu\u2019ah above the announcement on Thursday and Friday', () => {
+  it('renders Jumu\u2019ah in the sidebar on Thursday (pinned position)', () => {
     vi.setSystemTime(new Date('2026-07-30T10:00:00')); // Thursday
     const { container } = render(HomePage);
+
+    expect(
+      screen.getByRole('heading', { name: "Jumu'ah Timings" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('13:30')).toBeInTheDocument();
+
+    // Announcement heading (main col) before Jumu'ah heading (aside)
     const order = h2Order(container);
-    expect(order.indexOf("Jumu'ah Timings")).toBeGreaterThanOrEqual(0);
-    expect(order.indexOf("Jumu'ah Timings")).toBeLessThan(order.indexOf('Announcement'));
+    const annIdx = order.indexOf('Announcement');
+    const prayerIdx = order.indexOf(PRAYER_HEADING);
+    const jumIdx = order.indexOf("Jumu'ah Timings");
+
+    expect(annIdx).toBeGreaterThanOrEqual(0);
+    expect(prayerIdx).toBeGreaterThan(annIdx);
+    expect(jumIdx).toBeGreaterThan(prayerIdx);
   });
 
-  it('keeps the announcement first on other weekdays', () => {
+  it('renders Jumu\u2019ah in the sidebar on Wednesday (standard position)', () => {
     vi.setSystemTime(new Date('2026-07-29T10:00:00')); // Wednesday
     const { container } = render(HomePage);
+
+    expect(
+      screen.getByRole('heading', { name: "Jumu'ah Timings" }),
+    ).toBeInTheDocument();
+
     const order = h2Order(container);
-    expect(order.indexOf('Announcement')).toBeLessThan(order.indexOf("Jumu'ah Timings"));
+    const annIdx = order.indexOf('Announcement');
+    const jumIdx = order.indexOf("Jumu'ah Timings");
+
+    // Announcement is always in main col, Jumu'ah always in sidebar
+    expect(annIdx).toBeGreaterThanOrEqual(0);
+    expect(jumIdx).toBeGreaterThan(annIdx);
   });
 
   it('names the prayer during the adhaan moment', () => {
@@ -168,14 +185,41 @@ describe('homepage — Mishkaat (§7.11)', () => {
 
     expect(container.querySelector('.c-hero-niche')).toBeNull();
     expect(container.querySelector('.geometric-pattern')).not.toBeNull();
-    expect(screen.queryByText('Hadith of the Day')).toBeNull();
     expect(container.querySelector('.c-prayer-rosette')).toBeNull();
 
+    // Announcement (main col) before Jumu'ah (sidebar)
     const order = h2Order(container);
+    expect(order.indexOf('Announcement')).toBeGreaterThanOrEqual(0);
     expect(order.indexOf('Announcement')).toBeLessThan(order.indexOf("Jumu'ah Timings"));
 
     // The classic countdown hero still works
     expect(screen.getByText('Dhuhr in')).toBeInTheDocument();
     expect(screen.getByText('2:15:00')).toBeInTheDocument();
+  });
+
+  it('uses the photo hero when photoUrl is set in style_options', () => {
+    vi.setSystemTime(new Date('2026-07-30T10:00:00'));
+    setPageData({
+      ...mishkaatData,
+      theme: {
+        style_system: 'mishkaat',
+        style_options: { photoUrl: 'https://example.com/masjid.jpg' },
+      },
+    });
+
+    const { container } = render(HomePage);
+
+    const hero = container.querySelector('.c-hero-photo');
+    expect(hero).not.toBeNull();
+    expect((hero as HTMLElement).style.backgroundImage).toContain('masjid.jpg');
+
+    const overlay = container.querySelector('.c-hero-photo-overlay');
+    expect(overlay).not.toBeNull();
+
+    const title = container.querySelector('.c-hero-photo-title');
+    expect(title?.textContent).toBe('Masjid Al-Noor');
+
+    // The mihrab niche should NOT render when photo hero is active
+    expect(container.querySelector('.c-hero-niche')).toBeNull();
   });
 });

@@ -2,19 +2,17 @@
   import { page } from '$app/stores';
   import PrayerTable from '$lib/components/PrayerTable.svelte';
   import HeroNiche from '$lib/components/HeroNiche.svelte';
-  import HadithCard from '$lib/components/HadithCard.svelte';
-import { fetchWeeklyPrayerTimes } from '$lib/api';
-import { formatTime } from '$lib/time';
-import {
-  computeCeremony,
-  getHadithOfTheDay,
-  getHijriPartsCached,
-  parseStyleOptions,
-  resolveStyleOptions,
-  resolveStyleSystem,
-  type PrayerKey,
-  type PrayerWindow,
-} from '@masjid/ui-utils';
+  import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
+  import { formatTime } from '$lib/time';
+  import {
+    computeCeremony,
+    getHijriPartsCached,
+    parseStyleOptions,
+    resolveStyleOptions,
+    resolveStyleSystem,
+    type PrayerKey,
+    type PrayerWindow,
+  } from '@masjid/ui-utils';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
@@ -143,6 +141,9 @@ import {
     }),
   );
 
+  // ── Resolved style options (shared between ceremony + hero photo) ────────
+  let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null)));
+
   // ── Mishkaat (docs/design-language.md §7.11) ─────────────────────────────
   let mishkaat = $derived(resolveStyleSystem(theme) === 'mishkaat');
 
@@ -155,7 +156,7 @@ import {
   }
 
   // Ceremony state machine (§7.6) — on the phone it drives only the hero
-  // moment + hadith occasion tags; full-screen overlays stay on the TV.
+  // moment; full-screen overlays stay on the TV.
   let ceremony = $derived.by(() => {
     if (!mishkaat || !prayerTimes) return null;
     const windows = {} as Record<PrayerKey, PrayerWindow>;
@@ -167,15 +168,14 @@ import {
     }
     const sunriseMinutes = toMinutes(prayerTimes.sunrise);
     if (sunriseMinutes == null) return null;
-    const options = resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null));
     return computeCeremony({
       nowSeconds,
       dayOfWeek: now.getDay(),
       prayers: windows,
       sunriseMinutes,
       hijri: getHijriPartsCached(now),
-      quietHours: options.quietHours,
-      ambientEnabled: false, // the ambient background is the layout's job
+      quietHours: opts.quietHours,
+      ambientEnabled: false,
     });
   });
 
@@ -210,13 +210,6 @@ import {
     return countdownDisplay;
   });
 
-  // Hadith of the Day — same curated collection + date-seeded pick as the
-  // TV hadith frame, context-seeded by Friday / Ramadan / current prayer.
-  let hadith = $derived.by(() => {
-    if (!mishkaat) return null;
-    return getHadithOfTheDay(now);
-  });
-
   // Jumu'ah pinning — mirrors the soul-column rule: pinned Thursday–Friday.
   let jumuahPinned = $derived(mishkaat && hasJumuah && (now.getDay() === 4 || now.getDay() === 5));
 
@@ -226,54 +219,6 @@ import {
     }, 1000);
     return () => clearInterval(t);
   });
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // Upcoming Iqamah changes (next 6 days vs today)
-  // ───────────────────────────────────────────────────────────────────────────
-  type ChangeEntry = {
-    date: Date;
-    prayerKey: string;
-    prayerLabel: string;
-    from: string;
-    to: string;
-  };
-
-  let upcomingChanges = $state<ChangeEntry[]>([]);
-  let loadingChanges = $state(false);
-  let changesError = $state('');
-
-  function formatDateLabel(date: Date): string {
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  }
-
-  async function loadUpcomingChanges() {
-    if (!masjid?.slug || !prayerTimes) return;
-    loadingChanges = true;
-    changesError = '';
-
-    try {
-      const result = await fetchWeeklyPrayerTimes(masjid.slug);
-
-      upcomingChanges = result.changes.map((change) => ({
-        date: new Date(change.date + 'T12:00:00'),
-        prayerKey: change.prayer,
-        prayerLabel: prayerLabels[change.prayer] ?? change.prayer,
-        from: change.from,
-        to: change.to,
-      }));
-    } catch (e) {
-      console.error('Failed to load upcoming changes', e);
-      changesError = 'Could not load upcoming changes.';
-      upcomingChanges = [];
-    } finally {
-      loadingChanges = false;
-    }
-  }
-
-  $effect(() => {
-    if (!masjid?.slug || !prayerTimes) return;
-    loadUpcomingChanges();
-  });
 </script>
 
 <svelte:head>
@@ -281,8 +226,23 @@ import {
 </svelte:head>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 space-y-6">
-    <section class="text-center py-6">
+  <!-- ── Hero ──────────────────────────────────────────────────────────── -->
+  {#if opts.photoUrl}
+    <section class="c-hero-photo lg:col-span-full" style="background-image: url({opts.photoUrl})">
+      <div class="c-hero-photo-overlay">
+        <h1 class="c-hero-photo-title">{masjid?.name ?? 'Masjid'}</h1>
+        <div class="c-hero-photo-count">
+          <span>{heroLabel}</span>
+          <span>{heroCountdown}</span>
+        </div>
+        <div class="c-hero-photo-dates">
+          <p>{gregorianDate}</p>
+          <p>{hijriDate}</p>
+        </div>
+      </div>
+    </section>
+  {:else}
+    <section class="lg:col-span-2 text-center py-6">
       {#if mishkaat}
         <h1 class="text-2xl sm:text-3xl font-bold mb-5 font-heading">
           {masjid?.name ?? 'Masjid'}
@@ -300,32 +260,49 @@ import {
           </div>
         </HeroNiche>
       {:else}
-      <div class="relative">
-        <div class="geometric-pattern absolute inset-0 rounded-2xl"></div>
-        <div class="relative z-10">
-          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 font-heading">
-            {masjid?.name ?? 'Masjid'}
-          </h1>
-
-          <div class="mt-6 glass-card flex flex-col items-center gap-3 w-full max-w-sm mx-auto px-6 py-5">
-            <span class="text-xs uppercase tracking-[0.2em]" style="color: var(--color-text-dim);">
-              {nextPrayerName} in
-            </span>
-            <span class="text-4xl sm:text-5xl font-mono font-bold tabular-nums text-accent">
-              {countdownDisplay}
-            </span>
+        <div class="relative">
+          <div class="geometric-pattern absolute inset-0 rounded-2xl"></div>
+          <div class="relative z-10">
+            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 font-heading">
+              {masjid?.name ?? 'Masjid'}
+            </h1>
+            <div class="mt-6 glass-card flex flex-col items-center gap-3 w-full max-w-sm mx-auto px-6 py-5">
+              <span class="text-xs uppercase tracking-[0.2em]" style="color: var(--color-text-dim);">
+                {nextPrayerName} in
+              </span>
+              <span class="text-4xl sm:text-5xl font-mono font-bold tabular-nums text-accent">
+                {countdownDisplay}
+              </span>
+            </div>
+            <p class="mt-3 text-sm" style="color: var(--color-text-dim);">{gregorianDate}</p>
+            <p class="text-xs" style="color: var(--color-text-dim);">{hijriDate}</p>
           </div>
-
-          <p class="mt-3 text-sm" style="color: var(--color-text-dim);">{gregorianDate}</p>
-          <p class="text-xs" style="color: var(--color-text-dim);">{hijriDate}</p>
         </div>
-      </div>
       {/if}
     </section>
+  {/if}
 
-    <section>
+  <!-- ── Main column (left 2/3) — announcements + prayer ────────────────── -->
+  <div class="lg:col-span-2 space-y-6">
+    {#if pinnedAnnouncement}
+      <section class="c-announce-prominent glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
+        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
+          Announcement
+        </h2>
+        <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
+        <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+          {@html pinnedAnnouncement.compiled_html}
+        </div>
+      </section>
+
+      <div class="c-section-divider" aria-hidden="true">
+        <StarBand band={14} />
+      </div>
+    {/if}
+
+    <section class="c-prayer-compact">
       <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
-        Prayer Times
+        Today&rsquo;s Prayer Times
       </h2>
       {#if prayerTimes && Object.keys(prayerTimes).length > 0}
         <PrayerTable
@@ -340,43 +317,9 @@ import {
         <div class="h-60 rounded-lg animate-shimmer" style="background: var(--color-surface);"></div>
       {/if}
     </section>
-
-    {#if hadith}
-      <HadithCard entry={hadith} />
-    {/if}
-
-    {#if upcomingChanges.length > 0}
-      <section>
-        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
-          Upcoming Iqamah Changes
-        </h2>
-        <div class="space-y-2">
-          {#each upcomingChanges as change}
-            <div class="glass-card p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--color-text-dim);">
-                  {formatDateLabel(change.date)}
-                </span>
-                <p class="text-sm font-medium mt-0.5" style="color: var(--color-text);">
-                  <strong class="text-accent">{change.prayerLabel}</strong>
-                </p>
-              </div>
-              <div class="text-sm tabular-nums" style="color: var(--color-text-muted);">
-                {formatTime(change.from, timeFormat)}
-                <span class="mx-1" style="color: var(--color-text-dim);">→</span>
-                <span class="font-semibold text-accent">{formatTime(change.to, timeFormat)}</span>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </section>
-    {:else if loadingChanges}
-      <div class="h-8 rounded-lg animate-shimmer" style="background: var(--color-surface);"></div>
-    {:else if changesError}
-      <p class="text-xs" style="color: var(--color-text-dim);">{changesError}</p>
-    {/if}
   </div>
 
+  <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
   {#snippet jumuahSection()}
     {#if hasJumuah}
       <section>
@@ -392,7 +335,7 @@ import {
               <p class="text-xl font-bold tabular-nums mt-1 text-accent">
                 {formatTime(session.time, timeFormat)}
                 {#if session.khateeb}
-                  <span class="text-base font-normal ml-2" style="color: var(--color-text-muted);">— {session.khateeb}</span>
+                  <span class="text-base font-normal ml-2" style="color: var(--color-text-muted);">&mdash; {session.khateeb}</span>
                 {/if}
               </p>
             </div>
@@ -405,20 +348,6 @@ import {
   <aside class="space-y-6 lg:pt-6">
     {#if jumuahPinned}
       {@render jumuahSection()}
-    {/if}
-
-    {#if pinnedAnnouncement}
-      <section>
-        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
-          Announcement
-        </h2>
-        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
-          <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
-          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
-            {@html pinnedAnnouncement.compiled_html}
-          </div>
-        </div>
-      </section>
     {/if}
 
     {#if homepagePost}

@@ -1,12 +1,8 @@
 // These integration tests assert the new homepage contract for
 // `+page.svelte`: the masjid name is the main heading; a next-prayer countdown
-// card is shown; today's five prayer times are rendered; Jumu'ah, Announcement
-// and Donate sections are shown conditionally; and skeleton placeholders appear
-// when `prayer_times` is missing.
-//
-// Note: If `+page.svelte` still follows the pre-refactor layout (city/state
-// subtitle, Jumu'ah only on Fridays, etc.), these tests describe the target
-// contract and will fail until the page is updated.
+// card is shown; today's five prayer times are rendered; announcements are
+// front-and-center in the main column; Jumu'ah and Donate sections are shown
+// conditionally; and skeleton placeholders appear when `prayer_times` is missing.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
@@ -81,6 +77,8 @@ function setPageData(data: PageData) {
   (page as any).set({ data });
 }
 
+export const PRAYER_HEADING = 'Today\u2019s Prayer Times';
+
 describe('homepage', () => {
   beforeEach(() => {
     cleanup();
@@ -141,7 +139,7 @@ describe('homepage', () => {
     expect(screen.getByText('2:15:00')).toBeInTheDocument();
 
     expect(
-      screen.getByRole('heading', { name: 'Prayer Times' }),
+      screen.getByRole('heading', { name: PRAYER_HEADING }),
     ).toBeInTheDocument();
 
     for (const name of ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) {
@@ -155,15 +153,20 @@ describe('homepage', () => {
       screen.getByRole('heading', { name: "Jumu'ah Timings" }),
     ).toBeInTheDocument();
     expect(screen.getByText('13:30')).toBeInTheDocument();
-    expect(screen.getByText('— Sh. Ahmed')).toBeInTheDocument();
+    expect(screen.getByText('\u2014 Sh. Ahmed')).toBeInTheDocument();
     expect(screen.getByText('14:00')).toBeInTheDocument();
-    expect(screen.getByText('— Sh. Yusuf')).toBeInTheDocument();
+    expect(screen.getByText('\u2014 Sh. Yusuf')).toBeInTheDocument();
+
+    // Announcement is now in the main content column, not the sidebar
     expect(
       screen.getByRole('heading', { name: 'Announcement' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Eid Announcement')).toBeInTheDocument();
     expect(screen.getByText(/Join us for Eid prayer/)).toBeInTheDocument();
     expect(screen.getByText('tomorrow')).toBeInTheDocument();
+
+    // The prominent announcement class is applied
+    expect(document.querySelector('.c-announce-prominent')).not.toBeNull();
 
     expect(screen.queryByText(/Dallas/)).not.toBeInTheDocument();
     expect(screen.queryByText(/TX/)).not.toBeInTheDocument();
@@ -195,7 +198,7 @@ describe('homepage', () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole('heading', { name: 'Prayer Times' }),
+      screen.getByRole('heading', { name: PRAYER_HEADING }),
     ).toBeInTheDocument();
 
     for (const name of ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) {
@@ -229,7 +232,7 @@ describe('homepage', () => {
       screen.getByRole('heading', { level: 1, name: 'Loading Masjid' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: 'Prayer Times' }),
+      screen.getByRole('heading', { name: PRAYER_HEADING }),
     ).toBeInTheDocument();
 
     const skeletons = container.querySelectorAll('.animate-shimmer');
@@ -254,7 +257,6 @@ describe('homepage', () => {
 
     render(HomePage);
 
-    // Primary is hanafi, so secondary is Shafi
     expect(screen.getByText('Asr (Shafi): 17:00')).toBeInTheDocument();
   });
 
@@ -276,5 +278,26 @@ describe('homepage', () => {
     render(HomePage);
 
     expect(screen.queryByText(/Asr \(/)).toBeNull();
+  });
+
+  it('falls back to the classic hero when no photoUrl is set', () => {
+    setPageData({
+      masjid: { name: 'Classic Masjid', slug: 'classic-masjid' },
+      prayer_times: {
+        fajr: { adhaan: '05:00', iqaamah: '05:15' },
+        sunrise: '06:00',
+        dhuhr: { adhaan: '12:00', iqaamah: '12:15' },
+        asr: { adhaan: '15:00', iqaamah: '15:15' },
+        maghrib: { adhaan: '18:00', iqaamah: '18:05' },
+        isha: { adhaan: '19:00', iqaamah: '19:15' },
+      },
+      jumuah: [],
+      pinned_announcement: null,
+    });
+
+    const { container } = render(HomePage);
+
+    expect(container.querySelector('.c-hero-photo')).toBeNull();
+    expect(container.querySelector('.geometric-pattern')).not.toBeNull();
   });
 });
