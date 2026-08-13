@@ -652,8 +652,7 @@ cold-start (2026-08-09 and 2026-08-13). See `docs/deploy-lessons.md` lesson 55.
 
 | File | Role |
 |---|---|
-| `schema.sql` | Canonical DDL — the source of truth for D1 (19 tables) |
+| `schema.sql` | Canonical DDL — the single source of truth for D1 and local SQLite (19 tables) |
 | `apps/api/src/lib/server/db/schema.ts` | Drizzle ORM schema — must match `schema.sql` exactly |
-| `apps/api/src/lib/server/db/index.ts` `ensureTables()` | Local SQLite table creation — mirrors `schema.sql` for local dev only |
 
-All three must agree. The CI gates enforce this.
+Local dev reads and executes `schema.sql` directly at startup (`getLocalDb()`). No more hand-maintained embedded DDL. `check-schema` CI enforces that these two files never drift.
