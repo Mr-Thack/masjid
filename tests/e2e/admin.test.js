@@ -485,9 +485,10 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`);
-      // Buttons read "12-hour (1:30 PM)" / "24-hour (13:30)"; the active one
-      // carries border-accent.
+      // Gate on the time-format buttons — the theme form renders only after
+      // the client-side profile GET resolves (skeleton has no buttons), and
+      // isVisible() below does NOT auto-wait.
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`, { expectText: '12-hour' });
       const timeBtn12 = page.locator('button:has-text("12-hour")');
       const timeBtn24 = page.locator('button:has-text("24-hour")');
       const has12 = await timeBtn12.isVisible().catch(() => false);
@@ -674,29 +675,20 @@ if (!cfg.writes || !cfg.adminEmail || !authState) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`);
-      // Scroll down to find the label_sunrise input
-      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.5));
-
-      // The label inputs are near the bottom of the page. Find one whose
-      // current value or placeholder suggests it's for sunrise.
-      const allInputs = page.locator('input[type="text"]:enabled');
-      const inputCount = await allInputs.count();
-      let sunriseValue = null;
-      let sunriseIndex = -1;
-      for (let i = 0; i < inputCount; i++) {
-        const placeholder = await allInputs.nth(i).getAttribute('placeholder').catch(() => '');
-        const val = await allInputs.nth(i).inputValue().catch(() => '');
-        if (placeholder.toLowerCase().includes('sunrise') || val === 'Sunrise') {
-          sunriseValue = val;
-          sunriseIndex = i;
-          break;
-        }
-      }
-      t.assert(sunriseIndex >= 0, 'ADM-22 label_sunrise input found');
-      if (sunriseIndex >= 0) {
-        await allInputs.nth(sunriseIndex).fill('E2E-Sun');
-        await page.evaluate(() => window.scrollTo(0, 0));
+      // The form renders only after the client-side profile GET resolves —
+      // until then SkeletonForm shows zero inputs. Gate on the label input
+      // itself (stable id="label_*" contract from the theme page's Labels
+      // grid) instead of scanning whatever inputs happen to be rendered.
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`, { expectSelector: '#label_sunrise' });
+      const sunriseInput = page.locator('#label_sunrise');
+      const found = await sunriseInput
+        .waitFor({ state: 'visible', timeout: 10000 })
+        .then(() => true)
+        .catch(() => false);
+      const sunriseValue = found ? await sunriseInput.inputValue() : null;
+      t.assert(found, 'ADM-22 label_sunrise input found');
+      if (found) {
+        await sunriseInput.fill('E2E-Sun');
         const saved = await saveIfEnabled(page, b, 'button:has-text("Save Changes")');
         t.assert(saved, 'ADM-22 theme save button clicked');
         const after = await snapshotProfileFields(cfg, masjidId, ['label_sunrise']);

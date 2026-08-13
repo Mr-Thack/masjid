@@ -412,3 +412,5 @@ so sequence those). Merge order: WP4 before/after WP3–6 in any order.
 | Worker-only crash detected via pages | TV/consumer cases against the real worker |
 | New origin breaks CORS (staging project) | API-07/08 + staging browser cases running cross-origin for real |
 | Unknown masjid white-screens | CON-05, TV-04 |
+| Consumer custom-page route fetched `/api/...` relatively, bypassing `VITE_API_URL` — gateway served SPA HTML with a 200, `res.json()` threw, route error-boundaried on staging/prod (worked locally via the Vite proxy) | CON-51 `badApiOrigins` assertion + `api-pages.test.ts` (URL built from `BASE`) |
+| Mutation test scanned for form inputs before the client-side settings GET resolved (SkeletonForm has zero inputs) — readiness race disguised as a missing element | ADM-22 `#label_sunrise` visible-gate + ADM-17 `expectText` gate |

@@ -268,6 +268,22 @@ export async function fetchPost(
   return res.json();
 }
 
+export interface CustomPage {
+  title: string;
+  compiled_html: string | null;
+  last_updated: string | null;
+}
+
+export async function fetchCustomPage(
+  slug: string,
+  pageSlug: string,
+  customFetch: typeof fetch = globalThis.fetch,
+): Promise<CustomPage> {
+  const res = await customFetch(`${BASE}/${slug}/pages/${pageSlug}`);
+  if (!res.ok) throw new Error(`Failed to fetch page: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchNavItems(
   slug: string,
   customFetch: typeof fetch = globalThis.fetch,

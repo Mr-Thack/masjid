@@ -1,18 +1,14 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
+import { fetchCustomPage } from '$lib/api';
 
 export const load: PageLoad = async ({ params, fetch }) => {
-  const { masjid_slug, page_slug } = params;
-
-  const res = await fetch(`/api/v1/masjids/${masjid_slug}/pages/${page_slug}`);
-
-  if (!res.ok) {
-    if (res.status === 404) {
-      error(404, `Page '${page_slug}' not found`);
-    }
-    error(res.status, 'Failed to load page');
+  try {
+    const page = await fetchCustomPage(params.masjid_slug, params.page_slug, fetch);
+    return { page };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : '';
+    if (msg.includes('404')) error(404, `Page '${params.page_slug}' not found`);
+    throw e;
   }
-
-  const data = await res.json();
-  return { page: data };
 };

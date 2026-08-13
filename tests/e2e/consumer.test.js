@@ -1218,6 +1218,12 @@ await testCase(t, 'CON-51', async () => {
       `CON-51 page renders title "${title}" (body: ${bodyText.slice(0, 80)}…)`);
     t.assert(b.pageErrors.length === 0,
       `CON-51 page no errors — ${JSON.stringify(b.pageErrors)}`);
+    // Failure class C1: a relative /api fetch here resolves to the Pages origin,
+    // where the gateway serves SPA HTML with a 200 — res.json() then throws and
+    // the route error-boundaries. API requests must hit the worker origin.
+    const badApiOrigins = [...new Set(b.apiOrigins)].filter((o) => !cfg.allowedApiOrigins.includes(o));
+    t.assert(badApiOrigins.length === 0,
+      `CON-51 all /api/* requests went to allowed origins (got ${JSON.stringify([...new Set(b.apiOrigins)])})`);
   } finally {
     await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/pages/${pageSlug}`).catch(() => {});
     await context.close();
