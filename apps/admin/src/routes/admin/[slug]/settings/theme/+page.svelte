@@ -3,6 +3,7 @@
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
   import { metalPalettes } from '@masjid/ui-utils';
+  import ImageTracer from 'imagetracerjs';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
 
   let { data }: { data: { masjidSlug: string } } = $props();
@@ -14,6 +15,8 @@
   // saveable form full of default values (they'd clobber the real theme).
   let loadError = $state<string | null>(null);
   let dirty = $state(false);
+  let tracing = $state(false);
+  let traceError = $state('');
 
   let form = $state({
     style_system: 'sakeenah' as 'sakeenah' | 'mishkaat',
@@ -36,6 +39,7 @@
       donateAppeal: '',
       photoUrl: '',
       logoUrl: '',
+      engravedSvg: '',
       donateReasons: [
         { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Keep our masjid clean, safe, and welcoming' },
         { icon: '📚', title: 'Support Education', desc: 'Fund classes, lectures, and youth programs' },
@@ -237,6 +241,34 @@
       }
     }
     return result;
+  }
+
+  function generateEngraving() {
+    const url = form.style_options.photoUrl;
+    if (!url) return;
+    tracing = true;
+    traceError = '';
+    ImageTracer.imageToSVG(
+      url,
+      (svg: string) => {
+        form.style_options.engravedSvg = svg;
+        dirty = true;
+        tracing = false;
+        toast.success('Engraving generated');
+      },
+      {
+        corsenabled: true,
+        numberofcolors: 3,
+        strokewidth: 1.5,
+        scale: 1,
+      },
+    );
+    setTimeout(() => {
+      if (tracing) {
+        tracing = false;
+        traceError = 'Tracing timed out — the image may be too large or unreachable. Ensure the photo URL is accessible (CORS-friendly) and try again.';
+      }
+    }, 30000);
   }
 
   async function handleSave(e: Event) {
@@ -500,8 +532,8 @@
           <!-- Masjid Logo -->
           <div class="bg-surface border border-border rounded-xl p-6">
             <h2 class="font-heading font-semibold text-text mb-3">Masjid Logo</h2>
-            <p class="text-xs text-text-muted mb-4">Choose how your masjid identity appears. Engraved renders a line-art version of your building photo (requires an uploaded image). Medallion uses the eight-point star as default.</p>
-            <div class="flex gap-2">
+            <p class="text-xs text-text-muted mb-4">Choose how your masjid identity appears. Engraved renders a line-art version of your building photo (requires a photo URL set in the Images section above). Medallion uses the eight-point star as default.</p>
+            <div class="flex gap-2 mb-4">
               <button
                 type="button"
                 class="px-4 py-2 rounded-lg text-sm border transition-colors {form.style_options.emblem === 'medallion' ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-border text-text-muted hover:border-text-muted'}"
@@ -513,6 +545,39 @@
                 onclick={() => { form.style_options.emblem = 'engraved'; dirty = true; }}
               >Engraved (photo)</button>
             </div>
+            {#if form.style_options.emblem === 'engraved'}
+              {#if !form.style_options.photoUrl}
+                <p class="text-xs text-text-dim">Set a photo URL in the Images section above first, then generate the engraving.</p>
+              {:else if form.style_options.engravedSvg}
+                <div class="mb-3 p-3 rounded-lg border border-border bg-surface">
+                  <p class="text-xs text-text-muted mb-2">Engraving preview:</p>
+                  {@html form.style_options.engravedSvg}
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="btn-secondary text-xs"
+                    disabled={tracing}
+                    onclick={generateEngraving}
+                  >{tracing ? 'Tracing...' : 'Regenerate'}</button>
+                  <button
+                    type="button"
+                    class="text-xs text-red-400 hover:text-red-300"
+                    onclick={() => { form.style_options.engravedSvg = ''; dirty = true; }}
+                  >Clear</button>
+                </div>
+              {:else}
+                <button
+                  type="button"
+                  class="btn-primary text-xs"
+                  disabled={tracing}
+                  onclick={generateEngraving}
+                >{tracing ? 'Tracing...' : 'Generate Engraving'}</button>
+                {#if traceError}
+                  <p class="text-xs text-red-400 mt-2">{traceError}</p>
+                {/if}
+              {/if}
+            {/if}
           </div>
 
           <!-- Donate Appeal -->

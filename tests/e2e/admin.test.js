@@ -893,5 +893,58 @@ if (!cfg.adminEmail || !authState) {
 }
 */
 
+// ADM-31 — Theme: toggle emblem to 'engraved' via UI, verify via API, restore
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-31', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-31', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const snapshot = await snapshotProfileFields(cfg, masjidId, ['style_options']);
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/theme`, { expectText: 'Style' });
+      await settlePage(page, b, 2000);
+
+      // Gate: wait for the emblem buttons to be visible
+      const medallionBtn = page.locator('button:has-text("Medallion (star)")');
+      const engravedBtn = page.locator('button:has-text("Engraved (photo)")');
+      const hasMedallion = await medallionBtn.isVisible().catch(() => false);
+      const hasEngraved = await engravedBtn.isVisible().catch(() => false);
+      t.assert(hasMedallion && hasEngraved,
+        `ADM-31 emblem buttons visible (medallion: ${hasMedallion}, engraved: ${hasEngraved})`);
+
+      if (hasEngraved) {
+        // Determine current state and toggle
+        const isEngravedActive = await engravedBtn.evaluate(
+          (el) => el.classList.contains('border-amber-400'),
+        ).catch(() => false);
+        const isMedallionActive = await medallionBtn.evaluate(
+          (el) => el.classList.contains('border-amber-400'),
+        ).catch(() => false);
+
+        if (isMedallionActive) {
+          await engravedBtn.click();
+          const saved = await saveIfEnabled(page, b, 'button:has-text("Save Changes")');
+          t.assert(saved, 'ADM-31 theme save button clicked after emblem toggle');
+          const after = await snapshotProfileFields(cfg, masjidId, ['style_options']);
+          const emblemAfter = after?.style_options?.emblem;
+          t.assert(emblemAfter === 'engraved',
+            `ADM-31 emblem persisted as "engraved" (got "${emblemAfter}")`);
+        } else {
+          t.assert(true, 'ADM-31 emblem already engraved, skipping toggle');
+        }
+      }
+      t.assert(b.pageErrors.length === 0,
+        `ADM-31 theme emblem toggle no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      const ok = await restoreProfileFields(cfg, masjidId, snapshot);
+      if (!ok) console.warn(`  ADM-31 API restore FAILED — snapshot: ${JSON.stringify(snapshot)}`);
+      await context.close();
+    }
+  });
+}
+
 await browser.close();
 process.exit((await t.done()) > 0 ? 1 : 0);

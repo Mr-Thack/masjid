@@ -52,6 +52,8 @@ export interface MishkaatStyleOptions {
   whatsappGroupUrl?: string;
   /** Cards shown in the "Why Give?" section on the Donate page. */
   donateReasons?: DonateReason[];
+  /** Pre-computed SVG engraving of the masjid photo (generated in admin, served statically). */
+  engravedSvg?: string;
 }
 
 export interface ResolvedMishkaatOptions {
@@ -71,6 +73,7 @@ export interface ResolvedMishkaatOptions {
   logoUrl: string;
   whatsappGroupUrl: string;
   donateReasons: DonateReason[];
+  engravedSvg: string;
 }
 
 export const DONATE_REASON_DEFAULTS: DonateReason[] = [
@@ -100,6 +103,7 @@ export const MISHKAAT_OPTION_DEFAULTS: ResolvedMishkaatOptions = {
   logoUrl: '',
   whatsappGroupUrl: '',
   donateReasons: [...DONATE_REASON_DEFAULTS],
+  engravedSvg: '',
 };
 
 const METALS: readonly MetalName[] = ['gold', 'silver', 'copper', 'rose'];
@@ -185,6 +189,10 @@ export function parseStyleOptions(
       )
       .slice(0, 8) as DonateReason[];
   }
+  if (typeof input.engravedSvg === 'string') {
+    const svg = input.engravedSvg.trim();
+    if (svg.length >= 1 && svg.length <= 500000) out.engravedSvg = svg;
+  }
   if (input.quietHours && typeof input.quietHours === 'object' && !Array.isArray(input.quietHours)) {
     const qh = input.quietHours as Record<string, unknown>;
     const quietHours: QuietHoursOptions = {};
@@ -234,6 +242,7 @@ export function resolveStyleOptions(
     donateReasons: (input?.donateReasons && input.donateReasons.length > 0)
       ? input.donateReasons
       : [...defaults.donateReasons],
+    engravedSvg: input?.engravedSvg ?? defaults.engravedSvg,
   };
 }
 
