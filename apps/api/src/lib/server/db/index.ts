@@ -287,6 +287,7 @@ export function ensureTables(sqlite: Database.Database) {
       enrollment_open INTEGER NOT NULL DEFAULT 0,
       status_message TEXT,
       program_info TEXT NOT NULL DEFAULT '{}',
+      assistance_code TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
