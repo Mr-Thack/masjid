@@ -2,9 +2,9 @@
   import { page } from '$app/stores';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
   import type { Snippet } from 'svelte';
-  import { applyTheme } from '$lib/theme/context.svelte.ts';
+  import { applyTheme } from '$lib/theme/context.svelte';
   import { ambientPhaseFor } from '$lib/ambient';
-  import { deviceThemePref } from '$lib/theme/device-pref.svelte.ts';
+  import { deviceThemePref } from '$lib/theme/device-pref.svelte';
   import Rosette from '@masjid/ui-utils/components/Rosette.svelte';
   import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
   import { resolveStyleSystem, resolveStyleOptions, parseStyleOptions, type ThemeInput } from '@masjid/ui-utils';
@@ -33,7 +33,7 @@
   let masjid = $derived($page.data.masjid);
   let theme = $derived($page.data.theme);
 
-  let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null)));
+  let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options as string | Record<string, unknown> | null ?? null)));
 
   let devicePref = $derived(deviceThemePref.current);
   // Mishkaat reads light/dark from style_options.themeMode; Sakeenah uses

@@ -15,7 +15,7 @@ describe('load', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result).toEqual(payload);
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/masjids/test/board');

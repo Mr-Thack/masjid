@@ -50,7 +50,7 @@
       >
         {#if item.icon}
           {@const IconComp = getIconComponent(item.icon, item.kind)}
-          <svelte:component this={IconComp} size={20} />
+          <svelte:component this={IconComp as any} size={20} />
         {/if}
         <span class="text-[10px] font-medium">{item.label}</span>
       </a>

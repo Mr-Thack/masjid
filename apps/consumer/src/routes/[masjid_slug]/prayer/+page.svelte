@@ -3,7 +3,8 @@
   import { fetchWeeklyPrayerTimes } from '$lib/api';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
-  import WeeklyPrayerTable, { type WeekDay } from '$lib/components/WeeklyPrayerTable.svelte';
+  import { formatTime, type TimeFormat } from '$lib/time';
+import WeeklyPrayerTable, { type WeekDay } from '$lib/components/WeeklyPrayerTable.svelte';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
@@ -13,21 +14,21 @@
   let weekData = $state<Map<string, { times: Record<string, { adhaan: string; iqaamah: string }>; asr_secondary?: string }>>(new Map());
   let loading = $state(false);
   let error = $state('');
-  let today = $state(new Date());
+  let today = $state<Date>(new Date());
 
   let prayerLabels: Record<string, string> = $derived({
-    fajr: theme?.label_fajr ?? 'Fajr',
-    dhuhr: theme?.label_dhuhr ?? 'Dhuhr',
-    asr: theme?.label_asr ?? 'Asr',
-    maghrib: theme?.label_maghrib ?? 'Maghrib',
-    isha: theme?.label_isha ?? 'Isha',
+    fajr: (theme?.label_fajr as string) ?? 'Fajr',
+    dhuhr: (theme?.label_dhuhr as string) ?? 'Dhuhr',
+    asr: (theme?.label_asr as string) ?? 'Asr',
+    maghrib: (theme?.label_maghrib as string) ?? 'Maghrib',
+    isha: (theme?.label_isha as string) ?? 'Isha',
   });
 
-  let timeFormat = $derived(theme?.time_format ?? '24h');
-  let adhaanLabel = $derived(theme?.label_adhaan ?? 'Adhaan');
-  let iqaamahLabel = $derived(theme?.label_iqaamah ?? 'Iqaamah');
+  let timeFormat = $derived(((theme?.time_format as string) ?? '24h') as TimeFormat);
+  let adhaanLabel = $derived((theme?.label_adhaan as string) ?? 'Adhaan');
+  let iqaamahLabel = $derived((theme?.label_iqaamah as string) ?? 'Iqaamah');
 
-  let asrSecondaryLabel = $derived.by(() => {
+  let asrSecondaryLabel: string = $derived.by(() => {
     const primary = masjid?.asr_madhab ?? 'shafi';
     return primary === 'shafi' ? 'Asr (Hanafi)' : 'Asr (Shafi)';
   });
@@ -82,7 +83,7 @@
       const result = await fetchWeeklyPrayerTimes(masjid.slug, startDate);
       for (const day of result.days) {
         if (!day.times) continue;
-        const times = day.times as Record<string, { adhaan: string; iqaamah: string }> & { asr_secondary?: string | null };
+        const times = day.times as any as Record<string, { adhaan: string; iqaamah: string }> & { asr_secondary?: string | null };
         const { asr_secondary, ...prayerTimes } = times;
         newData.set(day.date, {
           times: prayerTimes as unknown as Record<string, { adhaan: string; iqaamah: string }>,

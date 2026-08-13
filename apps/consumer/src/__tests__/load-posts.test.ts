@@ -73,7 +73,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.homepage_post).toEqual(homepagePost);
     expect(result.homepage_post!.title).toBe('Ramadan Iftar');
@@ -101,7 +101,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.info_post).toEqual(infoPost);
     expect(result.info_post!.title).toBe('Masjid History');
@@ -122,7 +122,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.homepage_post).toBeNull();
   });
@@ -141,7 +141,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.info_post).toBeNull();
   });
@@ -158,7 +158,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.homepage_post).toBeUndefined();
   });
@@ -175,7 +175,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.info_post).toBeUndefined();
   });
@@ -208,7 +208,7 @@ describe('layout load with posts', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.homepage_post).toEqual(homepagePost);
     expect(result.info_post).toEqual(infoPost);

@@ -1010,7 +1010,7 @@ if (!cfg.adminEmail || !authState) {
         // Wait for item to disappear
         await new Promise((r) => setTimeout(r, 2000));
       }
-      const stillVisible = await page.evaluate((t: string) => document.body.innerText.includes(t), title);
+      const stillVisible = await page.evaluate((t) => document.body.innerText.includes(t), title);
       t.assert(!stillVisible, `ADM-33 item removed after delete: ${!stillVisible}`);
       t.assert(b.pageErrors.length === 0, `ADM-33 delete no errors — ${JSON.stringify(b.pageErrors)}`);
     } finally {

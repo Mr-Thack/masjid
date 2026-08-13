@@ -93,7 +93,7 @@
           >
             {#if item.icon}
               {@const IconComp = getIconComponent(item.icon, item.kind)}
-              <svelte:component this={IconComp} size={18} />
+              <svelte:component this={IconComp as any} size={18} />
             {/if}
             {item.label}
           </a>
@@ -106,7 +106,7 @@
           >
             {#if item.icon}
               {@const IconComp = getIconComponent(item.icon, item.kind)}
-              <svelte:component this={IconComp} size={18} />
+              <svelte:component this={IconComp as any} size={18} />
             {/if}
             {item.label}
           </a>
@@ -139,7 +139,7 @@
                 >
                   {#if item.icon}
                     {@const IconComp = getIconComponent(item.icon, item.kind)}
-                    <svelte:component this={IconComp} size={18} />
+                    <svelte:component this={IconComp as any} size={18} />
                   {/if}
                   {item.label}
                 </a>

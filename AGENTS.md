@@ -120,6 +120,7 @@ Also:
 - Who slug: `masjid-al-noor` (note dashes, not underscores)
 - WhatsApp: `+15551230001` (Zero-UI admin)
 - Style system: **Mishkaat** (gold, `layout_preset='mishkaat'`, Amiri headings) — the flagship seed
+- `style_options`: `photoUrl` + `logoUrl` (committed SVG assets in `apps/consumer/static/uploads/seed/`), `whatsappGroupUrl`, `donateReasons` — exercises the photo hero, header logo, WhatsApp link, and custom donate cards
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Consumer page: `http://localhost:5175/masjid-al-noor`
 - TV page: `http://localhost:5174/display/masjid-al-noor`
@@ -134,6 +135,8 @@ Also:
 - Consumer page: `http://localhost:5175/masjid-al-jabal`
 - TV page: `http://localhost:5174/display/masjid-al-jabal`
 - Notes: Hanafi / Indo-Pak congregation; **Sakeenah** style system (`minimal-light` preset), `12h` time format, ISNA calculation method, and Indo-Pak transliterations (`Azaan`, `Iqamah`, `Zuhr`, `Jummah`).
+- `style_options`: `whatsappGroupUrl` + `donateReasons` only — `photoUrl`/`logoUrl` deliberately unset so the fallback hero and letter-avatar header stay covered
+- Also seeds: a homepage post ("A Note from the Imam", `content_type='post'`, `show_on_homepage=true`), a Resources custom page (`/masjid-al-jabal/pages/resources`), and a full nav item set (Info is desktop-header-only) — when any nav items exist the consumer layout replaces its fallback defaults entirely
 - DB file: `.masjid/local.db` (SQLite via better-sqlite3 in dev mode)
 
 ## Monorepo structure
@@ -235,7 +238,7 @@ its `/*.js`/`/*.json` immutable patterns were a standalone-deploy footgun).
 |---|---|
 | `+layout.svelte` | Shell: sticky header, top nav on desktop/bottom nav on mobile, theme application, nav transitions |
 | `+layout.ts` | Load function — fetches page payload, returns masjid/theme/prayer_times/jumuah/announcements/nav_items |
-| `+page.svelte` | Home: hero + countdown, prayer times table, jumuah today, pinned announcement, donate CTA |
+| `+page.svelte` | Home: two-column layout — left = announcement + homepage post + donate CTA, right = hero (or full-width photo hero above when `photoUrl` set) + prayer table + jumu'ah |
 | `+error.svelte` | Error boundary fallback |
 | `prayer/+page.svelte` | Weekly prayer times viewer (prev/next week navigation, `WeeklyPrayerTable`) |
 | `jumuah/+page.svelte` | Jumu'ah sessions list with session cards (sessions also show on homepage; location shown once when shared) |

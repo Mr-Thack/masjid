@@ -65,7 +65,7 @@ describe('Post detail page', () => {
 
   it('renders post title as heading', () => {
     render(PostDetailPage, {
-      props: { data: { post: mockPost } },
+      props: { data: { post: mockPost } as any },
     });
 
     expect(
@@ -78,7 +78,7 @@ describe('Post detail page', () => {
 
   it('renders compiled_html', () => {
     const { container } = render(PostDetailPage, {
-      props: { data: { post: mockPost } },
+      props: { data: { post: mockPost } as any },
     });
 
     const article = container.querySelector('article');
@@ -91,7 +91,7 @@ describe('Post detail page', () => {
 
   it('renders date', () => {
     render(PostDetailPage, {
-      props: { data: { post: mockPost } },
+      props: { data: { post: mockPost } as any },
     });
 
     expect(screen.getByText('Sunday, February 15, 2026')).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe('Post detail page', () => {
 
   it('shows back link to /news', () => {
     render(PostDetailPage, {
-      props: { data: { post: mockPost } },
+      props: { data: { post: mockPost } as any },
     });
 
     const backLink = screen.getByRole('link', { name: /Back to News/ });
@@ -109,7 +109,7 @@ describe('Post detail page', () => {
 
   it('has correct page title via svelte:head', () => {
     render(PostDetailPage, {
-      props: { data: { post: mockPost } },
+      props: { data: { post: mockPost } as any },
     });
 
     expect(document.title).toBe('Ramadan 2026 Announcement — Test Masjid');
@@ -123,7 +123,7 @@ describe('Post detail page', () => {
             ...mockPost,
             compiled_html: null,
           },
-        },
+        } as any,
       },
     });
 

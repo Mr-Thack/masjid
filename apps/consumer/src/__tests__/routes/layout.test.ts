@@ -157,7 +157,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       const img = document.querySelector('.c-logo-img') as HTMLImageElement;
       expect(img).toBeInTheDocument();
@@ -180,7 +180,7 @@ describe('layout shell', () => {
         },
       });
 
-      const { container } = render(Layout, { props: { children: () => 'content' } });
+      const { container } = render(Layout, { props: { children: (() => 'content') as any } });
 
       expect(document.querySelector('.c-logo-img')).toBeNull();
       expect(container.querySelector('.c-header-rosette')).toBeInTheDocument();
@@ -201,7 +201,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       expect(document.querySelector('.c-logo-img')).toBeNull();
       expect(document.querySelector('.c-header-rosette')).toBeNull();
@@ -229,7 +229,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       expect(document.querySelector('.c-logo-img')).toBeInTheDocument();
       expect(document.querySelector('.c-header-rosette')).toBeNull();
@@ -252,7 +252,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       const footer = document.querySelector('.c-ftr');
       expect(footer).toBeInTheDocument();
@@ -274,7 +274,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       const body = document.querySelector('.c-ftr-body')!;
       expect(body.textContent).toContain('Dallas, TX');
@@ -295,7 +295,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       const body = document.querySelector('.c-ftr-body')!;
       expect(body.textContent).toContain('Chicago');
@@ -322,7 +322,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       const body = document.querySelector('.c-ftr-body')!;
       expect(body.textContent).toContain('555-123-4567');
@@ -344,7 +344,7 @@ describe('layout shell', () => {
         },
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       expect(document.querySelector('.c-ftr-band')).toBeInTheDocument();
     });
@@ -367,7 +367,7 @@ describe('layout shell', () => {
         url: new URL('http://localhost:5175/masjid-al-noor?embed=1'),
       });
 
-      render(Layout, { props: { children: () => 'content' } });
+      render(Layout, { props: { children: (() => 'content') as any } });
 
       expect(document.querySelector('header')).toBeNull();
       expect(document.querySelector('.c-ftr')).toBeNull();

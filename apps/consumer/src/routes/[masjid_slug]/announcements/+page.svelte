@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { fetchAnnouncements } from '$lib/api';
+  import type { Announcement } from '@masjid/schemas';
+import { fetchAnnouncements } from '$lib/api';
   import AnnouncementCard from '$lib/components/AnnouncementCard.svelte';
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';

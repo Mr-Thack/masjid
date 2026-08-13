@@ -3,7 +3,7 @@
   import PrayerTable from '$lib/components/PrayerTable.svelte';
   import HeroNiche from '$lib/components/HeroNiche.svelte';
   import StarBand from '@masjid/ui-utils/components/StarBand.svelte';
-  import { formatTime } from '$lib/time';
+  import { formatTime, type TimeFormat } from '$lib/time';
   import {
     computeCeremony,
     getHijriPartsCached,
@@ -37,11 +37,11 @@
   const prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
 
   let prayerLabels: Record<string, string> = $derived({
-    fajr: theme?.label_fajr ?? 'Fajr',
-    dhuhr: theme?.label_dhuhr ?? 'Dhuhr',
-    asr: theme?.label_asr ?? 'Asr',
-    maghrib: theme?.label_maghrib ?? 'Maghrib',
-    isha: theme?.label_isha ?? 'Isha',
+    fajr: (theme?.label_fajr as string) ?? 'Fajr',
+    dhuhr: (theme?.label_dhuhr as string) ?? 'Dhuhr',
+    asr: (theme?.label_asr as string) ?? 'Asr',
+    maghrib: (theme?.label_maghrib as string) ?? 'Maghrib',
+    isha: (theme?.label_isha as string) ?? 'Isha',
   });
 
   let asrSecondaryLabel = $derived.by(() => {
@@ -56,8 +56,8 @@
       iqaamah: prayerTimes?.[name]?.iqaamah ?? '--:--',
       rightAfterAdhaan: prayerTimes?.[name]?.right_after_adhaan ?? false,
       sunrise: name === 'fajr' ? (prayerTimes?.sunrise ?? undefined) : undefined,
-      ...(name === 'asr' && prayerTimes?.asr_secondary
-        ? { asrSecondary: prayerTimes.asr_secondary, asrSecondaryLabel }
+      ...(name === 'asr' && (prayerTimes as any)?.asr_secondary
+        ? { asrSecondary: (prayerTimes as any).asr_secondary, asrSecondaryLabel }
         : {}),
     })),
   );
@@ -122,7 +122,7 @@
   let hasJumuah = $derived((jumuah?.length ?? 0) > 0);
   let jumuahLabel = $derived(theme?.label_jumuah ?? "Jumu'ah");
   let speechLabel = $derived(theme?.label_speech ?? 'Speech');
-  let timeFormat = $derived(theme?.time_format ?? '24h');
+  let timeFormat = $derived(((theme?.time_format as string) ?? '24h') as TimeFormat);
 
   let hijriDate = $derived(
     new Intl.DateTimeFormat('en-TN-u-ca-islamic', {
@@ -142,7 +142,7 @@
   );
 
   // ── Resolved style options (shared between ceremony + hero photo) ────────
-  let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options ?? null)));
+  let opts = $derived(resolveStyleOptions(parseStyleOptions(theme?.style_options as string | Record<string, unknown> | null ?? null)));
 
   // ── Mishkaat (docs/design-language.md §7.11) ─────────────────────────────
   let mishkaat = $derived(resolveStyleSystem(theme) === 'mishkaat');
@@ -225,24 +225,34 @@
   <title>{masjid?.name ?? 'Masjid'}</title>
 </svelte:head>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-  <!-- ── Hero ──────────────────────────────────────────────────────────── -->
-  {#if opts.photoUrl}
-    <section class="c-hero-photo lg:col-span-full" style="background-image: url({opts.photoUrl})">
-      <div class="c-hero-photo-overlay">
-        <h1 class="c-hero-photo-title">{masjid?.name ?? 'Masjid'}</h1>
-        <div class="c-hero-photo-count">
-          <span>{heroLabel}</span>
-          <span>{heroCountdown}</span>
-        </div>
-        <div class="c-hero-photo-dates">
-          <p>{gregorianDate}</p>
-          <p>{hijriDate}</p>
-        </div>
+<!-- ── Photo hero — full width, above the two-column grid ──────────────── -->
+{#if opts.photoUrl}
+  <section class="c-hero-photo mb-6" style="background-image: url({opts.photoUrl})">
+    <div class="c-hero-photo-overlay">
+      <h1 class="c-hero-photo-title">{masjid?.name ?? 'Masjid'}</h1>
+      <div class="c-hero-photo-count">
+        <span>{heroLabel}</span>
+        <span>{heroCountdown}</span>
       </div>
-    </section>
-  {:else}
-    <section class="lg:col-span-2 text-center py-6">
+      <div class="c-hero-photo-dates">
+        <p>{gregorianDate}</p>
+        <p>{hijriDate}</p>
+      </div>
+    </div>
+  </section>
+{/if}
+
+<!--
+  Two-column grid (desktop): LEFT 2/3 = content (announcements → post →
+  donate), RIGHT 1/3 = timings (hero → prayer table → jumu'ah). Every child
+  has an explicit lg col/row placement so there is no orphan empty cell.
+  Mobile (single column): hero → announcements → post → donate → prayer →
+  jumu'ah, driven by the order-* classes.
+-->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- ── Fallback hero — top of the timings column ─────────────────────── -->
+  {#if !opts.photoUrl}
+    <section class="order-1 lg:col-start-3 lg:row-start-1 text-center py-6 lg:py-0">
       {#if mishkaat}
         <h1 class="text-2xl sm:text-3xl font-bold mb-5 font-heading">
           {masjid?.name ?? 'Masjid'}
@@ -263,14 +273,14 @@
         <div class="relative">
           <div class="geometric-pattern absolute inset-0 rounded-2xl"></div>
           <div class="relative z-10">
-            <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 font-heading">
+            <h1 class="text-2xl sm:text-3xl font-bold mb-2 font-heading">
               {masjid?.name ?? 'Masjid'}
             </h1>
             <div class="mt-6 glass-card flex flex-col items-center gap-3 w-full max-w-sm mx-auto px-6 py-5">
               <span class="text-xs uppercase tracking-[0.2em]" style="color: var(--color-text-dim);">
                 {nextPrayerName} in
               </span>
-              <span class="text-4xl sm:text-5xl font-mono font-bold tabular-nums text-accent">
+              <span class="text-4xl font-mono font-bold tabular-nums text-accent">
                 {countdownDisplay}
               </span>
             </div>
@@ -282,8 +292,10 @@
     </section>
   {/if}
 
-  <!-- ── Main column (left 2/3) — announcements + prayer ────────────────── -->
-  <div class="lg:col-span-2 space-y-6">
+  <!-- ── Content column (left 2/3) — announcements → post → donate ────── -->
+  <div
+    class="{opts.photoUrl ? 'order-1' : 'order-2'} lg:col-start-1 lg:col-span-2 lg:row-start-1 lg:row-span-3 space-y-6"
+  >
     {#if pinnedAnnouncement}
       <section class="c-announce-prominent glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
         <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
@@ -294,32 +306,44 @@
           {@html pinnedAnnouncement.compiled_html}
         </div>
       </section>
+    {/if}
 
+    {#if pinnedAnnouncement && homepagePost}
       <div class="c-section-divider" aria-hidden="true">
         <StarBand band={14} />
       </div>
     {/if}
 
-    <section class="c-prayer-compact">
-      <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
-        Today&rsquo;s Prayer Times
-      </h2>
-      {#if prayerTimes && Object.keys(prayerTimes).length > 0}
-        <PrayerTable
-          {times}
-          labels={{ adhaan: theme?.label_adhaan ?? 'Adhaan', iqaamah: theme?.label_iqaamah ?? 'Iqaamah', sunrise: theme?.label_sunrise ?? 'Sunrise' }}
-          timeFormat={theme?.time_format ?? '24h'}
-          {currentPrayerIndex}
-          {nextPrayerIndex}
-          rosetteMarker={mishkaat}
-        />
-      {:else}
-        <div class="h-60 rounded-lg animate-shimmer" style="background: var(--color-surface);"></div>
-      {/if}
-    </section>
+    {#if homepagePost}
+      <section>
+        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
+          {homepagePost.title}
+        </h2>
+        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
+          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+            {@html homepagePost.compiled_html}
+          </div>
+        </div>
+      </section>
+    {/if}
+
+    {#if parseDonationLinks(masjid?.donation_links).length > 0}
+      <section class="text-center lg:text-left">
+        <a
+          href="/{masjid?.slug}/donate"
+          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 bg-accent shadow-lg"
+          style="text-shadow: 0 1px 2px rgba(0,0,0,0.2);"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+          </svg>
+          Support This Masjid
+        </a>
+      </section>
+    {/if}
   </div>
 
-  <!-- ── Sidebar ───────────────────────────────────────────────────────── -->
+  <!-- ── Timings column (right 1/3) — prayer table + jumu'ah ──────────── -->
   {#snippet jumuahSection()}
     {#if hasJumuah}
       <section>
@@ -345,41 +369,33 @@
     {/if}
   {/snippet}
 
-  <aside class="space-y-6 lg:pt-6">
+  <div
+    class="{opts.photoUrl ? 'order-2' : 'order-3'} lg:col-start-3 {opts.photoUrl ? 'lg:row-start-1' : 'lg:row-start-2'} lg:row-span-2 space-y-6"
+  >
     {#if jumuahPinned}
       {@render jumuahSection()}
     {/if}
 
-    {#if homepagePost}
-      <section>
-        <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider text-accent font-heading">
-          {homepagePost.title}
-        </h2>
-        <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
-          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
-            {@html homepagePost.compiled_html}
-          </div>
-        </div>
-      </section>
-    {/if}
+    <section class="c-prayer-compact">
+      <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
+        Today&rsquo;s Prayer Times
+      </h2>
+      {#if prayerTimes && Object.keys(prayerTimes).length > 0}
+        <PrayerTable
+          {times}
+          labels={{ adhaan: (theme?.label_adhaan as string) ?? 'Adhaan', iqaamah: (theme?.label_iqaamah as string) ?? 'Iqaamah', sunrise: (theme?.label_sunrise as string) ?? 'Sunrise' }}
+          timeFormat={timeFormat}
+          {currentPrayerIndex}
+          {nextPrayerIndex}
+          rosetteMarker={mishkaat}
+        />
+      {:else}
+        <div class="h-60 rounded-lg animate-shimmer" style="background: var(--color-surface);"></div>
+      {/if}
+    </section>
 
     {#if !jumuahPinned}
       {@render jumuahSection()}
     {/if}
-
-    {#if parseDonationLinks(masjid?.donation_links).length > 0}
-      <section class="text-center">
-        <a
-          href="/{masjid?.slug}/donate"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 bg-accent shadow-lg"
-          style="text-shadow: 0 1px 2px rgba(0,0,0,0.2);"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-          Support This Masjid
-        </a>
-      </section>
-    {/if}
-  </aside>
+  </div>
 </div>

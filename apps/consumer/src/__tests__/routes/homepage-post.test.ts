@@ -146,7 +146,8 @@ describe('Homepage post pin card', () => {
 
     expect(screen.getByText('Youth Halaqa')).toBeInTheDocument();
 
-    const postSections = container.querySelectorAll('aside section');
+    // The homepage post lives in the left content column (no aside wrapper).
+    const postSections = container.querySelectorAll('section');
     const postSection = [...postSections].find((s) =>
       s.textContent?.includes('Weekly youth halaqa'),
     );
@@ -171,7 +172,7 @@ describe('Homepage post pin card', () => {
     const { container } = render(HomePage);
 
     const postCards = container.querySelectorAll(
-      'aside .glass-card.border-l-4',
+      '.glass-card.border-l-4',
     );
     expect(postCards.length).toBeGreaterThanOrEqual(1);
 

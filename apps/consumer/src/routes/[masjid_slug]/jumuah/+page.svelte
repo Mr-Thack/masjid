@@ -4,13 +4,13 @@
   import LoadingSpinner from '$lib/components/LoadingSpinner.svelte';
   import ErrorState from '$lib/components/ErrorState.svelte';
   import EmptyState from '$lib/components/EmptyState.svelte';
-  import { formatTime } from '$lib/time';
+  import { formatTime, type TimeFormat } from '$lib/time';
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
   let theme = $derived(data.theme);
 
-  let timeFormat = $derived(theme?.time_format ?? '24h');
+  let timeFormat = $derived(((theme?.time_format as string) ?? '24h') as TimeFormat);
   let speechLabel = $derived(theme?.label_speech ?? 'Speech');
   let sessions = $state<JumuahSession[]>([]);
   let loading = $state(false);

@@ -23,7 +23,7 @@ export function formatZodError(zodError: z.ZodError): FormattedZodError {
   const result: FormattedZodError = { message, path, code };
 
   if (issue.code === 'invalid_enum_value' || issue.code === 'invalid_type') {
-    result.provided = (issue as Record<string, unknown>).received;
+    result.provided = (issue as any).received;
   }
 
   if (issue.code === 'invalid_enum_value') {
@@ -144,17 +144,17 @@ export function formatPrayerRuleError(zodError: z.ZodError): { message: string; 
 }
 
 function formatPrayerNameError(issue: z.ZodIssue): string {
-  const received = (issue as Record<string, unknown>).received as string | undefined;
+  const received = (issue as any).received as string | undefined;
   return `Invalid prayer name '${received || 'unknown'}'. Must be one of: fajr, dhuhr, asr, maghrib, isha.`;
 }
 
 function formatConditionTypeError(issue: z.ZodIssue): string {
-  const received = (issue as Record<string, unknown>).received as string | undefined;
+  const received = (issue as any).received as string | undefined;
   return `Unknown condition type '${received || 'unknown'}'. Must be one of: always, day_of_week, month, hijri_month, date_range, month_day_range, hijri_day_range, time_of_day.`;
 }
 
 function formatActionTypeError(issue: z.ZodIssue): string {
-  const received = (issue as Record<string, unknown>).received as string | undefined;
+  const received = (issue as any).received as string | undefined;
   return `Unknown action type '${received || 'unknown'}'. Must be one of: add_minutes, round_up, round_down, round_nearest, set_fixed_time, right_after_adhaan, set_offset_from_prayer, cap_min, cap_max.`;
 }
 

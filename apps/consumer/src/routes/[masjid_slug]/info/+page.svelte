@@ -4,7 +4,7 @@
 
   let data = $derived($page.data);
   let masjid = $derived(data.masjid);
-  let opts = $derived(resolveStyleOptions(parseStyleOptions(data.theme?.style_options)));
+  let opts = $derived(resolveStyleOptions(parseStyleOptions(data.theme?.style_options as string | Record<string, unknown> | null | undefined)));
 
   let address = $derived.by(() => {
     const parts = [

@@ -27,7 +27,7 @@ describe('load', () => {
     const result = await load({
       params: { masjid_slug: 'test' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(result.masjid).toEqual(payload.masjid);
     expect(result.theme).toEqual(payload.theme);
@@ -54,7 +54,7 @@ describe('load', () => {
     await load({
       params: { masjid_slug: 'my-masjid' },
       fetch: mockFetch,
-    } as Parameters<typeof load>[0]);
+    } as any);
 
     expect(mockFetch).toHaveBeenCalledWith('/api/v1/masjids/my-masjid');
   });
@@ -69,7 +69,7 @@ describe('load', () => {
       load({
         params: { masjid_slug: 'nonexistent' },
         fetch: mockFetch,
-      } as Parameters<typeof load>[0]),
+      } as any),
     ).rejects.toHaveProperty('status', 404);
   });
 
@@ -80,7 +80,7 @@ describe('load', () => {
       load({
         params: { masjid_slug: 'test' },
         fetch: mockFetch,
-      } as Parameters<typeof load>[0]),
+      } as any),
     ).rejects.toThrow('Network error');
   });
 });

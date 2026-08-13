@@ -80,15 +80,15 @@ describe('compareD1Drift', () => {
 });
 
 describe('parseSchemaSql (against the real schema.sql)', () => {
-  it('parses the posts table with columns in declaration order', () => {
+  it('parses the content table with columns in declaration order', () => {
     const tables = parseSchemaSql(fs.readFileSync(resolve(ROOT, 'schema.sql'), 'utf-8'));
-    const posts = tables.get('posts');
-    expect(posts).toBeDefined();
-    expect([...posts!.keys()]).toEqual([
+    const contentTable = tables.get('content');
+    expect(contentTable).toBeDefined();
+    expect([...contentTable!.keys()]).toEqual([
       'id', 'masjid_id', 'slug', 'title', 'content_markdown', 'compiled_html',
-      'show_on_homepage', 'show_on_info', 'is_hidden', 'created_at', 'updated_at',
+      'content_type', 'show_on_homepage', 'show_on_info', 'is_hidden', 'created_at', 'updated_at',
     ]);
-    expect(posts!.get('title')!.type).toBe('TEXT');
-    expect(posts!.get('created_at')!.type).toBe('TEXT'); // TIMESTAMP normalized
+    expect(contentTable!.get('title')!.type).toBe('TEXT');
+    expect(contentTable!.get('created_at')!.type).toBe('TEXT'); // TIMESTAMP normalized
   });
 });

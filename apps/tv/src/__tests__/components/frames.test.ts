@@ -31,6 +31,7 @@ const soulProps = {
     { title: 'Eid prayer at 8 AM', html: null },
   ],
   donationUrl: 'https://example.com/donate',
+  donatePageUrl: null,
   appeal: 'Every contribution makes a difference',
 };
 
@@ -116,17 +117,17 @@ describe('SoulColumn', () => {
     { kind: 'hadith', pinned: false },
     { kind: 'announcements', pinned: false, index: 0 },
     { kind: 'announcements', pinned: false, index: 1 },
-    { kind: 'donate', pinned: false },
+    { kind: 'donate-qr', pinned: false },
     { kind: 'donate-qr', pinned: false },
   ];
 
   it('renders the highest-priority frame first', () => {
-    const { container } = render(SoulColumn, { props: { frames, ...soulProps } });
+    const { container } = render(SoulColumn, { props: { frames, ...soulProps } as any });
     expect(container.querySelector('[data-frame-kind="jumuah"]')).toBeTruthy();
   });
 
   it('rotates to the next frame after the frame duration', async () => {
-    const { container } = render(SoulColumn, { props: { frames, ...soulProps } });
+    const { container } = render(SoulColumn, { props: { frames, ...soulProps } as any });
     expect(container.querySelector('[data-frame-kind="jumuah"]')).toBeTruthy();
 
     await vi.advanceTimersByTimeAsync(FRAME_DURATION_MS + 100);
@@ -134,7 +135,7 @@ describe('SoulColumn', () => {
   });
 
   it('shows announcements one at a time by slot index', async () => {
-    const { container } = render(SoulColumn, { props: { frames, ...soulProps } });
+    const { container } = render(SoulColumn, { props: { frames, ...soulProps } as any });
     await vi.advanceTimersByTimeAsync(FRAME_DURATION_MS * 2 + 100);
     const first = container.querySelector('[data-frame-kind="announcements"]');
     expect(first?.getAttribute('data-frame-index')).toBe('0');
@@ -147,14 +148,14 @@ describe('SoulColumn', () => {
   });
 
   it('wraps back to the first frame after the last', async () => {
-    const { container } = render(SoulColumn, { props: { frames, ...soulProps } });
+    const { container } = render(SoulColumn, { props: { frames, ...soulProps } as any });
     await vi.advanceTimersByTimeAsync(FRAME_DURATION_MS * frames.length + 100);
     expect(container.querySelector('[data-frame-kind="jumuah"]')).toBeTruthy();
   });
 
   it('does not rotate with reduced motion (§7.5 rule 6)', async () => {
     const { container } = render(SoulColumn, {
-      props: { frames, reducedMotion: true, ...soulProps },
+      props: { frames, reducedMotion: true, ...soulProps } as any,
     });
     expect(container.querySelector('[data-frame-kind="jumuah"]')).toBeTruthy();
     await vi.advanceTimersByTimeAsync(FRAME_DURATION_MS * 3 + 100);
@@ -164,13 +165,13 @@ describe('SoulColumn', () => {
   });
 
   it('renders nothing when there are no frames', () => {
-    const { container } = render(SoulColumn, { props: { frames: [], ...soulProps } });
+    const { container } = render(SoulColumn, { props: { frames: [], ...soulProps } as any });
     expect(container.querySelector('.soul-frames')).toBeNull();
   });
 
   it('renders a single frame statically without rotating', async () => {
     const { container } = render(SoulColumn, {
-      props: { frames: [{ kind: 'hadith', pinned: false }], ...soulProps },
+      props: { frames: [{ kind: 'hadith', pinned: false }], ...soulProps } as any,
     });
     expect(container.querySelector('[data-frame-kind="hadith"]')).toBeTruthy();
     await vi.advanceTimersByTimeAsync(FRAME_DURATION_MS * 2 + 100);

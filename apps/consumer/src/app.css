@@ -671,9 +671,13 @@ html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-
    Header logo image
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* Definite 38×38 box (not max-height + width:auto): an SVG logo without
+   intrinsic width/height contributes ~0 to the header flex basis, squeezing
+   the masjid name into ellipsis. A definite box sizes correctly for any
+   image; object-fit: contain letterboxes non-square logos inside it. */
 .c-logo-img {
-  max-height: 38px;
-  width: auto;
+  width: 38px;
+  height: 38px;
   object-fit: contain;
   flex-shrink: 0;
 }

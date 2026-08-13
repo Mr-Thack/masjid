@@ -245,6 +245,20 @@
     return map;
   });
 
+  // --- Ceremony state (declared early — boardPhase depends on these) -----
+  let nowSeconds = $derived(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds());
+
+  let prayerWindows = $derived.by(() => {
+    const windows = {} as Record<PrayerKey, { adhaan: number; iqaamah: number }>;
+    for (const t of times) {
+      windows[t.key] = {
+        adhaan: t.adhaanHM[0] * 60 + t.adhaanHM[1],
+        iqaamah: t.iqaamahHM[0] * 60 + t.iqaamahHM[1],
+      };
+    }
+    return windows;
+  });
+
   let boardPhase = $derived(
     getBoardPhase(now.getTime(), {
       hasChanges: upcomingChanges.length > 0,
@@ -264,7 +278,7 @@
   });
 
   // --- Soul column frames (§7.5) -----------------------------------------
-  let donatePageUrl = $derived(payload.masjid.donate_page_url ?? null);
+  let donatePageUrl = $derived((payload.masjid as Record<string, unknown>).donate_page_url as string | null ?? null);
 
   let framesList = $derived(
     buildFrames({
@@ -291,20 +305,6 @@
       .slice(0, MAX_ANNOUNCEMENT_FRAMES)
       .map((a) => ({ title: a.title, html: a.compiled_html })),
   );
-
-  // --- Ceremony states (§7.6) --------------------------------------------
-  let nowSeconds = $derived(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds());
-
-  let prayerWindows = $derived.by(() => {
-    const windows = {} as Record<PrayerKey, { adhaan: number; iqaamah: number }>;
-    for (const t of times) {
-      windows[t.key] = {
-        adhaan: t.adhaanHM[0] * 60 + t.adhaanHM[1],
-        iqaamah: t.iqaamahHM[0] * 60 + t.iqaamahHM[1],
-      };
-    }
-    return windows;
-  });
 
   let sunriseMinutes = $derived.by(() => {
     const [sh, sm] = sunriseRaw.split(':').map(Number);

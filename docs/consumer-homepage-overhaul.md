@@ -10,6 +10,17 @@
 - **`donateAppeal` and `emblem: 'engraved'` already exist** and are fully wired (Zod schema, ui-utils resolver, admin UI). Workstream F/G are reduced to the *rendering* that is still missing, not the field plumbing.
 - **The R2 upload plan was wrong.** The API worker's `ASSETS` binding is already taken by SvelteKit's static-assets binding (`apps/api/wrangler.toml`). File upload is an optional stretch; the sprint default is URL-only.
 
+### Layout correction (2026-08-13, post-implementation)
+
+The original Workstream B put the hero and prayer table in the left 2/3 column — directly contradicting board feedback #2 ("the arch + prayer table take up 2/3 of the width… de-emphasized") and producing an orphan empty grid cell (top-right) because `col-span-2` hero + `col-span-2` main + aside in a 3-col grid leaves row 1 column 3 empty. **Shipped layout is now:**
+
+- **Desktop, right 1/3 "timings" column:** fallback hero (mihrab niche / countdown card) → prayer table → Jumu'ah (pinned *above* the prayer table Thu–Fri). With `photoUrl` set, the photo hero is full-width *above* the grid and the right column is prayer table + Jumu'ah only.
+- **Desktop, left 2/3 "content" column:** pinned announcement (`.c-announce-prominent`) → homepage post → donate CTA. `.c-section-divider` renders only between announcement and post when both exist.
+- **Mobile (single column):** hero → announcement → post → donate → prayer table → Jumu'ah (with `photoUrl`: photo hero → announcement → … → prayer/Jumu'ah).
+- Implementation: explicit `lg:col-start-*`/`lg:row-start-*`/`lg:row-span-*` placement on the three grid children (hero, content, timings) + `order-*` for mobile — no orphan cells by construction.
+- **Header logo pitfall:** an SVG logo without intrinsic `width`/`height` contributes ~0 to the header flex basis and squeezes the masjid name into ellipsis. `.c-logo-img` is a definite 38×38 box (`object-fit: contain`) so any image sizes correctly.
+- **Seed data:** Al-Noor (Mishkaat) seeds `photoUrl`/`logoUrl`/`whatsappGroupUrl`/`donateReasons` (assets committed at `apps/consumer/static/uploads/seed/`); Al-Jabal (Sakeenah) seeds `whatsappGroupUrl`/`donateReasons`, a homepage post, a Resources custom page, and a full nav item set — every overhaul branch is covered by one seed masjid or the other.
+
 ---
 
 ## 1. The overarching goal (read this first)
@@ -213,21 +224,21 @@ Phase 3 — launch AFTER B and C have shipped (needs the final DOM):
 **Files owned:** `apps/consumer/src/routes/[masjid_slug]/+page.svelte` ONLY.
 
 **Tasks:**
-1. **New hero with photo.** Read `const opts = resolveStyleOptions(parseStyleOptions(theme?.style_options))` (it is already called at the top of this file for `ceremony`; reuse or add one). If `opts.photoUrl` is set, render a full-width hero `<section class="c-hero-photo" style="background-image: url({opts.photoUrl})">` with:
+1. **New hero with photo.** Read `const opts = resolveStyleOptions(parseStyleOptions(theme?.style_options))` (it is already called at the top of this file for `ceremony`; reuse or add one). If `opts.photoUrl` is set, render a full-width hero `<section class="c-hero-photo" style="background-image: url({opts.photoUrl})">` **above the two-column grid** with:
    - `<div class="c-hero-photo-overlay">` (gradient overlay, Contract 1)
    - Masjid name in `<h1 class="c-hero-photo-title">`
    - Countdown in `<div class="c-hero-photo-count">` (reuse existing `heroLabel`/`heroCountdown`).
-   If `opts.photoUrl` is NOT set, fall back to the current hero (HeroNiche for Mishkaat, countdown card for Sakeenah). Do NOT delete the existing hero code — keep it as the fallback branch.
-2. **Move announcements up, front and center.** The pinned announcement (currently in the right `<aside>` with class `border-l-4`) moves to the LEFT column, directly under the hero, using class `c-announce-prominent`. Show title + compiled HTML prominently. Keep it simple: pinned first.
-3. **Demote the prayer table.** Move it below announcements. Change the heading to "Today's Prayer Times". Wrap in `c-prayer-compact`. Keep the table fully functional (current-row highlight, rosette marker, etc.).
+   If `opts.photoUrl` is NOT set, the fallback hero (HeroNiche for Mishkaat, countdown card for Sakeenah) renders as the **top of the right-hand timings column**. Do NOT delete the existing hero code — keep it as the fallback branch.
+2. **Move announcements up, front and center.** The pinned announcement (formerly in the right `<aside>` with class `border-l-4`) moves to the LEFT content column, first block, using class `c-announce-prominent`. Show title + compiled HTML prominently. Keep it simple: pinned first.
+3. **Demote the prayer table.** It leaves the main column entirely and joins the right-hand timings column under the hero. Heading: "Today's Prayer Times". Wrap in `c-prayer-compact`. Keep the table fully functional (current-row highlight, rosette marker, etc.).
 4. **Remove HadithCard from the homepage.** Delete the `hadith` derived value, the `HadithCard` import, and the render block. (Do not delete `HadithCard.svelte` itself.)
 5. **Remove the "upcoming changes" section.** Delete the `upcomingChanges` state, `loadUpcomingChanges`, its `$effect`, the `fetchWeeklyPrayerTimes` import, and the render block.
-6. **Clean sidebar.** Right `<aside>` now contains: jumu'ah (pinned Thu–Fri for Mishkaat, otherwise normal position), homepage post (if any), donate CTA. No announcement card (it moved to the main column).
-7. **Add section dividers** between hero → announcements → prayer using `<SectionDivider />` (Workstream D creates the component; if it doesn't exist yet, add a `<!-- divider -->` placeholder comment and let D fill it in).
+6. **Two clean columns.** Right timings column: fallback hero → prayer table → Jumu'ah (pinned above the table Thu–Fri for Mishkaat). Left content column: announcement → homepage post (if any) → donate CTA. Use explicit `lg:col-start`/`lg:row-start`/`lg:row-span` placement so no orphan grid cell exists, and `order-*` classes for the mobile sequence (hero → announcement → post → donate → prayer → Jumu'ah).
+7. **Section divider** between the announcement and the homepage post (only when both exist) using `<SectionDivider />` (Workstream D creates the component; if it doesn't exist yet, add a `<!-- divider -->` placeholder comment and let D fill it in).
 
 **Acceptance criteria:**
-- Homepage shows: hero (photo or fallback) → announcements → prayer table → sidebar (jumu'ah/post/donate).
-- No hadith card, no upcoming-changes section, no unused imports on the homepage.
+- Homepage shows: photo hero (full width) or fallback hero (right column top) → left: announcements/post/donate → right: prayer table + Jumu'ah.
+- No empty grid cell anywhere; no hadith card, no upcoming-changes section, no unused imports on the homepage.
 - `npm run test:consumer` passes. Update any test that asserted the old section order.
 
 ---

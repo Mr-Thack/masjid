@@ -45,7 +45,7 @@
       >
         {#if highlightedItem.icon}
           {@const IconComp = getIconComponent(highlightedItem.icon, highlightedItem.kind)}
-          <svelte:component this={IconComp} size={16} />
+          <svelte:component this={IconComp as any} size={16} />
         {/if}
         {highlightedItem.label}
       </a>

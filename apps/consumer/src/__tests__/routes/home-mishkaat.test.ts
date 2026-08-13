@@ -5,8 +5,9 @@
 // style systems — only the Mishkaat extras branch.)
 //
 // Note (2026-08-13): HadithCard was removed from the homepage per the
-// consumer homepage overhaul. The announcement moved from the sidebar to
-// a prominent position in the main content column (.c-announce-prominent).
+// consumer homepage overhaul. The announcement is front-and-center in the
+// left content column (.c-announce-prominent); the hero, prayer table, and
+// Jumu'ah form the right-hand timings column.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
@@ -115,7 +116,7 @@ describe('homepage — Mishkaat (§7.11)', () => {
     expect(prominent!.textContent).toContain('Eid Announcement');
   });
 
-  it('renders Jumu\u2019ah in the sidebar on Thursday (pinned position)', () => {
+  it('renders Jumu\u2019ah pinned above the prayer table on Thursday', () => {
     vi.setSystemTime(new Date('2026-07-30T10:00:00')); // Thursday
     const { container } = render(HomePage);
 
@@ -124,18 +125,19 @@ describe('homepage — Mishkaat (§7.11)', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('13:30')).toBeInTheDocument();
 
-    // Announcement heading (main col) before Jumu'ah heading (aside)
+    // Content column (Announcement) precedes the timings column; within the
+    // timings column the pinned Jumu'ah sits above the prayer table.
     const order = h2Order(container);
     const annIdx = order.indexOf('Announcement');
     const prayerIdx = order.indexOf(PRAYER_HEADING);
     const jumIdx = order.indexOf("Jumu'ah Timings");
 
     expect(annIdx).toBeGreaterThanOrEqual(0);
-    expect(prayerIdx).toBeGreaterThan(annIdx);
-    expect(jumIdx).toBeGreaterThan(prayerIdx);
+    expect(jumIdx).toBeGreaterThan(annIdx);
+    expect(prayerIdx).toBeGreaterThan(jumIdx);
   });
 
-  it('renders Jumu\u2019ah in the sidebar on Wednesday (standard position)', () => {
+  it('renders Jumu\u2019ah below the prayer table on Wednesday (standard position)', () => {
     vi.setSystemTime(new Date('2026-07-29T10:00:00')); // Wednesday
     const { container } = render(HomePage);
 
@@ -145,11 +147,13 @@ describe('homepage — Mishkaat (§7.11)', () => {
 
     const order = h2Order(container);
     const annIdx = order.indexOf('Announcement');
+    const prayerIdx = order.indexOf(PRAYER_HEADING);
     const jumIdx = order.indexOf("Jumu'ah Timings");
 
-    // Announcement is always in main col, Jumu'ah always in sidebar
+    // Announcement in the content column, then prayer table, then Jumu'ah.
     expect(annIdx).toBeGreaterThanOrEqual(0);
-    expect(jumIdx).toBeGreaterThan(annIdx);
+    expect(prayerIdx).toBeGreaterThan(annIdx);
+    expect(jumIdx).toBeGreaterThan(prayerIdx);
   });
 
   it('names the prayer during the adhaan moment', () => {
@@ -187,7 +191,7 @@ describe('homepage — Mishkaat (§7.11)', () => {
     expect(container.querySelector('.geometric-pattern')).not.toBeNull();
     expect(container.querySelector('.c-prayer-rosette')).toBeNull();
 
-    // Announcement (main col) before Jumu'ah (sidebar)
+    // Announcement (content col) before Jumu'ah (timings col)
     const order = h2Order(container);
     expect(order.indexOf('Announcement')).toBeGreaterThanOrEqual(0);
     expect(order.indexOf('Announcement')).toBeLessThan(order.indexOf("Jumu'ah Timings"));

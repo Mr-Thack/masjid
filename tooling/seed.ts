@@ -28,6 +28,7 @@ function clearSeed() {
   db.delete(schema.configSnapshots).run();
   db.delete(schema.configBranches).run();
   db.delete(schema.customDomains).run();
+  db.delete(schema.navItems).run();
   db.delete(schema.prayerRules).run();
   db.delete(schema.announcements).run();
   db.delete(schema.jumuahSessions).run();
@@ -90,10 +91,24 @@ async function seed() {
 
   // Al-Noor runs the Mishkaat flagship style system (docs/design-language.md);
   // Al-Jabal stays on Sakeenah — one seed masjid per style system.
+  // style_options exercises the consumer homepage overhaul features
+  // (docs/consumer-homepage-overhaul.md): photo hero, header logo, WhatsApp
+  // group link, and configurable donate reasons. The image assets are
+  // committed under apps/consumer/static/uploads/seed/ so the URLs resolve
+  // identically in local dev, staging, and prod.
   db.insert(schema.masjidThemes).values({
     masjidId: NOOR_MASJID_ID,
     styleSystem: 'mishkaat',
-    styleOptions: '{}',
+    styleOptions: JSON.stringify({
+      photoUrl: '/uploads/seed/noor-hero.svg',
+      logoUrl: '/uploads/seed/noor-logo.svg',
+      whatsappGroupUrl: 'https://chat.whatsapp.com/ENoorCommunity2026',
+      donateReasons: [
+        { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Your sadaqah keeps the doors open, the lights on, and the musalla clean for every worshipper.' },
+        { icon: '📚', title: 'Support Education', desc: 'Fund Quran classes, the evening maktab, and Islamic studies programs for children and adults.' },
+        { icon: '🤝', title: 'Serve the Community', desc: 'Help fund community iftars, family counseling, and outreach programs across Chicago.' },
+      ],
+    }),
     layoutPreset: 'mishkaat',
     primaryColor: '#9c7c1e',
     accentColor: '#d4af37',
@@ -383,10 +398,20 @@ async function seed() {
     adminEmail: 'admin@masjid-aljabal.org',
   }).run();
 
+  // Al-Jabal keeps photoUrl/logoUrl unset so the fallback hero and the
+  // letter-avatar header stay covered by seed data; it does exercise the
+  // WhatsApp group link and custom donate reasons.
   db.insert(schema.masjidThemes).values({
     masjidId: JABAL_MASJID_ID,
     styleSystem: 'sakeenah',
-    styleOptions: '{}',
+    styleOptions: JSON.stringify({
+      whatsappGroupUrl: 'https://chat.whatsapp.com/EJabalCommunity2026',
+      donateReasons: [
+        { icon: '🕌', title: 'The House of Allah', desc: 'Whoever builds a masjid for Allah, Allah builds for him a house in Jannah. Keep your masjid thriving.' },
+        { icon: '📖', title: 'Weekend Madrasah', desc: 'Sponsor Quran, Tajweed, Fiqh, and Urdu classes for the children of Cobb County.' },
+        { icon: '🤲', title: 'Zakat & Sadaqah', desc: 'Support families in need through our local zakat distribution and food pantry.' },
+      ],
+    }),
     layoutPreset: 'minimal-light',
     primaryColor: '#7c3aed',
     accentColor: '#d97706',
@@ -598,6 +623,49 @@ async function seed() {
       createdAt: now,
       updatedAt: now,
     },
+    {
+      // Homepage post — exercises the homepage_post branch of the consumer
+      // homepage (left content column, under the pinned announcement).
+      id: 'content-jabal-imam-note',
+      masjidId: JABAL_MASJID_ID,
+      slug: 'a-note-from-the-imam',
+      title: 'A Note from the Imam',
+      contentMarkdown: 'Assalamu alaikum wa rahmatullahi wa barakatuh,\n\nAlhamdulillah, our community continues to grow. Please remember the **maghrib** iqaamah is right after the azaan — plan to arrive a few minutes early.\n\nMay Allah bless you and your families.\n\n— Imam Yusuf',
+      compiledHtml: '<p>Assalamu alaikum wa rahmatullahi wa barakatuh,</p><p>Alhamdulillah, our community continues to grow. Please remember the <strong>maghrib</strong> iqaamah is right after the azaan — plan to arrive a few minutes early.</p><p>May Allah bless you and your families.</p><p>— Imam Yusuf</p>',
+      contentType: 'post',
+      showOnHomepage: true,
+      showOnInfo: false,
+      isHidden: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      // Resources page — reachable via the seeded nav item below (kind='page').
+      id: 'content-jabal-resources',
+      masjidId: JABAL_MASJID_ID,
+      slug: 'resources',
+      title: 'Community Resources',
+      contentMarkdown: 'Community services available at Masjid Al-Jabal:\n\n- **Nikah Officiation**: Our imams perform nikah ceremonies. Please book at least two weeks in advance via the office.\n- **Financial Help (Zakat)**: Confidential zakat and sadaqah assistance for local families. Speak to Imam Yusuf after any prayer.\n- **New Muslim Support**: Weekly shahada classes and one-on-one mentorship every Saturday after Fajr.\n- **Funeral Services**: Janazah washing, prayer, and burial coordination — call the office any time.\n- **Youth Halaqa**: Fridays after Isha in the musalla basement.',
+      compiledHtml: '<p>Community services available at Masjid Al-Jabal:</p><ul><li><strong>Nikah Officiation</strong>: Our imams perform nikah ceremonies. Please book at least two weeks in advance via the office.</li><li><strong>Financial Help (Zakat)</strong>: Confidential zakat and sadaqah assistance for local families. Speak to Imam Yusuf after any prayer.</li><li><strong>New Muslim Support</strong>: Weekly shahada classes and one-on-one mentorship every Saturday after Fajr.</li><li><strong>Funeral Services</strong>: Janazah washing, prayer, and burial coordination — call the office any time.</li><li><strong>Youth Halaqa</strong>: Fridays after Isha in the musalla basement.</li></ul>',
+      contentType: 'page',
+      showOnHomepage: false,
+      showOnInfo: false,
+      isHidden: false,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ]).run();
+
+  // Nav items — Masjid Al-Jabal only. When any items exist the consumer
+  // layout replaces its fallback defaults entirely (Home is auto-prepended),
+  // so the full route set is seeded here. Info is desktop-header-only to
+  // keep the mobile bottom bar at five items.
+  db.insert(schema.navItems).values([
+    { id: 'nav-jabal-01', masjidId: JABAL_MASJID_ID, sortOrder: 1, kind: 'route', routeSegment: 'prayer', label: 'Times', icon: 'Clock' },
+    { id: 'nav-jabal-02', masjidId: JABAL_MASJID_ID, sortOrder: 2, kind: 'route', routeSegment: 'news', label: 'News', icon: 'Megaphone' },
+    { id: 'nav-jabal-03', masjidId: JABAL_MASJID_ID, sortOrder: 3, kind: 'page', pageSlug: 'resources', label: 'Resources', icon: 'FileText' },
+    { id: 'nav-jabal-04', masjidId: JABAL_MASJID_ID, sortOrder: 4, kind: 'route', routeSegment: 'info', label: 'Info', icon: 'Info', showOnMobileBottom: false },
+    { id: 'nav-jabal-05', masjidId: JABAL_MASJID_ID, sortOrder: 5, kind: 'route', routeSegment: 'maktab', label: 'Maktab', icon: 'GraduationCap' },
   ]).run();
 
   // Custom domain (feature not used by Masjid Al-Noor seed data).

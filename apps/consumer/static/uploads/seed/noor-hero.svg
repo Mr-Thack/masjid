@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Masjid silhouette at dusk">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#120c07"/>
+      <stop offset="0.42" stop-color="#2a1f14"/>
+      <stop offset="0.72" stop-color="#4a3418"/>
+      <stop offset="1" stop-color="#7a5a24"/>
+    </linearGradient>
+    <radialGradient id="horizon-glow" cx="0.5" cy="0.98" r="0.75">
+      <stop offset="0" stop-color="#d4af37" stop-opacity="0.38"/>
+      <stop offset="0.6" stop-color="#d4af37" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#d4af37" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="window-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0d67a"/>
+      <stop offset="1" stop-color="#c9a227"/>
+    </linearGradient>
+  </defs>
+
+  <!-- sky -->
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#horizon-glow)"/>
+
+  <!-- stars -->
+  <g fill="#e8d9a8">
+    <circle cx="120" cy="90" r="1.7" opacity="0.9"/>
+    <circle cx="260" cy="180" r="1.2" opacity="0.6"/>
+    <circle cx="380" cy="70" r="1.5" opacity="0.8"/>
+    <circle cx="520" cy="150" r="1.1" opacity="0.5"/>
+    <circle cx="660" cy="60" r="1.8" opacity="0.9"/>
+    <circle cx="760" cy="190" r="1.2" opacity="0.55"/>
+    <circle cx="900" cy="90" r="1.4" opacity="0.7"/>
+    <circle cx="1040" cy="160" r="1.1" opacity="0.5"/>
+    <circle cx="1150" cy="70" r="1.6" opacity="0.85"/>
+    <circle cx="1420" cy="220" r="1.2" opacity="0.6"/>
+    <circle cx="1500" cy="100" r="1.5" opacity="0.8"/>
+    <circle cx="70" cy="260" r="1.1" opacity="0.5"/>
+    <circle cx="320" cy="300" r="1" opacity="0.45"/>
+    <circle cx="860" cy="260" r="1" opacity="0.4"/>
+    <circle cx="1560" cy="300" r="1.1" opacity="0.5"/>
+  </g>
+
+  <!-- crescent moon -->
+  <path fill-rule="evenodd" fill="#e8d9a8" opacity="0.92"
+    d="M1300 150 m-55 0 a55 55 0 1 0 110 0 a55 55 0 1 0 -110 0
+       M1319 137 m-45 0 a45 45 0 1 0 90 0 a45 45 0 1 0 -90 0"/>
+
+  <!-- masjid silhouette -->
+  <g fill="#0d0805">
+    <!-- side wings -->
+    <rect x="250" y="650" width="150" height="250"/>
+    <rect x="1200" y="650" width="150" height="250"/>
+    <!-- main hall -->
+    <rect x="400" y="560" width="800" height="340"/>
+    <!-- great dome -->
+    <path d="M800 330 C735 345 690 410 680 470 C672 520 660 545 640 560
+             L960 560 C940 545 928 520 920 470 C910 410 865 345 800 330 Z"/>
+    <!-- dome finial -->
+    <rect x="796" y="296" width="8" height="40"/>
+    <circle cx="800" cy="290" r="9"/>
+    <!-- left minaret -->
+    <rect x="338" y="480" width="28" height="420"/>
+    <rect x="326" y="462" width="52" height="14" rx="3"/>
+    <rect x="343" y="388" width="18" height="74"/>
+    <path d="M352 330 L370 388 L334 388 Z"/>
+    <circle cx="352" cy="324" r="6"/>
+    <!-- right minaret -->
+    <rect x="1234" y="480" width="28" height="420"/>
+    <rect x="1222" y="462" width="52" height="14" rx="3"/>
+    <rect x="1239" y="388" width="18" height="74"/>
+    <path d="M1248 330 L1266 388 L1230 388 Z"/>
+    <circle cx="1248" cy="324" r="6"/>
+  </g>
+
+  <!-- glowing arched windows -->
+  <g fill="url(#window-glow)" opacity="0.88">
+    <path d="M470 900 L470 760 a24 24 0 0 1 48 0 L518 760 L518 900 Z" transform="translate(-12 0)"/>
+    <path d="M590 900 L590 760 a24 24 0 0 1 48 0 L638 760 L638 900 Z"/>
+    <path d="M962 900 L962 760 a24 24 0 0 1 48 0 L1010 760 L1010 900 Z"/>
+    <path d="M1082 900 L1082 760 a24 24 0 0 1 48 0 L1130 760 L1130 900 Z"/>
+    <!-- grand central door -->
+    <path d="M765 900 L765 720 a35 35 0 0 1 70 0 L835 720 L835 900 Z"/>
+    <!-- wing windows -->
+    <path d="M300 900 L300 780 a18 18 0 0 1 36 0 L336 780 L336 900 Z"/>
+    <path d="M1264 900 L1264 780 a18 18 0 0 1 36 0 L1300 780 L1300 900 Z"/>
+  </g>
+
+  <!-- ground haze -->
+  <rect x="0" y="872" width="1600" height="28" fill="#0d0805" opacity="0.55"/>
+</svg>
