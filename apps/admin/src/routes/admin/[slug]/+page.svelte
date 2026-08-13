@@ -41,7 +41,7 @@
       prayerConfig = pc;
       try {
         const ps = await api.getPosts(masjidId);
-        posts = ps.posts || [];
+        posts = (ps.content || []);
       } catch {
         posts = [];
       }

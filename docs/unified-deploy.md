@@ -131,7 +131,7 @@ as the `d1-drift-check` gate job that `deploy-workers` needs. The static
 `npm run check-schema` only proves `schema.sql` and the Drizzle schema agree
 with each other; it cannot see the real databases, which only change when
 someone manually runs `wrangler d1 execute` (staging 500'd on
-`no such table: posts` post-deploy, 2026-08-06).
+`no such table: content` post-deploy, 2026-08-06).
 
 `tooling/check-d1-drift.ts` fails the deploy on missing tables/columns and
 type mismatches. Column-order divergence is a warning, not a failure (safe

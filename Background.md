@@ -145,7 +145,7 @@ This clean D1 (SQLite-native) script outlines the multi-tenant logical partition
 -- Target Platform: Cloudflare D1 (SQLite Serverless Runtime)
 
 DROP TABLE IF EXISTS mkt_registrations;
-DROP TABLE IF EXISTS masjid_pages;
+DROP TABLE IF EXISTS content;
 DROP TABLE IF EXISTS prayer_rules;
 DROP TABLE IF EXISTS masjid_themes;
 DROP TABLE IF EXISTS masjids;
@@ -188,14 +188,19 @@ CREATE TABLE prayer_rules (
 );
 
 -- 4. Edge-CMS Document Configuration Blocks (Write-Time Content Container)
-CREATE TABLE masjid_pages (
+CREATE TABLE content (
     id TEXT PRIMARY KEY,
     masjid_id TEXT NOT NULL,
     slug TEXT NOT NULL,                 -- Route endpoints: e.g., 'home', 'announcements', 'about'
     title TEXT NOT NULL,
+    content_markdown TEXT NOT NULL,     -- Source markdown for admin editing
     compiled_html TEXT,                 -- HTML string generated at write-time via DOMPurify sanitization
-    raw_markdown TEXT NOT NULL,         -- Source string used for subsequent administrative AI editing
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    content_type TEXT NOT NULL DEFAULT 'post',  -- 'post' | 'page'
+    show_on_homepage INTEGER NOT NULL DEFAULT 0,
+    show_on_info INTEGER NOT NULL DEFAULT 0,
+    is_hidden INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE,
     UNIQUE(masjid_id, slug)
 );
@@ -215,7 +220,7 @@ CREATE TABLE mkt_registrations (
 -- Indexing optimization layers for high-speed multi-tenant partitioning
 CREATE INDEX idx_masjids_slug ON masjids(slug);
 CREATE INDEX idx_rules_lookup ON prayer_rules(masjid_id, prayer_name);
-CREATE INDEX idx_pages_lookup ON masjid_pages(masjid_id, slug);
+CREATE INDEX idx_content_masjid_type ON content(masjid_id, content_type);
 
 ```
 

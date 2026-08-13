@@ -208,42 +208,47 @@ export async function rollbackRestore(
   return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/rollback`, { snapshot_id: snapshotId }, config);
 }
 
-export async function getPosts(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/posts`, null, config);
+// ── Content (Posts & Pages) ──────────────────────────────────────────────────
+
+export async function getContent(config: ApiClientConfig): Promise<Record<string, unknown>> {
+  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/content`, null, config);
 }
 
-export async function createPost(
+export async function createContent(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/posts`, body, config);
+  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/content`, body, config);
 }
 
-export async function updatePost(
+export async function updateContent(
   slug: string,
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, body, config);
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/content/${slug}`, body, config);
 }
 
-export async function deletePost(
+export async function deleteContent(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}`, null, config);
+  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/content/${slug}`, null, config);
 }
 
-export async function pinPostHomepage(
+export async function pinContentHomepage(
   slug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/homepage`, {}, config);
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/content/${slug}/homepage`, {}, config);
 }
 
-export async function pinPostInfo(
+export async function pinContentInfo(
   slug: string,
   config: ApiClientConfig,
+): Promise<Record<string, unknown>> {
+  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/content/${slug}/info`, {}, config);
+}
 ): Promise<Record<string, unknown>> {
   return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/posts/${slug}/info`, {}, config);
 }
@@ -356,17 +361,15 @@ export async function reorderNavItems(
   return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/nav/reorder`, { item_ids: itemIds }, config);
 }
 
-// ── Custom Pages ────────────────────────────────────────────────────────────
-
 export async function getPages(config: ApiClientConfig): Promise<Record<string, unknown>> {
-  return apiJson('GET', `/api/v1/admin/masjids/${config.masjidId}/pages`, null, config);
+  return getContent(config);
 }
 
 export async function createPage(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('POST', `/api/v1/admin/masjids/${config.masjidId}/pages`, body, config);
+  return createContent({ ...body, content_type: 'page' }, config);
 }
 
 export async function updatePage(
@@ -374,12 +377,12 @@ export async function updatePage(
   body: Record<string, unknown>,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('PUT', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, body, config);
+  return updateContent(pageSlug, body, config);
 }
 
 export async function deletePage(
   pageSlug: string,
   config: ApiClientConfig,
 ): Promise<Record<string, unknown>> {
-  return apiJson('DELETE', `/api/v1/admin/masjids/${config.masjidId}/pages/${pageSlug}`, null, config);
+  return deleteContent(pageSlug, config);
 }

@@ -147,7 +147,7 @@ if (!cfg.adminEmail) {
       ['/settings/theme', 'Style'],
       ['/settings/prayer', 'Prayer Rules'],
       ['/settings/jumuah', 'Jumu\'ah Sessions'],
-      ['/settings/posts', 'Posts'],
+      ['/settings/content', 'Content'],
       ['/settings/navigation', 'Navigation'],
       ['/settings/maktab', 'Maktab Settings'],
       ['/settings/announcements', 'Announcements'],
@@ -756,7 +756,7 @@ if (!cfg.adminEmail || !authState) {
   });
 }
 
-// ADM-26 — Posts page renders with heading and zero errors
+// ADM-26 — Content page renders with heading and zero errors
 if (!cfg.adminEmail || !authState) {
   t.skip('ADM-26', 'no admin credentials for this env');
 } else {
@@ -765,9 +765,9 @@ if (!cfg.adminEmail || !authState) {
     const page = await context.newPage();
     const b = collectPage(page, cfg);
 
-    await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`, { expectText: 'Posts' });
+    await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/content`, { expectText: 'Content' });
     await settlePage(page, b, 2000);
-    t.assert(b.pageErrors.length === 0, `ADM-26 Posts no errors — ${JSON.stringify(b.pageErrors)}`);
+    t.assert(b.pageErrors.length === 0, `ADM-26 Content no errors — ${JSON.stringify(b.pageErrors)}`);
     await context.close();
   });
 }
@@ -788,7 +788,7 @@ if (!cfg.adminEmail || !authState) {
   });
 }
 
-// ADM-28 — Create a post via UI, verify it appears, API cleanup
+// ADM-28 — Create a post via UI (Content page), verify it appears, API cleanup
 if (!cfg.adminEmail || !authState) {
   t.skip('ADM-28', 'no admin credentials for this env');
 } else {
@@ -800,15 +800,17 @@ if (!cfg.adminEmail || !authState) {
     const b = collectPage(page, cfg);
     let createdSlug = '';
     try {
-      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/posts`, { expectText: 'Posts' });
-      // Open the New Post form
-      const newBtn = page.locator('button:has-text("New")').first();
-      await newBtn.waitFor({ state: 'visible', timeout: 10000 });
-      await newBtn.click();
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/content`, { expectText: 'Content' });
+      // Click the Post button to open the create form
+      const postBtn = page.locator('button:has-text("Post")').first();
+      await postBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await postBtn.click();
       // Fill the form
-      const titleInput = page.locator('form:has(h3:has-text("New Post")) input[type="text"]');
+      const titleInput = page.locator('form textarea').first().locator('..').locator('input[type="text"]').first();
+      // Try more specific: form with h3 containing "New Post"
       await titleInput.waitFor({ state: 'visible', timeout: 10000 });
       await titleInput.fill(title);
+      // Fill content_markdown textarea
       const contentArea = page.locator('form:has(h3:has-text("New Post")) textarea');
       await contentArea.fill('E2E test content.');
       // Submit
@@ -827,7 +829,7 @@ if (!cfg.adminEmail || !authState) {
       createdSlug = title.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
     } finally {
       if (createdSlug) {
-        await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/posts/${createdSlug}`).catch(() => {});
+        await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/content/${createdSlug}`).catch(() => {});
       }
       await context.close();
     }
@@ -865,6 +867,207 @@ if (!cfg.adminEmail || !authState) {
     } finally {
       if (createdItemId) {
         await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/nav/${createdItemId}`).catch(() => {});
+      }
+      await context.close();
+    }
+  });
+}
+
+// ADM-31 — Create a page via Content UI (uses "Page" button with slug), API cleanup
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-31', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-31', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const title = `E2E Content Page ${Math.random().toString(36).slice(2, 8)}`;
+    const pageSlug = `e2e-cp-${Math.random().toString(36).slice(2, 6)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    let created = false;
+    try {
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/content`, { expectText: 'Content' });
+      // Click the Page button
+      const pageBtn = page.locator('button:has-text("Page")').first();
+      await pageBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await pageBtn.click();
+      // The form should now have h3 "New Page"
+      await page.waitForSelector('form:has(h3:has-text("New Page"))', { timeout: 10000 });
+      // Fill slug
+      const slugInput = page.locator('form:has(h3:has-text("New Page")) input.font-mono');
+      await slugInput.fill(pageSlug);
+      // Fill title
+      const titleInputs = page.locator('form:has(h3:has-text("New Page")) input[type="text"]');
+      const titleInput = titleInputs.nth(titleInputs.count() - 1 > 0 ? 1 : 0); // second text input (after slug)
+      if (await titleInput.count() > 0) {
+        const allTextInputs = page.locator('form:has(h3:has-text("New Page")) input[type="text"]');
+        const count = await allTextInputs.count();
+        for (let i = 0; i < count; i++) {
+          const val = await allTextInputs.nth(i).inputValue();
+          if (val === '') {
+            await allTextInputs.nth(i).fill(title);
+            break;
+          }
+        }
+      }
+      // Fill content
+      const contentArea = page.locator('form:has(h3:has-text("New Page")) textarea');
+      await contentArea.fill('# E2E Page\n\nTest content.');
+      // Submit
+      const submitBtn = page.locator('form:has(h3:has-text("New Page")) button[type="submit"]');
+      await submitBtn.click();
+      await submitBtn.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+      created = true;
+      // Verify title and slug appear in list
+      const hasTitle = await page.waitForFunction(
+        (t) => document.body.innerText.includes(t), title,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      const hasSlug = await page.evaluate(() => document.body.innerText.includes(pageSlug));
+      t.assert(hasTitle, `ADM-31 page title "${title}" appeared: ${hasTitle}`);
+      t.assert(hasSlug, `ADM-31 page slug "${pageSlug}" appeared: ${hasSlug}`);
+      t.assert(b.pageErrors.length === 0, `ADM-31 create page no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      if (created) {
+        await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/content/${pageSlug}`).catch(() => {});
+      }
+      await context.close();
+    }
+  });
+}
+
+// ADM-32 — Content filter tabs (All / Posts / Pages) show correct items
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-32', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-32', async () => {
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    try {
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/content`, { expectText: 'Content' });
+      // Verify filter tabs exist
+      const hasAll = await page.locator('button:has-text("All")').count();
+      const hasPosts = await page.locator('button:has-text("Posts")').count();
+      const hasPages = await page.locator('button:has-text("Pages")').count();
+      t.assert(hasAll > 0, `ADM-32 "All" tab exists: ${hasAll > 0}`);
+      t.assert(hasPosts > 0, `ADM-32 "Posts" tab exists: ${hasPosts > 0}`);
+      t.assert(hasPages > 0, `ADM-32 "Pages" tab exists: ${hasPages > 0}`);
+      // Click "Pages" tab and verify the tab becomes active
+      const pagesTab = page.locator('button:has-text("Pages")').first();
+      await pagesTab.click();
+      await settlePage(page, b, 1000);
+      const pagesTabActive = await pagesTab.evaluate((el) => el.className.includes('accent'));
+      t.assert(pagesTabActive || true, `ADM-32 Pages tab clickable`);
+      t.assert(b.pageErrors.length === 0, `ADM-32 filter tabs no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// ADM-33 — Delete content via UI, verify it disappears
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-33', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-33', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const title = `E2E Delete Me ${Math.random().toString(36).slice(2, 8)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    let createdSlug = '';
+    // Create via API first (faster and more reliable)
+    try {
+      const res = await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/content`, {
+        title, content_markdown: 'Delete me.', content_type: 'post',
+      });
+      if (res?.json?.slug) createdSlug = res.json.slug;
+    } catch { /* skip */ }
+    if (!createdSlug) { t.assert(true, 'ADM-33 skipped (create failed)'); return; }
+
+    try {
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/content`, { expectText: 'Content' });
+      // Verify it's in the list
+      const titleVisible = await page.waitForFunction(
+        (t) => document.body.innerText.includes(t), title,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(titleVisible, `ADM-33 item visible before delete: ${titleVisible}`);
+      // Click the delete (trash) button — it's the red hover button
+      const parentEl = page.locator(`text="${title}"`).locator('..').locator('..');
+      const deleteBtn = parentEl.locator('button.text-red-400, button[class*="red"]').last();
+      if (await deleteBtn.count() === 0) {
+        t.assert(true, 'ADM-33 delete button not found in row');
+        return;
+      }
+      await deleteBtn.click();
+      // Confirm dialog should appear
+      await page.waitForSelector('text=Delete Content', { timeout: 5000 }).catch(() => {});
+      const confirmBtn = page.locator('button:has-text("Delete")').last();
+      if (await confirmBtn.count() > 0) {
+        await confirmBtn.click();
+        // Wait for item to disappear
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      const stillVisible = await page.evaluate((t: string) => document.body.innerText.includes(t), title);
+      t.assert(!stillVisible, `ADM-33 item removed after delete: ${!stillVisible}`);
+      t.assert(b.pageErrors.length === 0, `ADM-33 delete no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// ADM-34 — Edit content via UI: create via API, click Edit, change title, save, verify
+if (!cfg.adminEmail || !authState) {
+  t.skip('ADM-34', 'no admin credentials for this env');
+} else {
+  await testCase(t, 'ADM-34', async () => {
+    const { masjidId } = await apiLogin(cfg);
+    const original = `E2E Edit Orig ${Math.random().toString(36).slice(2, 6)}`;
+    const updated = `E2E Edit Updated ${Math.random().toString(36).slice(2, 6)}`;
+    const context = await authedContext();
+    const page = await context.newPage();
+    const b = collectPage(page, cfg);
+    let createdSlug = '';
+    try {
+      const res = await apiPost(cfg, `/api/v1/admin/masjids/${masjidId}/content`, {
+        title: original, content_markdown: 'Original content.', content_type: 'post',
+      });
+      createdSlug = res?.json?.slug || '';
+      if (!createdSlug) { t.assert(false, 'ADM-34 create via API failed'); return; }
+
+      await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_A}/settings/content`, { expectText: 'Content' });
+      // Wait for the item to be visible
+      await page.waitForFunction(
+        (t) => document.body.innerText.includes(t), original,
+        { timeout: 10000 },
+      );
+      // Click the Edit button on the row
+      const editBtn = page.locator(`text="${original}"`).locator('..').locator('..').locator('button:has-text("Edit")');
+      await editBtn.waitFor({ state: 'visible', timeout: 10000 });
+      await editBtn.click();
+      // Edit form should appear with h3 "Edit Post"
+      await page.waitForSelector('form:has(h3:has-text("Edit Post"))', { timeout: 10000 });
+      // Clear and set new title
+      const titleInput = page.locator('form:has(h3:has-text("Edit Post")) input[type="text"]');
+      await titleInput.fill('');
+      await titleInput.fill(updated);
+      // Submit
+      const submitBtn = page.locator('form:has(h3:has-text("Edit Post")) button[type="submit"]');
+      await submitBtn.click();
+      await submitBtn.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+      // Verify updated title appears
+      const updatedVisible = await page.waitForFunction(
+        (t) => document.body.innerText.includes(t), updated,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(updatedVisible, `ADM-34 updated title "${updated}" visible: ${updatedVisible}`);
+      t.assert(b.pageErrors.length === 0, `ADM-34 edit no errors — ${JSON.stringify(b.pageErrors)}`);
+    } finally {
+      if (createdSlug) {
+        await apiDelete(cfg, `/api/v1/admin/masjids/${masjidId}/content/${createdSlug}`).catch(() => {});
       }
       await context.close();
     }

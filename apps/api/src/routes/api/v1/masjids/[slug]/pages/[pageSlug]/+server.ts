@@ -1,6 +1,6 @@
 import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
-import { masjids, masjidPages } from '$lib/server/db/schema';
+import { masjids, content } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -20,11 +20,12 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
     const page = await db
       .select()
-      .from(masjidPages)
+      .from(content)
       .where(
         and(
-          eq(masjidPages.masjidId, masjid.id),
-          eq(masjidPages.slug, params.pageSlug),
+          eq(content.masjidId, masjid.id),
+          eq(content.slug, params.pageSlug),
+          eq(content.contentType, 'page'),
         ),
       )
       .get();
@@ -36,7 +37,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
     return JsonResponse({
       title: page.title,
       compiled_html: page.compiledHtml,
-      last_updated: page.lastUpdated,
+      last_updated: page.updatedAt,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

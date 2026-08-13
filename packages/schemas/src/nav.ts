@@ -79,21 +79,3 @@ export const NavItemResponseSchema = z.object({
   show_on_mobile_bottom: z.boolean(),
   created_at: z.string(),
 });
-
-export const CreatePageSchema = z.object({
-  slug: z.string().min(1).max(50).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  title: z.string().min(1).max(200),
-  raw_markdown: z.string().min(1),
-});
-
-export const UpdatePageSchema = CreatePageSchema.partial();
-
-export const PageResponseSchema = z.object({
-  id: z.string(),
-  masjid_id: z.string(),
-  slug: z.string(),
-  title: z.string(),
-  compiled_html: z.string().nullable(),
-  raw_markdown: z.string(),
-  last_updated: z.string().nullable(),
-});

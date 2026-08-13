@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { getDb } from '$lib/server/db';
-import { masjids, masjidThemes, admins, navItems, masjidPages } from '$lib/server/db/schema';
+import { masjids, masjidThemes, admins, navItems, content } from '$lib/server/db/schema';
 import { eq, asc } from 'drizzle-orm';
 
 import { GET as getAdminNav, POST as postAdminNav } from '../../routes/api/v1/admin/masjids/[id]/nav/+server';
@@ -10,12 +10,12 @@ import {
 } from '../../routes/api/v1/admin/masjids/[id]/nav/[itemId]/+server';
 import { PUT as putReorderNav } from '../../routes/api/v1/admin/masjids/[id]/nav/reorder/+server';
 import { GET as getPublicNav } from '../../routes/api/v1/masjids/[slug]/nav/+server';
-import { GET as getAdminPages, POST as postAdminPages } from '../../routes/api/v1/admin/masjids/[id]/pages/+server';
+import { GET as getAdminContent, POST as postAdminContent } from '../../routes/api/v1/admin/masjids/[id]/content/+server';
 import {
-  GET as getAdminPage,
-  PUT as putAdminPage,
-  DELETE as deleteAdminPage,
-} from '../../routes/api/v1/admin/masjids/[id]/pages/[pageSlug]/+server';
+  GET as getAdminContentItem,
+  PUT as putAdminContent,
+  DELETE as deleteAdminContent,
+} from '../../routes/api/v1/admin/masjids/[id]/content/[contentSlug]/+server';
 import { GET as getPublicPage } from '../../routes/api/v1/masjids/[slug]/pages/[pageSlug]/+server';
 
 let db: ReturnType<typeof getDb>;
@@ -96,14 +96,19 @@ async function seedPage(masjidId: string, overrides: Record<string, unknown> = {
   const tag = `pg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const id = `page-${tag}`;
   const now = new Date().toISOString();
-  await db.insert(masjidPages).values({
+  await db.insert(content).values({
     id,
     masjidId,
     slug: (overrides.slug as string) ?? `page-slug-${tag}`,
     title: (overrides.title as string) ?? `Test Page ${tag}`,
     compiledHtml: (overrides.compiledHtml as string) ?? '<p>Hello <strong>world</strong></p>',
-    rawMarkdown: (overrides.rawMarkdown as string) ?? 'Hello **world**',
-    lastUpdated: (overrides.lastUpdated as string) ?? now,
+    contentMarkdown: (overrides.contentMarkdown as string) ?? 'Hello **world**',
+    contentType: (overrides.contentType as string) ?? 'page',
+    showOnHomepage: (overrides.showOnHomepage as boolean) ?? false,
+    showOnInfo: (overrides.showOnInfo as boolean) ?? false,
+    isHidden: (overrides.isHidden as boolean) ?? false,
+    createdAt: (overrides.createdAt as string) ?? now,
+    updatedAt: (overrides.updatedAt as string) ?? now,
   });
   return { id, slug: (overrides.slug as string) ?? `page-slug-${tag}`, title: (overrides.title as string) ?? `Test Page ${tag}` };
 }
@@ -559,8 +564,8 @@ describe('Public Nav Endpoint', () => {
 describe('Admin Pages CRUD', () => {
   it('returns empty list for masjid with no pages', async () => {
     const { id } = await seedMasjid('pages-empty');
-    const req = createRequest('GET', `/api/v1/admin/masjids/${id}/pages`);
-    const res = await getAdminPages({
+    const req = createRequest('GET', `/api/v1/admin/masjids/${id}/content`);
+    const res = await getAdminContent({
       params: { id, slug: 'pages-empty' },
       request: req,
       url: new URL(req.url),
@@ -576,12 +581,13 @@ describe('Admin Pages CRUD', () => {
 
   it('creates a page with compiled HTML', async () => {
     const { id } = await seedMasjid('page-create');
-    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/pages`, {
+    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/content`, {
       slug: 'about-us',
       title: 'About Us',
-      raw_markdown: '# Hello\n\nThis is a test page.',
+      content_type: 'page',
+      content_markdown: '# Hello\n\nThis is a test page.',
     });
-    const res = await postAdminPages({
+    const res = await postAdminContent({
       params: { id, slug: 'page-create' },
       request: req,
       url: new URL(req.url),
@@ -595,27 +601,27 @@ describe('Admin Pages CRUD', () => {
     expect(body.slug).toBe('about-us');
     expect(body.title).toBe('About Us');
     expect(body.compiled_html).toContain('<h1>Hello</h1>');
-    expect(body.raw_markdown).toBe('# Hello\n\nThis is a test page.');
+    expect(body.content_markdown).toBe('# Hello\n\nThis is a test page.');
   });
 
   it('returns 409 for duplicate slug', async () => {
     const { id } = await seedMasjid('page-dup');
-    await postAdminPages({
+    await postAdminContent({
       params: { id, slug: 'page-dup' },
-      request: createRequest('POST', `/api/v1/admin/masjids/${id}/pages`, {
-        slug: 'my-page', title: 'First', raw_markdown: 'one',
+      request: createRequest('POST', `/api/v1/admin/masjids/${id}/content`, {
+        slug: 'my-page', title: 'First', content_markdown: 'one',
       }),
-      url: new URL(`/api/v1/admin/masjids/${id}/pages`, 'http://localhost'),
+      url: new URL(`/api/v1/admin/masjids/${id}/content`, 'http://localhost'),
       locals: adminLocals(id),
       platform: { env: {} },
       cookies: {} as any,
       fetch: globalThis.fetch,
     } as any);
 
-    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/pages`, {
-      slug: 'my-page', title: 'Second', raw_markdown: 'two',
+    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/content`, {
+      slug: 'my-page', title: 'Second', content_markdown: 'two',
     });
-    const res = await postAdminPages({
+    const res = await postAdminContent({
       params: { id, slug: 'page-dup' },
       request: req,
       url: new URL(req.url),
@@ -629,12 +635,12 @@ describe('Admin Pages CRUD', () => {
 
   it('returns 400 for invalid slug format', async () => {
     const { id } = await seedMasjid('page-bad-slug');
-    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/pages`, {
+    const req = createRequest('POST', `/api/v1/admin/masjids/${id}/content`, {
       slug: 'bad slug with spaces',
       title: 'Bad Slug',
-      raw_markdown: 'test',
+      content_markdown: 'test',
     });
-    const res = await postAdminPages({
+    const res = await postAdminContent({
       params: { id, slug: 'page-bad-slug' },
       request: req,
       url: new URL(req.url),
@@ -651,14 +657,14 @@ describe('Admin Pages CRUD', () => {
     const page = await seedPage(id, {
       slug: 'tos',
       title: 'Terms',
-      rawMarkdown: 'Old content',
+      contentMarkdown: 'Old content',
       compiledHtml: '<p>Old content</p>',
     });
 
-    const req = createRequest('PUT', `/api/v1/admin/masjids/${id}/pages/${page.slug}`, {
-      raw_markdown: 'New **content**',
+    const req = createRequest('PUT', `/api/v1/admin/masjids/${id}/content/${page.slug}`, {
+      content_markdown: 'New **content**',
     });
-    const res = await putAdminPage({
+    const res = await putAdminContent({
       params: { id, slug: 'page-update', pageSlug: page.slug },
       request: req,
       url: new URL(req.url),
@@ -670,7 +676,7 @@ describe('Admin Pages CRUD', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.compiled_html).toContain('<strong>content</strong>');
-    expect(body.raw_markdown).toBe('New **content**');
+    expect(body.content_markdown).toBe('New **content**');
   });
 
   it('deletes a page', async () => {
@@ -678,12 +684,12 @@ describe('Admin Pages CRUD', () => {
     const page = await seedPage(id, {
       slug: 'del-me',
       title: 'Delete Me',
-      rawMarkdown: 'bye',
+      contentMarkdown: 'bye',
       compiledHtml: '<p>bye</p>',
     });
 
-    const req = createRequest('DELETE', `/api/v1/admin/masjids/${id}/pages/${page.slug}`);
-    const res = await deleteAdminPage({
+    const req = createRequest('DELETE', `/api/v1/admin/masjids/${id}/content/${page.slug}`);
+    const res = await deleteAdminContent({
       params: { id, slug: 'page-delete', pageSlug: page.slug },
       request: req,
       url: new URL(req.url),
@@ -694,7 +700,7 @@ describe('Admin Pages CRUD', () => {
     } as any);
     expect(res.status).toBe(204);
 
-    const rows = await db.select().from(masjidPages).where(eq(masjidPages.masjidId, id));
+    const rows = await db.select().from(content).where(eq(content.masjidId, id));
     expect(rows.length).toBe(0);
   });
 });
@@ -708,7 +714,7 @@ describe('Public Page View', () => {
     await seedPage(id, {
       slug: 'welcome',
       title: 'Welcome Page',
-      rawMarkdown: '# Welcome\n\nHello!',
+      contentMarkdown: '# Welcome\n\nHello!',
       compiledHtml: '<h1>Welcome</h1>\n<p>Hello!</p>',
     });
 
@@ -728,12 +734,12 @@ describe('Public Page View', () => {
     expect(body.compiled_html).toContain('<h1>Welcome</h1>');
   });
 
-  it('does NOT expose raw_markdown', async () => {
+  it('does NOT expose content_markdown', async () => {
     const { id, slug } = await seedMasjid('page-no-raw');
     await seedPage(id, {
       slug: 'private-info',
       title: 'Private',
-      rawMarkdown: 'secret markdown',
+      contentMarkdown: 'secret markdown',
       compiledHtml: '<p>public html</p>',
     });
 
@@ -749,7 +755,7 @@ describe('Public Page View', () => {
     } as any);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.raw_markdown).toBeUndefined();
+    expect(body.content_markdown).toBeUndefined();
     expect(body.compiled_html).toBe('<p>public html</p>');
   });
 

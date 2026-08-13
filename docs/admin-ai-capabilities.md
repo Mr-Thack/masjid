@@ -106,7 +106,7 @@ interface DiffData {
 
 interface FormattedMutation {
   index: number;
-  domain: 'THEME' | 'PROFILE' | 'PRAYER_RULES' | 'JUMUAH' | 'ANNOUNCEMENTS';
+  domain: 'THEME' | 'PROFILE' | 'PRAYER_RULES' | 'JUMUAH' | 'ANNOUNCEMENTS' | 'CONTENT';
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'PIN' | 'REORDER';
   summary: string;      // human-readable one-liner (e.g. "Add 10 minutes to Dhuhr")
   details: string[];    // additional detail lines (e.g. ["When: Always", "Prayer: Dhuhr"])
@@ -170,6 +170,7 @@ interface FormattedMutation {
 | PRAYER_RULES | Amber | `Clock` |
 | JUMUAH | Green | `Users` |
 | ANNOUNCEMENTS | Cyan | `Megaphone` |
+| CONTENT | Indigo | `Newspaper` |
 
 ### Action Icons
 
@@ -507,7 +508,7 @@ The `BotChat` component never calls an LLM API directly. It only calls
 This section documents what the AI agent can and cannot do, mapped against the
 manual admin settings UI. It is the **canonical reference** for agent scope.
 
-### 11.1 Available Agent Tools (32 total)
+### 11.1 Available Agent Tools (43 total)
 
 | Domain | Tools | Description |
 |--------|-------|-------------|
@@ -517,7 +518,7 @@ manual admin settings UI. It is the **canonical reference** for agent scope.
 | PRAYER_RULES | `prayer_rules_{list,create,update,delete,reorder}` | Iqaamah timing rules with 8 condition types and 9 action types |
 | JUMUAH | `jumuah_{list,create,update,delete}` | Friday session label, time, khateeb, location, speech_time, is_active |
 | ANNOUNCEMENTS | `announcements_{list,create,update,delete,pin}` | Content with markdown, status (draft/published/archived), pin, expiry |
-| POSTS | `posts_{list,create,update,delete,pin_homepage,pin_info}` | Rich permanent content, homepage/Info page pins, hidden toggle |
+| CONTENT | `content_{list,create,update,delete,pin_homepage,pin_info}` | Rich permanent content (posts + pages), homepage/Info page pins, hidden toggle, `content_type` discriminator |
 | DIAGNOSTICS | `timetable_preview`, `rules_explain`, `rules_validate` | Dry-run preview, rule traces per-prayer, rule-set validation |
 | ROLLBACK | `rollback_list_snapshots`, `rollback_restore` | Point-in-time snapshot restore |
 | TIMETABLE | `timetable_import` | Batch import rules from vision-extracted timetables (atomic) |
@@ -543,7 +544,7 @@ manual admin settings UI. It is the **canonical reference** for agent scope.
 | Prayer rules CRUD | ✓ | ✓ | |
 | Jumu'ah sessions CRUD | ✓ | ✓ | |
 | Announcements CRUD + pin | ✓ | ✓ | |
-| Posts CRUD + pin | ✓ | ✓ | |
+| Content CRUD + pin | ✓ | ✓ | |
 | Snapshots and rollback | ✓ | ✓ | |
 | Dry-run timetable preview | ✓ | ✓ | |
 | Rule traces (`rules_explain`) | ✓ | — | Agent-only diagnostic |
@@ -552,7 +553,7 @@ manual admin settings UI. It is the **canonical reference** for agent scope.
 | Maktab settings & program info | ✓ | ✓ | Enrollment controls, program info (goal, schedule, curriculum, FAQs) |
 | Maktab term activation | ✓ | ✓ | Activate existing terms (term creation with Square plans is UI-only) |
 | Navigation items | ✓ | ✓ | CRUD + reorder: built-in routes, custom pages, external links, visibility toggles, highlight |
-| Custom pages | ✓ | ✓ | CRUD: slug, title, markdown → HTML compilation |
+| Custom pages (content_type='page') | ✓ | ✓ | CRUD: slug, title, markdown → HTML compilation |
 
 ### 11.3 What the Agent CANNOT Do (Manual UI Only)
 

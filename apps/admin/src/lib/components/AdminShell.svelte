@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import {
     LayoutDashboard, Sparkles, Building2, Palette, Clock, Users, Megaphone,
-    Globe, History, UserCog, BookOpen, Menu, X, LogOut, ChevronDown, Newspaper, Compass
+    Globe, History, UserCog, BookOpen, Menu, X, LogOut, ChevronDown, FileText, Compass
   } from 'lucide-svelte';
   import { auth } from '$lib/auth.svelte';
   import type { Snippet } from 'svelte';
@@ -24,7 +24,7 @@
     { href: `/admin/${masjidSlug}/settings/jumuah`, label: "Jumu'ah", icon: Users },
     { href: `/admin/${masjidSlug}/settings/maktab`, label: 'Maktab', icon: BookOpen },
     { href: `/admin/${masjidSlug}/settings/announcements`, label: 'Announcements', icon: Megaphone },
-    { href: `/admin/${masjidSlug}/settings/posts`, label: 'Posts', icon: Newspaper },
+    { href: `/admin/${masjidSlug}/settings/content`, label: 'Content', icon: FileText },
     { href: `/admin/${masjidSlug}/settings/domain`, label: 'Domain', icon: Globe },
     { href: `/admin/${masjidSlug}/settings/snapshots`, label: 'Snapshots', icon: History },
     { href: `/admin/${masjidSlug}/settings/account`, label: 'Account', icon: UserCog },

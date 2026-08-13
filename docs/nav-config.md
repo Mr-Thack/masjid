@@ -38,7 +38,7 @@ CREATE TABLE nav_items (
                                 -- (Home is IMPLICIT — clicking the masjid name/logo goes home.
                                 --  Home must never appear in nav_items.)
 
-    -- kind='page': custom markdown page (FK to masjid_pages.slug)
+    -- kind='page': custom markdown page (FK to content.slug, filtered by content_type='page')
     page_slug       TEXT,
 
     -- kind='link': external URL
@@ -159,25 +159,25 @@ All under `/api/v1/admin/masjids/{id}/nav`:
 - `label` max 30 chars
 - `icon` must be a known identifier or null (defaults per kind if null)
 
-### 3.3 Custom Pages — Wire Up `masjid_pages`
+### 3.3 Custom Pages — Wire Up `content` (pages)
 
-The `masjid_pages` table already exists but has zero API routes. Add:
+Custom pages are stored in the `content` table with `content_type='page'` (unified with posts).
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/v1/admin/masjids/{id}/pages` | List all pages |
-| `POST` | `/api/v1/admin/masjids/{id}/pages` | Create page (slug, title, raw_markdown) |
-| `GET` | `/api/v1/admin/masjids/{id}/pages/{pageSlug}` | Get single page |
-| `PUT` | `/api/v1/admin/masjids/{id}/pages/{pageSlug}` | Update page |
-| `DELETE` | `/api/v1/admin/masjids/{id}/pages/{pageSlug}` | Delete page |
-| `GET` | `/api/v1/masjids/{slug}/pages/{pageSlug}` | Public page view (returns title, compiled_html, last_updated) |
+| `GET` | `/api/v1/admin/masjids/{id}/content?content_type=page` | List all pages |
+| `POST` | `/api/v1/admin/masjids/{id}/content` | Create page (content_type='page', slug, title, content_markdown) |
+| `GET` | `/api/v1/admin/masjids/{id}/content/{slug}` | Get single page |
+| `PUT` | `/api/v1/admin/masjids/{id}/content/{slug}` | Update page |
+| `DELETE` | `/api/v1/admin/masjids/{id}/content/{slug}` | Delete page |
+| `GET` | `/api/v1/masjids/{slug}/content/{pageSlug}` | Public page view (returns title, compiled_html, updated_at) |
 
-**Markdown compilation**: When a page is created/updated, compile `raw_markdown` → `compiled_html` using the same markdown compiler used for posts and announcements (check existing `compileMarkdown` utility in the API codebase).
+**Markdown compilation**: When a page is created/updated, compile `content_markdown` → `compiled_html` using the same markdown compiler used for posts and announcements (check existing `compileMarkdown` utility in the API codebase).
 
 ### 3.4 Consumer Route for Custom Pages
 
 Add route: `apps/consumer/src/routes/[masjid_slug]/pages/[page_slug]/+page.svelte`
-- Load function fetches `GET /api/v1/masjids/{slug}/pages/{pageSlug}`
+- Load function fetches `GET /api/v1/masjids/{slug}/content/{pageSlug}`
 - Renders `compiled_html` in a prose container
 
 ---
@@ -323,7 +323,7 @@ Import `Navigation` from `lucide-svelte`.
 
 ### 5.4 Custom Pages Management
 
-The "Add Custom Page" flow creates the page via the masjid_pages CRUD endpoints and adds the nav item in one step. A separate tab or section within the page lists existing custom pages for editing/deleting.
+The "Add Custom Page" flow creates the page via the content CRUD endpoints and adds the nav item in one step. A separate tab or section within the page lists existing custom pages for editing/deleting.
 
 ---
 
@@ -433,7 +433,7 @@ export const NavItemResponseSchema = z.object({
 export const CreatePageSchema = z.object({
   slug: z.string().min(1).max(50).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   title: z.string().min(1).max(200),
-  raw_markdown: z.string(),
+  content_markdown: z.string(),
 });
 
 export const UpdatePageSchema = CreatePageSchema.partial();
@@ -444,8 +444,8 @@ export const PageResponseSchema = z.object({
   slug: z.string(),
   title: z.string(),
   compiled_html: z.string().nullable(),
-  raw_markdown: z.string(),
-  last_updated: z.string().nullable(),
+  content_markdown: z.string(),
+  updated_at: z.string().nullable(),
 });
 ```
 
@@ -467,11 +467,11 @@ Export all nav schemas. Add `nav` to the package exports if using subpath export
 | `apps/api/src/routes/api/v1/admin/masjids/[id]/nav/+server.ts` | **New** — admin nav CRUD (GET list, POST create) |
 | `apps/api/src/routes/api/v1/admin/masjids/[id]/nav/[itemId]/+server.ts` | **New** — PUT update, DELETE |
 | `apps/api/src/routes/api/v1/admin/masjids/[id]/nav/reorder/+server.ts` | **New** — PUT reorder |
-| `apps/api/src/routes/api/v1/admin/masjids/[id]/pages/+server.ts` | **New** — admin pages CRUD |
-| `apps/api/src/routes/api/v1/admin/masjids/[id]/pages/[pageSlug]/+server.ts` | **New** |
+| `apps/api/src/routes/api/v1/admin/masjids/[id]/pages/+server.ts` | **New** — admin pages CRUD (merged into content) |
+| `apps/api/src/routes/api/v1/admin/masjids/[id]/pages/[pageSlug]/+server.ts` | **New** (merged into content) |
 | `apps/api/src/routes/api/v1/masjids/[slug]/+server.ts` | Add `nav_items` to response |
 | `apps/api/src/routes/api/v1/masjids/[slug]/nav/+server.ts` | **New** — public nav endpoint |
-| `apps/api/src/routes/api/v1/masjids/[slug]/pages/[pageSlug]/+server.ts` | **New** — public page view |
+| `apps/api/src/routes/api/v1/masjids/[slug]/pages/[pageSlug]/+server.ts` | **New** — public page view (merged into content) |
 | `apps/consumer/src/lib/api.ts` | Add `nav_items` to `PagePayload` |
 | `apps/consumer/src/lib/icon-map.ts` | **New** — Lucide icon lookup |
 | `apps/consumer/src/lib/components/Header.svelte` | **New** |
@@ -494,7 +494,7 @@ Export all nav schemas. Add `nav` to the package exports if using subpath export
 |---|---|
 | Data storage | Dedicated `nav_items` table (not JSON column) |
 | Built-in routes | `prayer`, `news`, `info`, `maktab`, `donate`, `jumuah`, `announcements` (7 routes). Home is implicit via name click |
-| Custom content | Both markdown pages (`masjid_pages` table) and external URLs |
+| Custom content | Both markdown pages (`content` table, `content_type='page'`) and external URLs |
 | Mobile bottom bar | Admin toggles `show_on_mobile_bottom` per item. Default: first 4 auto-pinned, max 5 displayed |
 | Highlight | Only one item highlighted (radio-button behavior). Default: Times |
 | Icons | Lucide icon names (string mapping to lucide-svelte components) |
@@ -508,7 +508,7 @@ Export all nav schemas. Add `nav` to the package exports if using subpath export
 ### API Tests (vitest, node)
 - Admin CRUD for nav_items: create, update, delete, reorder
 - Validation: invalid kind, missing required fields, duplicate highlighted
-- Admin CRUD for masjid_pages
+- Admin CRUD for content (pages, filtered by `content_type='page'`)
 - Public nav endpoint returns correct order
 - Public page endpoint returns compiled HTML
 

@@ -3,7 +3,7 @@ import {
   NavItemKind, RouteSegment, IconName,
   CreateNavItemSchema, UpdateNavItemSchema, ReorderNavSchema,
   NavItemResponseSchema,
-  CreatePageSchema, UpdatePageSchema, PageResponseSchema,
+  CreateContentSchema, UpdateContentSchema, ContentSchema,
 } from '@masjid/schemas';
 
 // ---------------------------------------------------------------------------
@@ -180,72 +180,83 @@ describe('NavItemResponseSchema', () => {
 });
 
 // ---------------------------------------------------------------------------
-// CreatePageSchema
+// CreateContentSchema
 // ---------------------------------------------------------------------------
-describe('CreatePageSchema', () => {
-  it('accepts valid page creation', () => {
-    const input = { slug: 'about-us', title: 'About Us', raw_markdown: '# Hello' };
-    const result = CreatePageSchema.safeParse(input);
+describe('CreateContentSchema', () => {
+  it('accepts valid content creation (post)', () => {
+    const input = { title: 'Hello World', content_markdown: '# Hello' };
+    const result = CreateContentSchema.safeParse(input);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts valid content creation (page)', () => {
+    const input = { slug: 'about-us', title: 'About Us', content_markdown: '# Hello', content_type: 'page' };
+    const result = CreateContentSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
 
   it('rejects slug with spaces', () => {
-    const input = { slug: 'bad slug', title: 'Bad', raw_markdown: 'x' };
-    const result = CreatePageSchema.safeParse(input);
+    const input = { slug: 'bad slug', title: 'Bad', content_markdown: 'x' };
+    const result = CreateContentSchema.safeParse(input);
     expect(result.success).toBe(false);
   });
 
   it('rejects slug with uppercase', () => {
-    const input = { slug: 'BadSlug', title: 'Bad', raw_markdown: 'x' };
-    const result = CreatePageSchema.safeParse(input);
+    const input = { slug: 'BadSlug', title: 'Bad', content_markdown: 'x' };
+    const result = CreateContentSchema.safeParse(input);
     expect(result.success).toBe(false);
   });
 
   it('rejects empty title', () => {
-    const input = { slug: 'test', title: '', raw_markdown: 'x' };
-    const result = CreatePageSchema.safeParse(input);
+    const input = { title: '', content_markdown: 'x' };
+    const result = CreateContentSchema.safeParse(input);
     expect(result.success).toBe(false);
   });
 
-  it('rejects empty raw_markdown', () => {
-    const input = { slug: 'test', title: 'Test', raw_markdown: '' };
-    const result = CreatePageSchema.safeParse(input);
+  it('rejects empty content_markdown', () => {
+    const input = { title: 'Test', content_markdown: '' };
+    const result = CreateContentSchema.safeParse(input);
     expect(result.success).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// UpdatePageSchema
+// UpdateContentSchema
 // ---------------------------------------------------------------------------
-describe('UpdatePageSchema', () => {
+describe('UpdateContentSchema', () => {
   it('accepts partial update', () => {
     const input = { title: 'New Title' };
-    const result = UpdatePageSchema.safeParse(input);
+    const result = UpdateContentSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
 
   it('accepts empty object', () => {
     const input = {};
-    const result = UpdatePageSchema.safeParse(input);
+    const result = UpdateContentSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
 });
 
 // ---------------------------------------------------------------------------
-// PageResponseSchema
+// ContentSchema
 // ---------------------------------------------------------------------------
-describe('PageResponseSchema', () => {
+describe('ContentSchema', () => {
   it('validates full response with compiled_html', () => {
     const input = {
       id: 'x',
       masjid_id: 'y',
       slug: 'about',
       title: 'About',
+      content_markdown: 'hi',
       compiled_html: '<p>hi</p>',
-      raw_markdown: 'hi',
-      last_updated: '2024-01-01',
+      content_type: 'page',
+      show_on_homepage: false,
+      show_on_info: false,
+      is_hidden: false,
+      created_at: '2024-01-01',
+      updated_at: '2024-01-01',
     };
-    const result = PageResponseSchema.safeParse(input);
+    const result = ContentSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
 
@@ -255,25 +266,16 @@ describe('PageResponseSchema', () => {
       masjid_id: 'y',
       slug: 'about',
       title: 'About',
+      content_markdown: 'hi',
       compiled_html: null,
-      raw_markdown: 'hi',
-      last_updated: '2024-01-01',
+      content_type: 'page',
+      show_on_homepage: false,
+      show_on_info: false,
+      is_hidden: false,
+      created_at: '2024-01-01',
+      updated_at: '2024-01-01',
     };
-    const result = PageResponseSchema.safeParse(input);
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts null last_updated', () => {
-    const input = {
-      id: 'x',
-      masjid_id: 'y',
-      slug: 'about',
-      title: 'About',
-      compiled_html: '<p>hi</p>',
-      raw_markdown: 'hi',
-      last_updated: null,
-    };
-    const result = PageResponseSchema.safeParse(input);
+    const result = ContentSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
 });

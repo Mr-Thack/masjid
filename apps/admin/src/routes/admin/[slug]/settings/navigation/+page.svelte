@@ -26,9 +26,9 @@
 
   let newRoute = $state({ route_segment: '', label: '', icon: '' });
   let newLink = $state({ external_url: '', label: '', icon: '' });
-  let newPage = $state({ slug: '', title: '', raw_markdown: '' });
+  let newPage = $state({ slug: '', title: '', content_markdown: '' });
   let editingPageSlug = $state<string | null>(null);
-  let editPageForm = $state({ slug: '', title: '', raw_markdown: '' });
+  let editPageForm = $state({ slug: '', title: '', content_markdown: '' });
 
   $effect(() => { load(); });
 
@@ -59,7 +59,7 @@
         api.getPages(auth.admin!.masjid_id),
       ]);
       navItems = navRes.nav_items || [];
-      allPages = pagesRes.pages || [];
+      allPages = (pagesRes.content || []).filter((c: any) => c.content_type === 'page');
 
       if (navItems.length === 0 && !hasSeeded) {
         hasSeeded = true;
@@ -143,7 +143,7 @@
       await api.createPage(auth.admin!.masjid_id, {
         slug: newPage.slug,
         title: newPage.title,
-        raw_markdown: newPage.raw_markdown,
+        content_markdown: newPage.content_markdown,
       });
       await api.createNavItem(auth.admin!.masjid_id, {
         kind: 'page',
@@ -152,7 +152,7 @@
         icon: 'FileText',
       });
       showAddPage = false;
-      newPage = { slug: '', title: '', raw_markdown: '' };
+      newPage = { slug: '', title: '', content_markdown: '' };
       toast.success('Page added');
       await load();
     } catch (e: unknown) {
@@ -179,7 +179,7 @@
 
   function startEditPage(page: any) {
     editingPageSlug = page.slug;
-    editPageForm = { slug: page.slug, title: page.title, raw_markdown: page.raw_markdown };
+    editPageForm = { slug: page.slug, title: page.title, content_markdown: page.content_markdown };
   }
 
   async function toggleField(item: any, field: string, value: boolean) {
@@ -505,11 +505,11 @@
         </div>
         <div class="form-group">
           <label>Content (Markdown)</label>
-          <textarea class="w-full text-sm font-mono" bind:value={newPage.raw_markdown} rows={6}></textarea>
+          <textarea class="w-full text-sm font-mono" bind:value={newPage.content_markdown} rows={6}></textarea>
         </div>
         <div class="flex gap-2">
           <button type="submit" class="btn-primary text-sm" disabled={saving}>Add</button>
-          <button type="button" class="btn-secondary text-sm" onclick={() => { showAddPage = false; newPage = { slug: '', title: '', raw_markdown: '' }; }}>Cancel</button>
+          <button type="button" class="btn-secondary text-sm" onclick={() => { showAddPage = false; newPage = { slug: '', title: '', content_markdown: '' }; }}>Cancel</button>
         </div>
       </form>
     {/if}
@@ -569,7 +569,7 @@
             </div>
             <div class="form-group">
               <label>Content (Markdown)</label>
-              <textarea class="w-full text-sm font-mono" bind:value={editPageForm.raw_markdown} rows={6}></textarea>
+              <textarea class="w-full text-sm font-mono" bind:value={editPageForm.content_markdown} rows={6}></textarea>
             </div>
             <div class="flex gap-2">
               <button type="submit" class="btn-primary text-sm" disabled={saving}>Save</button>

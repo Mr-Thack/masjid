@@ -1,6 +1,6 @@
 import { ErrorJsonResponse, JsonResponse } from '@masjid/schemas';
 import { getDb } from '$lib/server/db';
-import { masjids, posts } from '$lib/server/db/schema';
+import { masjids, content } from '$lib/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { RequestHandler } from './$types';
 
@@ -20,12 +20,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
     const post = await db
       .select()
-      .from(posts)
+      .from(content)
       .where(
         and(
-          eq(posts.masjidId, masjid.id),
-          eq(posts.slug, params.post_slug),
-          eq(posts.isHidden, false),
+          eq(content.masjidId, masjid.id),
+          eq(content.slug, params.post_slug),
+          eq(content.isHidden, false),
+          eq(content.contentType, 'post'),
         ),
       )
       .get();

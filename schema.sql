@@ -159,20 +159,26 @@ CREATE INDEX idx_announcements_pinned ON announcements(masjid_id, is_pinned) WHE
 
 
 -- ============================================================
--- Table 6: Static Sub-Pages (CMS)
+-- Table 6: Content (Unified Posts & Pages)
 -- ============================================================
-CREATE TABLE masjid_pages (
+CREATE TABLE content (
     id TEXT PRIMARY KEY,
-    masjid_id TEXT NOT NULL,
-    slug TEXT NOT NULL,                 -- 'home', 'about', 'services', 'school'
+    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    slug TEXT NOT NULL,
     title TEXT NOT NULL,
+    content_markdown TEXT NOT NULL,
     compiled_html TEXT,
-    raw_markdown TEXT NOT NULL,
-    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(masjid_id) REFERENCES masjids(id) ON DELETE CASCADE,
+    content_type TEXT NOT NULL DEFAULT 'post',  -- 'post' | 'page'
+    show_on_homepage INTEGER NOT NULL DEFAULT 0,
+    show_on_info INTEGER NOT NULL DEFAULT 0,
+    is_hidden INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(masjid_id, slug)
 );
-CREATE INDEX idx_pages_lookup ON masjid_pages(masjid_id, slug);
+CREATE INDEX idx_content_masjid_type ON content(masjid_id, content_type);
+CREATE INDEX idx_content_homepage ON content(masjid_id) WHERE show_on_homepage = 1 AND content_type = 'post' AND is_hidden = 0;
+CREATE INDEX idx_content_info ON content(masjid_id) WHERE show_on_info = 1 AND content_type = 'post' AND is_hidden = 0;
 
 
 -- ============================================================
@@ -354,28 +360,7 @@ CREATE TABLE announcement_attachments (
 );
 
 -- ============================================================
--- Table 15: Posts (Informational Content)
--- ============================================================
-CREATE TABLE posts (
-    id TEXT PRIMARY KEY,
-    masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
-    slug TEXT NOT NULL,
-    title TEXT NOT NULL,
-    content_markdown TEXT NOT NULL,
-    compiled_html TEXT,
-    show_on_homepage INTEGER NOT NULL DEFAULT 0,
-    show_on_info INTEGER NOT NULL DEFAULT 0,
-    is_hidden INTEGER NOT NULL DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(masjid_id, slug)
-);
-CREATE INDEX idx_posts_masjid ON posts(masjid_id, created_at);
-CREATE INDEX idx_posts_homepage ON posts(masjid_id, show_on_homepage) WHERE show_on_homepage = 1;
-CREATE INDEX idx_posts_info ON posts(masjid_id, show_on_info) WHERE show_on_info = 1;
-
--- ============================================================
--- Table 16: Navigation Items (per-masjid navigation config)
+-- Table 15: Navigation Items (per-masjid navigation config)
 -- ============================================================
 CREATE TABLE nav_items (
     id TEXT PRIMARY KEY,
@@ -383,7 +368,7 @@ CREATE TABLE nav_items (
     sort_order INTEGER NOT NULL,
     kind TEXT NOT NULL,                     -- 'route' | 'page' | 'link'
     route_segment TEXT,                     -- built-in route (e.g., 'prayer', 'news')
-    page_slug TEXT,                         -- custom page slug (when kind='page')
+    page_slug TEXT,                         -- content slug where content_type='page' (when kind='page')
     external_url TEXT,                      -- external link URL (when kind='link')
     label TEXT NOT NULL,
     icon TEXT,                              -- lucide icon name

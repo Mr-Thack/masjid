@@ -2,19 +2,19 @@
 
 **Status**: Implemented (shipped 2026-08-09)
 **Created**: 2026-08-05
-**Updated**: 2026-08-11 (status update)
+**Updated**: 2026-08-13 (merged `posts` + `masjid_pages` into single `content` table)
 
-> **This feature is fully implemented**: `posts` table in D1, admin CRUD + homepage/info pin endpoints, consumer `/news` tabbed page + `/posts/[post_slug]` detail page, 6 agent tools (`posts_list` through `posts_pin_info`), admin settings page, and config snapshot inclusion. The `masjid_pages` custom page system is also fully implemented and active (was "dormant" in the original spec).
+> **This feature is fully implemented**: `content` table in D1 (unified `posts` + `masjid_pages` with a `content_type` discriminator: `'post'` or `'page'`), admin CRUD + homepage/info pin endpoints for posts, consumer `/news` tabbed page + `/posts/[post_slug]` detail page + `/pages/[page_slug]` detail page, 6 agent tools (`content_list` through `content_pin_info`), admin settings page, and config snapshot inclusion. The custom page system was previously the `masjid_pages` table — now unified into `content` with `content_type='page'`.
 
 ## Overview
 
-Adds a new `posts` content type to the platform — rich, permanent informational posts distinct from time-sensitive announcements. Posts have their own News page, individual detail pages, and can be independently pinned to the homepage or Info page.
+Adds a `content` table — a unified content type for the platform. Combines what were previously two separate tables: `posts` (rich, permanent informational posts distinct from time-sensitive announcements) and `masjid_pages` (custom markdown pages). Both content types now live in one table with a `content_type` discriminator (`'post'` or `'page'`). Posts have their own News page, individual detail pages, and can be independently pinned to the homepage or Info page. Custom pages are rendered at `/{slug}/pages/{page_slug}`.
 
 ## Design Decisions
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Data model | New `posts` table | Clean separation from announcements; different pinning model (two pin targets vs one) |
+| Data model | Unified `content` table with `content_type` discriminator (`'post'` / `'page'`) | Clean separation from announcements; posts and pages share the same schema with minor field differences |
 | Navigation | `/news` tabs page (Posts + Announcements) | Single destination for all content; admin-chosen preference |
 | Post detail URL | `/{slug}/posts/{post-slug}` | Clean, distinct from announcements |
 | Pinning | Exactly one homepage-pinned post AND one info-pinned post (enforced server-side) | Same pattern as announcement pinning |
@@ -30,30 +30,32 @@ Adds a new `posts` content type to the platform — rich, permanent informationa
 ### What does NOT change
 
 - Announcements: DB table, API, admin page, agent tools, TV display, consumer page at `/announcements` — zero changes
-- `masjid_pages` table: now active (pages CRUD API + admin UI + consumer route + agent tools implemented alongside posts)
-- TV display: no post content surfaces on TV
+- Custom pages: now live in the `content` table (filtered by `content_type='page'`) alongside posts (filtered by `content_type='post'`) — previously separate `masjid_pages` table
+- TV display: no post or page content surfaces on TV
 - Service worker, deploy pipeline
 
 ---
 
 ## Phase 1 — Database + Shared Schemas
 
-### `posts` table
+### `content` table
 
-Append to all three locations (D1 `ALTER TABLE ADD COLUMN` requires appending):
+Posts and custom pages are now unified in a single `content` table with a `content_type` discriminator (`'post'` or `'page'`). Appended to all three locations (D1 `ALTER TABLE ADD COLUMN` requires appending):
 
 1. **`schema.sql`** — after existing tables
 2. **`apps/api/src/lib/server/db/schema.ts`** — Drizzle schema
 3. **`apps/api/src/lib/server/db/index.ts`** — `ensureTables()`
 
 ```sql
-CREATE TABLE posts (
+CREATE TABLE content (
     id TEXT PRIMARY KEY,
     masjid_id TEXT NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    content_type TEXT NOT NULL CHECK(content_type IN ('post', 'page')),
     slug TEXT NOT NULL,
     title TEXT NOT NULL,
     content_markdown TEXT NOT NULL,
     compiled_html TEXT,
+    -- post-specific fields (NULL for pages)
     show_on_homepage INTEGER NOT NULL DEFAULT 0,
     show_on_info INTEGER NOT NULL DEFAULT 0,
     is_hidden INTEGER NOT NULL DEFAULT 0,
@@ -61,19 +63,20 @@ CREATE TABLE posts (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(masjid_id, slug)
 );
-CREATE INDEX idx_posts_masjid ON posts(masjid_id, created_at);
-CREATE INDEX idx_posts_homepage ON posts(masjid_id, show_on_homepage) WHERE show_on_homepage = 1;
-CREATE INDEX idx_posts_info ON posts(masjid_id, show_on_info) WHERE show_on_info = 1;
+CREATE INDEX idx_content_masjid ON content(masjid_id, content_type, created_at);
+CREATE INDEX idx_content_homepage ON content(masjid_id, show_on_homepage) WHERE show_on_homepage = 1;
+CREATE INDEX idx_content_info ON content(masjid_id, show_on_info) WHERE show_on_info = 1;
 ```
 
-### Shared Zod schemas (`packages/schemas/src/post.ts`)
+### Shared Zod schemas (`packages/schemas/src/content.ts`)
 
 ```typescript
-// CreatePostSchema: title (1-300 chars), content_markdown (min 1),
-//   show_on_homepage (default false), show_on_info (default false),
+// CreateContentSchema: content_type ('post' | 'page'), title (1-300 chars),
+//   content_markdown (min 1),
+//   show_on_homepage (default false, post only), show_on_info (default false, post only),
 //   is_hidden (default false)
-// UpdatePostSchema: all optional
-// PostSchema: full read shape (id, masjid_id, slug, title,
+// UpdateContentSchema: all optional
+// ContentSchema: full read shape (id, masjid_id, content_type, slug, title,
 //   content_markdown, compiled_html, show_on_homepage, show_on_info,
 //   is_hidden, created_at, updated_at)
 ```
@@ -86,20 +89,20 @@ Export from `packages/schemas/src/index.ts`.
 
 ### Markdown compiler
 
-Reuse the existing `compileMarkdown()` function from announcement routes (headings, bold, italic, links, `<hr>`, auto-paragraphs). Extract to a shared utility in `apps/api/src/lib/server/markdown.ts` so both announcements and posts use it.
+Reuse the existing `compileMarkdown()` function from announcement routes (headings, bold, italic, links, `<hr>`, auto-paragraphs). Extract to a shared utility in `apps/api/src/lib/server/markdown.ts` so both announcements and content use it.
 
 ### Public endpoints
 
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/v1/masjids/{slug}/posts` | List non-hidden posts, `created_at DESC` |
-| `GET` | `/api/v1/masjids/{slug}/posts/{post_slug}` | Single post detail (non-hidden only) |
+| `GET` | `/api/v1/masjids/{slug}/content` | List non-hidden content, `created_at DESC`; filter by `content_type` via query param |
+| `GET` | `/api/v1/masjids/{slug}/content/{item_slug}` | Single content item detail (non-hidden only) |
 | `GET` | `/api/v1/masjids/{slug}` | **Add** `homepage_post` + `info_post` to payload |
 
 **File structure:**
 ```
-apps/api/src/routes/api/v1/masjids/[slug]/posts/+server.ts
-apps/api/src/routes/api/v1/masjids/[slug]/posts/[post_slug]/+server.ts
+apps/api/src/routes/api/v1/masjids/[slug]/content/+server.ts
+apps/api/src/routes/api/v1/masjids/[slug]/content/[item_slug]/+server.ts
 ```
 
 **Page payload additions** (in `/[slug]/+server.ts`):
@@ -110,8 +113,9 @@ info_post: { title, slug, compiled_html, created_at } | null
 
 Same pattern as `pinned_announcement`:
 ```sql
-SELECT ... FROM posts
-WHERE masjid_id = X AND show_on_homepage = TRUE AND is_hidden = FALSE
+SELECT ... FROM content
+WHERE masjid_id = X AND content_type = 'post' AND show_on_homepage = TRUE
+  AND is_hidden = FALSE
 LIMIT 1
 ```
 
@@ -121,24 +125,24 @@ All require JWT auth + masjid ownership check.
 
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/api/v1/admin/masjids/{id}/posts` | All posts (hidden included) |
-| `POST` | `/api/v1/admin/masjids/{id}/posts` | Create (slugify, compile, enforce pin exclusivity) |
-| `PUT` | `/api/v1/admin/masjids/{id}/posts/{slug}` | Update (partial, recompile if content changed) |
-| `DELETE` | `/api/v1/admin/masjids/{id}/posts/{slug}` | Hard delete |
-| `PUT` | `/api/v1/admin/masjids/{id}/posts/{slug}/homepage` | Toggle homepage pin (unpins previous) |
-| `PUT` | `/api/v1/admin/masjids/{id}/posts/{slug}/info` | Toggle info pin (unpins previous) |
+| `GET` | `/api/v1/admin/masjids/{id}/content` | All content (hidden included); filter by `content_type` |
+| `POST` | `/api/v1/admin/masjids/{id}/content` | Create (slugify, compile, enforce pin exclusivity for posts) |
+| `PUT` | `/api/v1/admin/masjids/{id}/content/{slug}` | Update (partial, recompile if content changed) |
+| `DELETE` | `/api/v1/admin/masjids/{id}/content/{slug}` | Hard delete |
+| `PUT` | `/api/v1/admin/masjids/{id}/content/{slug}/homepage` | Toggle homepage pin (unpins previous; post only) |
+| `PUT` | `/api/v1/admin/masjids/{id}/content/{slug}/info` | Toggle info pin (unpins previous; post only) |
 
 **File structure:**
 ```
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/+server.ts
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/[slug]/+server.ts
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/[slug]/homepage/+server.ts
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/[slug]/info/+server.ts
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/+server.ts
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/[slug]/+server.ts
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/[slug]/homepage/+server.ts
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/[slug]/info/+server.ts
 ```
 
 **Pin enforcement:** When toggling `show_on_homepage` to true:
-1. `UPDATE posts SET show_on_homepage = 0 WHERE masjid_id = X AND show_on_homepage = 1`
-2. `UPDATE posts SET show_on_homepage = 1 WHERE masjid_id = X AND slug = target`
+1. `UPDATE content SET show_on_homepage = 0 WHERE masjid_id = X AND content_type = 'post' AND show_on_homepage = 1`
+2. `UPDATE content SET show_on_homepage = 1 WHERE masjid_id = X AND slug = target`
 
 Same pattern for `show_on_info`. Also enforced on POST if either flag is true.
 
@@ -152,7 +156,7 @@ Same pattern for `show_on_info`. Also enforced on POST if either flag is true.
 
 **`/[slug]/news/+page.svelte`** — Tabs page (Posts default active):
 - Two tab buttons: Posts | Announcements
-- Posts tab: `fetchPosts()` → cards with title, date, compiled_html excerpt, link to `/posts/{slug}`
+- Posts tab: `fetchContent({ content_type: 'post' })` → cards with title, date, compiled_html excerpt, link to `/posts/{slug}`
 - Announcements tab: reuses existing `fetchAnnouncements()` + `AnnouncementCard` components
 - Loading, empty ("No posts yet"), error states
 
@@ -163,21 +167,27 @@ Same pattern for `show_on_info`. Also enforced on POST if either flag is true.
 - 404 state for missing/hidden posts
 
 **`/[slug]/posts/[post_slug]/+page.ts`** — Load function:
-- Fetch `GET /api/v1/masjids/{slug}/posts/{post_slug}` (uses `event.fetch` for SSR if applicable)
-- Return post data or throw 404
+- Fetch `GET /api/v1/masjids/{slug}/content/{post_slug}` (uses `event.fetch` for SSR if applicable)
+- Return content data or throw 404
+
+**`/[slug]/pages/[page_slug]/+page.svelte`** — Custom page route:
+- Works the same as posts but uses `content_type='page'`
+- No pin/hidden controls needed
 
 ### Modified files
 
 **`apps/consumer/src/lib/api.ts`:**
-- Add `Post` interface
+- Add `Content` interface (with `content_type` field)
 - Add `homepage_post` + `info_post` to `PagePayload` interface
-- Add `fetchPosts(slug)` function
-- Add `fetchPost(slug, postSlug)` function
+- Add `fetchContent(params)` function (accepts `content_type` filter)
+- Add `fetchContentItem(slug)` function
 
 ```
 apps/consumer/src/routes/[masjid_slug]/news/+page.svelte
 apps/consumer/src/routes/[masjid_slug]/posts/[post_slug]/+page.svelte
 apps/consumer/src/routes/[masjid_slug]/posts/[post_slug]/+page.ts
+apps/consumer/src/routes/[masjid_slug]/pages/[page_slug]/+page.svelte
+apps/consumer/src/routes/[masjid_slug]/pages/[page_slug]/+page.ts
 ```
 
 **`apps/consumer/src/routes/[masjid_slug]/+layout.svelte`:**
@@ -205,33 +215,33 @@ apps/consumer/src/routes/[masjid_slug]/posts/[post_slug]/+page.ts
 
 ### New route
 
-**`admin/[slug]/settings/posts/+page.svelte`:**
-- Filter tabs: All / Visible / Hidden
-- List: title, created date, hidden badge, homepage-pin badge, info-pin badge
-- Create/edit inline form: title, markdown textarea, homepage toggle, info toggle, hidden toggle
+**`admin/[slug]/settings/content/+page.svelte`:**
+- Filter tabs: Posts / Pages / All / Visible / Hidden
+- List: title, content_type badge, created date, hidden badge, homepage-pin badge, info-pin badge
+- Create/edit inline form: content_type selector, title, slug, markdown textarea, homepage toggle (post only), info toggle (post only), hidden toggle
 - Delete: confirmation dialog → hard delete
-- Pin buttons per row (separate Pin/PinOff for homepage + info)
+- Pin buttons per row (separate Pin/PinOff for homepage + info; post rows only)
 - Uses `svelte-sonner` toasts, `lucide-svelte` icons, `SkeletonForm`, `ConfirmDialog`
-- NewsPaper icon (or BookOpen) from lucide
+- Newspaper icon (or BookOpen) from lucide
 
-**`apps/admin/src/lib/api.ts`**: Add 7 methods:
-- `getPosts(masjidId)` → `GET /admin/.../posts`
-- `createPost(masjidId, body)` → `POST /admin/.../posts`
-- `updatePost(masjidId, slug, body)` → `PUT /admin/.../posts/{slug}`
-- `deletePost(masjidId, slug)` → `DELETE /admin/.../posts/{slug}`
-- `pinPostHomepage(masjidId, slug)` → `PUT .../posts/{slug}/homepage`
-- `pinPostInfo(masjidId, slug)` → `PUT .../posts/{slug}/info`
+**`apps/admin/src/lib/api.ts`**: Add methods:
+- `getContent(masjidId, filters?)` → `GET /admin/.../content`
+- `createContent(masjidId, body)` → `POST /admin/.../content`
+- `updateContent(masjidId, slug, body)` → `PUT /admin/.../content/{slug}`
+- `deleteContent(masjidId, slug)` → `DELETE /admin/.../content/{slug}`
+- `pinContentHomepage(masjidId, slug)` → `PUT .../content/{slug}/homepage`
+- `pinContentInfo(masjidId, slug)` → `PUT .../content/{slug}/info`
 
 ### Modified files
 
 **`apps/admin/src/lib/components/AdminShell.svelte`:**
-- Add "Posts" nav item between Announcements and Domain:
+- Add "Content" nav item between Announcements and Domain:
   ```js
-  { href: `/admin/${masjidSlug}/settings/posts`, label: 'Posts', icon: Newspaper },
+  { href: `/admin/${masjidSlug}/settings/content`, label: 'Content', icon: Newspaper },
   ```
 
 **`apps/admin/src/routes/admin/[slug]/+page.svelte` (dashboard):**
-- Add posts count to stats cards
+- Add content count to stats cards
 
 ### Announcement length heuristic (admin UI)
 
@@ -245,42 +255,43 @@ Non-blocking, informational only. Implemented as a `<div>` with an info icon, ye
 
 ## Phase 5 — Agent/Bot (`@masjid/agent`)
 
-### New domain: `POSTS`
+### New domain: `CONTENT`
 
 6 tools (following the exact same patterns as announcements tools):
 
 | Tool | Method | API endpoint |
 |---|---|---|
-| `posts_list` | GET | `/admin/.../posts` |
-| `posts_create` | POST | `/admin/.../posts` |
-| `posts_update` | PUT | `/admin/.../posts/{slug}` |
-| `posts_delete` | DELETE | `/admin/.../posts/{slug}` |
-| `posts_pin_homepage` | PUT | `.../posts/{slug}/homepage` |
-| `posts_pin_info` | PUT | `.../posts/{slug}/info` |
+| `content_list` | GET | `/admin/.../content` |
+| `content_create` | POST | `/admin/.../content` |
+| `content_update` | PUT | `/admin/.../content/{slug}` |
+| `content_delete` | DELETE | `/admin/.../content/{slug}` |
+| `content_pin_homepage` | PUT | `.../content/{slug}/homepage` |
+| `content_pin_info` | PUT | `.../content/{slug}/info` |
 
 ### Files to modify
 
 **`packages/agent/src/tools.ts`:**
-- Add 6 POSTS tool definitions after the announcements tools (before `timetable_preview`)
+- Add 6 CONTENT tool definitions after the announcements tools (before `timetable_preview`)
 - Each tool: name, description, parameters (Zod-style), handler with `describeMutation` + `storeMutation`
+- `content_type` parameter distinguishes posts ('post') from pages ('page')
 
 **`packages/agent/src/prompt.ts`:**
-- Add POSTS domain guide + examples in the system prompt
-- Example: "User: 'Create a post about our food pantry, pin it to the info page' → `posts_create({title:"Food Pantry", content_markdown:"...", show_on_info:true})`"
+- Add CONTENT domain guide + examples in the system prompt
+- Example: "User: 'Create a post about our food pantry, pin it to the info page' → `content_create({content_type:"post", title:"Food Pantry", content_markdown:"...", show_on_info:true})`"
 
 **`packages/agent/src/api-client.ts`:**
-- Add 6 post API functions: `getPosts`, `createPost`, `updatePost`, `deletePost`, `pinPostHomepage`, `pinPostInfo`
+- Add 6 content API functions: `getContent`, `createContent`, `updateContent`, `deleteContent`, `pinContentHomepage`, `pinContentInfo`
 
 **`packages/agent/src/format.ts`:**
-- Add POSTS domain diff formatting for WhatsApp diff receipts
+- Add CONTENT domain diff formatting for WhatsApp diff receipts
 
 **`workers/whatsapp/src/agent/prompt.ts`:**
-- Wire up new POSTS domain context (if needed)
+- Wire up new CONTENT domain context (if needed)
 
 ### Config snapshots / rollback
 
-Posts are included in config snapshots using the same pattern as announcements. In `rollbackRestore()`:
-- Delete all posts for the masjid
+Content is included in config snapshots using the same pattern as announcements. In `rollbackRestore()`:
+- Delete all content for the masjid
 - Re-insert from snapshot data
 
 ### Announcement length heuristic (agent)
@@ -299,17 +310,17 @@ This is a soft advisory — does not block the operation.
 
 | Suite | Tests | Description |
 |---|---|---|
-| API (unit) | ~15 | Public posts (list, single, page payload pins), admin posts (CRUD, pin enforcement, hidden filter) |
-| Consumer | ~12 | `/news` page (tabs, posts list, announcements list, empty/loading/error states), `/posts/{slug}` (detail, 404), homepage pin card, info pin card |
-| Admin | ~8 | Posts settings page (CRUD, pins, hidden, filters, delete confirmation) |
-| Agent | ~7 | 6 posts tools + prompt/format |
+| API (unit) | ~15 | Public content (list, single, page payload pins), admin content (CRUD, pin enforcement, hidden filter, content_type filter) |
+| Consumer | ~12 | `/news` page (tabs, posts list, announcements list, empty/loading/error states), `/posts/{slug}` (detail, 404), `/pages/{slug}` (custom page), homepage pin card, info pin card |
+| Admin | ~8 | Content settings page (CRUD, pins, hidden, filters, content_type tabs, delete confirmation) |
+| Agent | ~7 | 6 content tools + prompt/format |
 
 ### Existing tests to update
 
 | Suite | Changes |
 |---|---|
 | Consumer | Nav segment `announcements` → `news`, page payload now includes `homepage_post` + `info_post` |
-| Admin | Sidebar nav includes Posts, dashboard posts count |
+| Admin | Sidebar nav includes Content, dashboard content count |
 | E2E | Any tests that navigate to `/announcements` or check nav labels |
 
 ---
@@ -319,40 +330,42 @@ This is a soft advisory — does not block the operation.
 ### New files (~15)
 
 ```
-packages/schemas/src/post.ts                                    # Shared Zod schemas
+packages/schemas/src/content.ts                                    # Shared Zod schemas
 apps/api/src/lib/server/markdown.ts                             # Shared markdown compiler
-apps/api/src/routes/api/v1/masjids/[slug]/posts/+server.ts     # Public posts list
-apps/api/src/routes/api/v1/masjids/[slug]/posts/[post_slug]/+server.ts  # Public single post
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/+server.ts  # Admin posts CRUD (GET, POST)
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/[slug]/+server.ts  # Admin post (PUT, DELETE)
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/[slug]/homepage/+server.ts  # Homepage pin toggle
-apps/api/src/routes/api/v1/admin/masjids/[id]/posts/[slug]/info/+server.ts      # Info pin toggle
+apps/api/src/routes/api/v1/masjids/[slug]/content/+server.ts   # Public content list
+apps/api/src/routes/api/v1/masjids/[slug]/content/[item_slug]/+server.ts  # Public single content item
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/+server.ts  # Admin content CRUD (GET, POST)
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/[slug]/+server.ts  # Admin content (PUT, DELETE)
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/[slug]/homepage/+server.ts  # Homepage pin toggle
+apps/api/src/routes/api/v1/admin/masjids/[id]/content/[slug]/info/+server.ts      # Info pin toggle
 apps/consumer/src/routes/[masjid_slug]/news/+page.svelte         # News tabs page
 apps/consumer/src/routes/[masjid_slug]/posts/[post_slug]/+page.svelte  # Post detail page
 apps/consumer/src/routes/[masjid_slug]/posts/[post_slug]/+page.ts     # Post detail load function
-apps/admin/src/routes/admin/[slug]/settings/posts/+page.svelte   # Admin posts settings page
+apps/consumer/src/routes/[masjid_slug]/pages/[page_slug]/+page.svelte # Custom page view
+apps/consumer/src/routes/[masjid_slug]/pages/[page_slug]/+page.ts    # Custom page load function
+apps/admin/src/routes/admin/[slug]/settings/content/+page.svelte   # Admin content settings page
 ```
 
 ### Modified files (~12)
 
 ```
-schema.sql                                                       # Add posts table
-apps/api/src/lib/server/db/schema.ts                             # Drizzle posts schema
+schema.sql                                                       # Add content table
+apps/api/src/lib/server/db/schema.ts                             # Drizzle content schema
 apps/api/src/lib/server/db/index.ts                              # ensureTables() + addColumnIfMissing
-packages/schemas/src/index.ts                                    # Export post schemas
+packages/schemas/src/index.ts                                    # Export content schemas
 apps/api/src/routes/api/v1/masjids/[slug]/+server.ts            # Add homepage_post + info_post to payload
-apps/consumer/src/lib/api.ts                                     # Post interfaces + fetch functions
+apps/consumer/src/lib/api.ts                                     # Content interfaces + fetch functions
 apps/consumer/src/routes/[masjid_slug]/+layout.svelte            # Nav: news segment
 apps/consumer/src/routes/[masjid_slug]/+layout.ts                # Load: homepage_post + info_post
 apps/consumer/src/routes/[masjid_slug]/+page.svelte              # Homepage: homepage_post card
 apps/consumer/src/routes/[masjid_slug]/info/+page.svelte         # Info: info_post card
-apps/admin/src/lib/components/AdminShell.svelte                  # Sidebar: Posts nav item
-apps/admin/src/lib/api.ts                                        # Posts API methods
-apps/admin/src/routes/admin/[slug]/+page.svelte                  # Dashboard: posts count
-packages/agent/src/tools.ts                                      # 6 POSTS tools
-packages/agent/src/prompt.ts                                     # POSTS domain + examples
-packages/agent/src/api-client.ts                                 # 6 post API functions
-packages/agent/src/format.ts                                     # POSTS diff rendering
+apps/admin/src/lib/components/AdminShell.svelte                  # Sidebar: Content nav item
+apps/admin/src/lib/api.ts                                        # Content API methods
+apps/admin/src/routes/admin/[slug]/+page.svelte                  # Dashboard: content count
+packages/agent/src/tools.ts                                      # 6 CONTENT tools
+packages/agent/src/prompt.ts                                     # CONTENT domain + examples
+packages/agent/src/api-client.ts                                 # 6 content API functions
+packages/agent/src/format.ts                                     # CONTENT diff rendering
 ```
 
 ---

@@ -103,28 +103,19 @@ See [rules-engine.md](rules-engine.md) for the full type reference.
 
 ---
 
-## Admin: Posts
+## Admin: Content (Posts & Pages)
+
+Posts and custom pages are unified in a single `content` table with a `content_type` discriminator (`'post'` or `'page'`).
 
 | Method | Path | Auth | Body / Notes |
 |---|---|---|---|
-| `GET` | `/admin/masjids/:id/posts` | JWT | Returns `{ posts: [...] }` |
-| `POST` | `/admin/masjids/:id/posts` | JWT | `{ title, content_markdown }` |
-| `PUT` | `/admin/masjids/:id/posts/:slug` | JWT | Partial update |
-| `DELETE` | `/admin/masjids/:id/posts/:slug` | JWT | Hard delete |
-| `PUT` | `/admin/masjids/:id/posts/:slug/homepage` | JWT | Toggle homepage pin |
-| `PUT` | `/admin/masjids/:id/posts/:slug/info` | JWT | Toggle info page pin |
-
----
-
-## Admin: Pages (Custom Pages)
-
-| Method | Path | Auth | Body / Notes |
-|---|---|---|---|
-| `GET` | `/admin/masjids/:id/pages` | JWT | Returns `{ pages: [...] }` |
-| `POST` | `/admin/masjids/:id/pages` | JWT | `{ title, slug, content_markdown }` |
-| `GET` | `/admin/masjids/:id/pages/:pageSlug` | JWT | Single page detail |
-| `PUT` | `/admin/masjids/:id/pages/:pageSlug` | JWT | Partial update |
-| `DELETE` | `/admin/masjids/:id/pages/:pageSlug` | JWT | Hard delete |
+| `GET` | `/admin/masjids/:id/content` | JWT | Returns `{ content: [...] }`. Optional query param `?content_type=post` or `?content_type=page` to filter |
+| `POST` | `/admin/masjids/:id/content` | JWT | `{ content_type, title, slug?, content_markdown, show_on_homepage?, show_on_info?, is_hidden? }`. `content_type` must be `'post'` or `'page'` |
+| `GET` | `/admin/masjids/:id/content/:slug` | JWT | Single content item detail |
+| `PUT` | `/admin/masjids/:id/content/:slug` | JWT | Partial update |
+| `DELETE` | `/admin/masjids/:id/content/:slug` | JWT | Hard delete |
+| `PUT` | `/admin/masjids/:id/content/:slug/homepage` | JWT | Toggle homepage pin (post only) |
+| `PUT` | `/admin/masjids/:id/content/:slug/info` | JWT | Toggle info page pin (post only) |
 
 ---
 
@@ -187,16 +178,15 @@ See [rules-engine.md](rules-engine.md) for the full type reference.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/masjids/:slug` | Full page payload (profile + theme + prayer_times + jumuah + announcements + homepage_posts + recent_posts) |
+| `GET` | `/masjids/:slug` | Full page payload (profile + theme + prayer_times + jumuah + announcements + homepage_post + info_post) |
 | `GET` | `/masjids/:slug/board` | TV display board (today + 7 upcoming days, theme, jumuah, announcements) |
 | `GET` | `/masjids/:slug/prayer` | Today's prayer times |
 | `GET` | `/masjids/:slug/prayer/weekly` | Weekly prayer times |
 | `GET` | `/masjids/:slug/jumuah` | Upcoming jumu'ah sessions |
 | `GET` | `/masjids/:slug/announcements` | Published announcements feed |
 | `GET` | `/masjids/:slug/announcements/:ann_slug` | Single announcement detail |
-| `GET` | `/masjids/:slug/posts` | Published posts feed |
-| `GET` | `/masjids/:slug/posts/:post_slug` | Single post detail |
-| `GET` | `/masjids/:slug/pages/:pageSlug` | Single custom page |
+| `GET` | `/masjids/:slug/content` | Published content feed; optional `?content_type=post` filter |
+| `GET` | `/masjids/:slug/content/:item_slug` | Single content item (post or page) detail |
 | `GET` | `/masjids/:slug/nav` | Navigation items (ordered, with visibility toggles) |
 | `GET` | `/masjids/:slug/maktab` | Active term, prices, open/closed status, Square app/location IDs |
 | `POST` | `/masjids/:slug/maktab/enroll` | Create Square customer/card/subscription and register enrollment |

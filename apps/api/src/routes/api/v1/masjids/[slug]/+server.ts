@@ -4,7 +4,7 @@ import {
   masjids,
   jumuahSessions,
   announcements,
-  posts,
+  content,
 } from '$lib/server/db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { computeIqaamah } from '$lib/server/prayer/engine';
@@ -59,12 +59,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
     const homepagePost = await db
       .select()
-      .from(posts)
+      .from(content)
       .where(
         and(
-          eq(posts.masjidId, masjid.id),
-          eq(posts.showOnHomepage, true),
-          eq(posts.isHidden, false),
+          eq(content.masjidId, masjid.id),
+          eq(content.showOnHomepage, true),
+          eq(content.isHidden, false),
+          eq(content.contentType, 'post'),
         ),
       )
       .limit(1)
@@ -72,12 +73,13 @@ export const GET: RequestHandler = async ({ params, platform }) => {
 
     const infoPost = await db
       .select()
-      .from(posts)
+      .from(content)
       .where(
         and(
-          eq(posts.masjidId, masjid.id),
-          eq(posts.showOnInfo, true),
-          eq(posts.isHidden, false),
+          eq(content.masjidId, masjid.id),
+          eq(content.showOnInfo, true),
+          eq(content.isHidden, false),
+          eq(content.contentType, 'post'),
         ),
       )
       .limit(1)

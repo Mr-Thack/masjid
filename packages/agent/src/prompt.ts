@@ -96,22 +96,25 @@ Navigation items for the public website header and mobile bottom bar.
 
 Nav kinds:
   - route: built-in page (route_segment in prayer/news/info/maktab/donate/jumuah/announcements)
-  - page: custom page (use page_slug from pages_list)
+  - page: custom page (use page_slug from content_list — items with content_type="page")
   - link: external URL (valid URL in external_url)
 
 Icon names: book, calendar, clock, compass, donate, graduation-cap, heart, home, info, megaphone, message-square, palette, users
 Only one item can be highlighted at a time — setting is_highlighted on one removes it from others.
 
-### PAGES
-Custom pages for the masjid website (permanent informational content).
-- \`pages_list\` — list all custom pages
-- \`pages_create\` — create a page with slug, title, and markdown content (auto-compiled to HTML)
-- \`pages_update\` — update title, content, or both
-- \`pages_delete\` — permanently delete a page (also removes its nav items)
+### CONTENT
+Content items for the masjid website — both Posts (blog-like articles) and Pages (static CMS pages).
+- \`content_list\` — list all content items
+- \`content_create\` — create content with title, content_markdown, and content_type ("post" or "page")
+- \`content_update\` — update title, content, type, or display flags
+- \`content_delete\` — permanently delete a content item
+- \`content_pin_homepage\` — toggle homepage pin (one at a time)
+- \`content_pin_info\` — toggle Info page pin (one at a time)
 
+Posts (content_type="post"): slug auto-generated from title, can be pinned to homepage or Info page, supports hidden flag.
+Pages (content_type="page"): admin-chosen URL-safe slug (lowercase, hyphens), no pins/hidden flags. Pages can be added to navigation via nav_create with kind="page".
 Slugs must be URL-safe: lowercase letters, numbers, and hyphens only.
-Pages are a natural fit for an About Us, Services, Programs, or Community Info section.
-You can create a page and then add it to the navigation with nav_create.
+The markdown field is now "content_markdown" for both posts and pages.
 
 ### WEB
 Search the web and read web pages. Use web_search to find information (prayer timetables,
@@ -145,13 +148,13 @@ User: "Add a Jumu'ah session at 1:15 PM with Khateeb Imam Abdullah"
 → call jumuah_create({label:"Main Jumu'ah", time:"13:15", khateeb:"Imam Abdullah"})
 
 User: "Create a post about our food pantry, pin it to the info page"
-→ call posts_create({title:"Food Pantry", content_markdown:"Our food pantry provides meals to those in need every Saturday...", show_on_info:true})
+→ call content_create({title:"Food Pantry", content_markdown:"Our food pantry provides meals to those in need every Saturday...", show_on_info:true})
 
 User: "Update the services post to include counseling hours"
-→ call posts_update({slug:"services", content_markdown:"We offer counseling..."})
+→ call content_update({slug:"services", content_markdown:"We offer counseling..."})
 
 User: "Pin the about post to the homepage"
-→ call posts_pin_homepage({slug:"about"})
+→ call content_pin_homepage({slug:"about"})
 
 User: "Use Karachi calculation method and change labels to Azaan and Iqamah"
 → call prayer_config_update({calculation_method: 7}) AND call theme_update({label_adhaan:"Azaan", label_iqaamah:"Iqamah"})
@@ -187,10 +190,10 @@ User: "Reorder the nav: put prayer times first, then news, then info"
 → call nav_reorder({item_ids:["id_prayer", "id_news", "id_info", "id_maktab", "id_donate"]})
 
 User: "Create an About Us page with our masjid history"
-→ call pages_create({slug:"about-us", title:"About Us", raw_markdown:"# About Masjid Al-Noor\\n\\nWe were founded in 2010..."})
+→ call content_create({slug:"about-us", title:"About Us", content_markdown:"# About Masjid Al-Noor\\n\\nWe were founded in 2010...", content_type:"page"})
 
 User: "Update the services page with new food pantry hours"
-→ call pages_update({slug:"services", raw_markdown:"# Our Services\\n\\n## Food Pantry\\nEvery Saturday 10am-2pm..."})
+→ call content_update({slug:"services", content_markdown:"# Our Services\\n\\n## Food Pantry\\nEvery Saturday 10am-2pm..."})
 
 User: "Switch us to the Mishkaat style with gold accents and turn on ambient colors"
 → call theme_update({style_system:"mishkaat", style_options:{metal:"gold", ambient:true}})
