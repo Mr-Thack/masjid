@@ -67,6 +67,19 @@
 </svelte:head>
 
 <div class="space-y-6">
+  <div class="glass-card p-6 space-y-4">
+    <h2 class="text-lg font-semibold font-heading" style="color: var(--color-text);">Why Give?</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {#each opts.donateReasons as reason}
+        <div class="text-center p-4">
+          <div class="text-2xl mb-2">{reason.icon}</div>
+          <p class="text-sm font-medium" style="color: var(--color-text-muted);">{reason.title}</p>
+          <p class="text-xs mt-1" style="color: var(--color-text-dim);">{reason.desc}</p>
+        </div>
+      {/each}
+    </div>
+  </div>
+
   <div class="relative overflow-hidden rounded-2xl">
     <div class="geometric-pattern absolute inset-0 rounded-2xl"></div>
 
@@ -115,19 +128,6 @@
           <p class="text-sm" style="color: var(--color-text-muted);">Donation information coming soon</p>
         </div>
       {/if}
-    </div>
-  </div>
-
-  <div class="glass-card p-6 space-y-4">
-    <h2 class="text-lg font-semibold font-heading" style="color: var(--color-text);">Why Give?</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      {#each opts.donateReasons as reason}
-        <div class="text-center p-4">
-          <div class="text-2xl mb-2">{reason.icon}</div>
-          <p class="text-sm font-medium" style="color: var(--color-text-muted);">{reason.title}</p>
-          <p class="text-xs mt-1" style="color: var(--color-text-dim);">{reason.desc}</p>
-        </div>
-      {/each}
     </div>
   </div>
 

@@ -50,6 +50,8 @@ The sidebar uses the same glass morphism as the consumer app.
 | — (divider) | | |
 | Profile | `Building2` | `/admin/[slug]/settings/profile` |
 | Theme | `Palette` | `/admin/[slug]/settings/theme` |
+| Navigation | `Compass` | `/admin/[slug]/settings/navigation` |
+| Donations | `Heart` | `/admin/[slug]/settings/donations` |
 | Prayer Rules | `Clock` | `/admin/[slug]/settings/prayer` |
 | Jumu'ah | `Users` | `/admin/[slug]/settings/jumuah` |
 | Announcements | `Megaphone` | `/admin/[slug]/settings/announcements` |
@@ -108,7 +110,7 @@ If the API is partially down, the sections that work still render.
 
 ## 3. Profile Settings (`/admin/[slug]/settings/profile`)
 
-### Form Fields (26 total)
+### Form Fields (24 total)
 
 | Field | Input Type | Notes |
 |-------|-----------|-------|
@@ -125,7 +127,6 @@ If the API is partially down, the sections that work still render.
 | Facebook URL | url | |
 | YouTube URL | url | |
 | Instagram URL | url | |
-| Donation Links | repeatable `[{label, url}]` pairs | JSON array, e.g. `[{"label":"PayPal","url":"https://..."}]` |
 | About Us (Markdown) | textarea | Long-form markdown content |
 | Latitude | number | -90 to 90, used for prayer calculation |
 | Longitude | number | -180 to 180, used for prayer calculation |
@@ -134,7 +135,6 @@ If the API is partially down, the sections that work still render.
 | Asr Madhab | select | shafi (earlier Asr) or hanafi (later Asr, common in Indo-Pak communities) |
 | High Latitude Rule | select | seventh_of_night (default), middle_of_night, twilight_angle, none. Only relevant above 48°N |
 | Show both Asr times | checkbox | When true, displays both Shafi and Hanafi Asr on public pages |
-| Show donate QR card | checkbox | When true, shows a QR code on the donate page |
 | Fajr Angle (°) | number (8–22) | Custom Fajr twilight angle; null = use calculation method default |
 | Isha Angle (°) | number (8–22) | Custom Isha twilight angle; null = use calculation method default |
 | Adhaan Adjustments | 6 number inputs | Manual minute offsets for Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha (can be negative) |
@@ -162,7 +162,7 @@ date/time picker — just a list of IANA timezone strings filtered by region).
 Defaults to `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 
 ### Behavior
-- **Load**: Fetches `GET /admin/masjids/[id]` — fills all 26 fields
+- **Load**: Fetches `GET /admin/masjids/[id]` — fills all 24 fields
 - **Save**: `PUT /admin/masjids/[id]` with the full profile object (all fields are sent;
   the server applies only fields that differ from the stored values by checking
   `!== undefined` per-field)
@@ -172,7 +172,30 @@ Defaults to `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 
 ---
 
-## 4. Theme Settings (`/admin/[slug]/settings/theme`)
+## 4. Donations Settings (`/admin/[slug]/settings/donations`)
+
+**Purpose**: Canonical home for all donation-related settings, moved here from
+Profile (donation links, share QR) and Theme (donate appeal, "Why Give?" cards).
+
+### Form Fields
+
+| Field | Input Type | Notes |
+|-------|-----------|-------|
+| Donation Links | repeatable `[{label, url}]` pairs | Where the "Support This Masjid" button sends visitors. Empty URL rows are skipped on save. |
+| Show Share QR card | checkbox | When true, shows a QR code on the donate page |
+| Donate Appeal | text (max 80 chars) | Short appeal text shown on the TV donate frame |
+| Why Give? cards | up to 8 cards: icon, title, description | Shown on the consumer Donate page "Why Give?" section. Incomplete cards (missing title) are skipped on save. |
+
+### Behavior
+
+- **Load**: `GET /admin/masjids/[id]` — reads `donation_links`, `show_donate_qr`, and `theme.style_options` (for `donateAppeal` + `donateReasons`)
+- **Save**: `PUT /admin/masjids/[id]` with `donation_links`, `show_donate_qr`, and the full `style_options` object (preserves unrelated keys like `photoUrl`, `hideHomeNav`)
+- **Dirty tracking**: Submit button disabled until form is changed
+- **Error handling**: Toast on save success/failure
+
+---
+
+## 5. Theme Settings (`/admin/[slug]/settings/theme`)
 
 ### Section: Layout Preset
 
@@ -263,7 +286,7 @@ honors all custom labels.
 
 ---
 
-## 5. Prayer Rules (`/admin/[slug]/settings/prayer`)
+## 6. Prayer Rules (`/admin/[slug]/settings/prayer`)
 
 ### Section: Rules Table
 
@@ -339,7 +362,7 @@ Collapsible panel below the rules table.
 
 ---
 
-## 6. Jumu'ah Settings (`/admin/[slug]/settings/jumuah`)
+## 7. Jumu'ah Settings (`/admin/[slug]/settings/jumuah`)
 
 ### Table
 
@@ -370,7 +393,7 @@ Button below table → inline row with empty fields. "Save" commits `POST /jumua
 
 ---
 
-## 7. Announcements (`/admin/[slug]/settings/announcements`)
+## 8. Announcements (`/admin/[slug]/settings/announcements`)
 
 ### Section: Announcements List
 
@@ -417,7 +440,7 @@ Side panel (slides in from right on desktop, full-screen modal on mobile).
 
 ---
 
-## 8. Domain Settings (`/admin/[slug]/settings/domain`)
+## 9. Domain Settings (`/admin/[slug]/settings/domain`)
 
 ### Current Domain Display
 - If a domain exists: shows domain name, SSL status badge, verification instructions
@@ -442,7 +465,7 @@ Side panel (slides in from right on desktop, full-screen modal on mobile).
 
 ---
 
-## 9. Snapshots / Rollback (`/admin/[slug]/settings/snapshots`)
+## 10. Snapshots / Rollback (`/admin/[slug]/settings/snapshots`)
 
 ### Snapshot List Table
 
@@ -510,7 +533,7 @@ THEME
 
 ---
 
-## 10. Maktab Settings (`/admin/[slug]/settings/maktab`)
+## 11. Maktab Settings (`/admin/[slug]/settings/maktab`)
 
 ### Section: Enrollment Controls
 
@@ -590,7 +613,7 @@ payment-sensitive). Registrations are read-only PII — view them in the admin U
 
 ---
 
-## 11. Account Settings (`/admin/[slug]/settings/account`)
+## 12. Account Settings (`/admin/[slug]/settings/account`)
 
 ### Password Change Form
 
@@ -616,7 +639,7 @@ payment-sensitive). Registrations are read-only PII — view them in the admin U
 
 ---
 
-## 12. Cross-Cutting Resilience Patterns
+## 13. Cross-Cutting Resilience Patterns
 
 ### 12.1 Section-Level Error Boundaries
 

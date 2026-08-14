@@ -36,15 +36,9 @@
       },
       frames: [] as string[],
       emblem: 'medallion' as string,
-      donateAppeal: '',
       photoUrl: '',
       logoUrl: '',
       engravedSvg: '',
-      donateReasons: [
-        { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Keep our masjid clean, safe, and welcoming' },
-        { icon: '📚', title: 'Support Education', desc: 'Fund classes, lectures, and youth programs' },
-        { icon: '🤝', title: 'Serve the Community', desc: 'Help those in need through outreach programs' },
-      ] as Array<{ icon: string; title: string; desc: string }>,
     },
     layout_preset: 'glass-dark',
     primary_color: '#1e3a8a',
@@ -586,27 +580,9 @@
               {/if}
             {/if}
           </div>
-
-          <!-- Donate Appeal -->
-          <div class="bg-surface border border-border rounded-xl p-6">
-            <h2 class="font-heading font-semibold text-text mb-3">Donate Appeal</h2>
-            <p class="text-xs text-text-muted mb-2">Short appeal text shown on the donate frame (max 80 characters).</p>
-            <div class="form-group">
-              <input
-                id="donateAppeal"
-                type="text"
-                class="w-full"
-                maxlength="80"
-                bind:value={form.style_options.donateAppeal}
-                oninput={handleChange}
-                placeholder="Every contribution makes a difference"
-              />
-              <p class="text-xs text-text-muted mt-1">{form.style_options.donateAppeal.length}/80</p>
-            </div>
-          </div>
         {/if}
 
-        <!-- Layout Preset (Sakeenah only) -->
+          <!-- Layout Preset (Sakeenah only) -->
         {#if form.style_system === 'sakeenah'}
           <div class="bg-surface border border-border rounded-xl p-6">
             <h2 class="font-heading font-semibold text-text mb-3">Layout Preset</h2>
@@ -773,68 +749,6 @@
                 <img src={form.style_options.logoUrl} alt="Logo preview" class="mt-2 rounded-lg max-h-12 border border-border" onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               {/if}
             </div>
-          </div>
-        </div>
-
-        <!-- Donate Reasons -->
-        <div class="bg-surface border border-border rounded-xl p-6">
-          <h2 class="font-heading font-semibold text-text mb-4">Donate Reasons</h2>
-          <p class="text-xs text-text-muted mb-4">Customize the "Why Give?" cards on the Donate page (icon, title, description). Up to 8 cards.</p>
-          <div class="space-y-3">
-            {#each form.style_options.donateReasons as reason, i (i)}
-              <div class="grid grid-cols-[2.5rem_1fr_1fr] gap-3 items-start p-3 rounded-lg border border-border">
-                <input
-                  type="text"
-                  class="w-full text-center text-lg"
-                  bind:value={reason.icon}
-                  oninput={handleChange}
-                  maxlength="10"
-                  placeholder="🕌"
-                  aria-label="Card {i + 1} icon"
-                />
-                <div class="space-y-1">
-                  <input
-                    type="text"
-                    class="w-full text-sm"
-                    bind:value={reason.title}
-                    oninput={handleChange}
-                    maxlength="100"
-                    placeholder="Title"
-                    aria-label="Card {i + 1} title"
-                  />
-                  <input
-                    type="text"
-                    class="w-full text-xs"
-                    bind:value={reason.desc}
-                    oninput={handleChange}
-                    maxlength="200"
-                    placeholder="Description"
-                    aria-label="Card {i + 1} description"
-                  />
-                </div>
-                <button
-                  type="button"
-                  class="text-xs text-red-400 hover:text-red-300 self-center"
-                  onclick={() => {
-                    form.style_options.donateReasons = form.style_options.donateReasons.filter((_, idx) => idx !== i);
-                    dirty = true;
-                  }}
-                  title="Remove card"
-                >Remove</button>
-              </div>
-            {/each}
-            {#if form.style_options.donateReasons.length < 8}
-              <button
-                type="button"
-                class="btn-secondary text-xs w-full"
-                onclick={() => {
-                  form.style_options.donateReasons = [...form.style_options.donateReasons, { icon: '❤️', title: '', desc: '' }];
-                  dirty = true;
-                }}
-              >+ Add Reason</button>
-            {:else}
-              <p class="text-xs text-text-dim">Maximum 8 cards reached.</p>
-            {/if}
           </div>
         </div>
 

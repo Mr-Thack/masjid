@@ -580,7 +580,7 @@ describe('Theme page — style system', () => {
     expect(screen.getByText('Hadith of the Day')).toBeInTheDocument();
   });
 
-  it('shows Masjid Logo and Donate Appeal sections when Mishkaat', async () => {
+  it('shows Masjid Logo section when Mishkaat', async () => {
     mockGetProfile.mockResolvedValue({
       name: 'Test Masjid',
       theme: {
@@ -610,8 +610,6 @@ describe('Theme page — style system', () => {
     await waitFor(() => {
       expect(screen.getByText('Masjid Logo')).toBeInTheDocument();
     });
-    const donateElements = screen.getAllByText('Donate Appeal');
-    expect(donateElements.length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Medallion (star)')).toBeInTheDocument();
   });
 });

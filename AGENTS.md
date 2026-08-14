@@ -7,7 +7,7 @@ The project is a fully implemented monorepo with:
 - **Working consumer frontend** (SvelteKit static/SPA, 165 tests)
 - **WhatsApp worker — NOT fully implemented / not working correctly** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 231 tests — but the end-to-end WhatsApp flow is not yet working right; see the "WhatsApp Zero-UI worker" section below)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — 47 tools, runner, prompts, api-client, session, media)
-- **Admin app** (SvelteKit static/SPA on port 5176 — auth, dashboard, 11 settings pages, bot chat panel — 230 tests)
+- **Admin app** (SvelteKit static/SPA on port 5176 — auth, dashboard, 12 settings pages, bot chat panel — 243 tests)
 - **Tooling tests** (23 tests covering merge-pages, build integrity, schema drift)
 - **Runtime D1 schema checks removed (2026-08-13)**: `ensureD1Columns`, `waitForD1Migrations`, `COLUMN_MIGRATIONS`, and all runtime `ALTER TABLE` logic removed from the Worker (see "Schema management" below). The isolated D1 binding hang that caused intermittent staging E2E failures (consumer suite bucket-clean missing-text with zero CPU, §deploy-lessons-55) is eliminated — the Worker no longer awaits D1 calls before routing requests. Schema correctness is enforced entirely by the CI pipeline: `check-schema` (static) + `check-d1-drift` (live D1) + staging reseed — the Worker is a pure consumer, never a schema manager.
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
@@ -79,7 +79,7 @@ npm run test:consumer    # Consumer frontend, 165 tests (jsdom + testing-library
 npm run test:whatsapp    # WhatsApp worker, 231 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker removal tests, 12 (Playwright, requires dev servers)
 npm run test:agent       # Agent package tests, 40 tests (node)
-npm run test:admin       # Admin app tests, 230 tests (jsdom + testing-library)
+npm run test:admin       # Admin app tests, 243 tests (jsdom + testing-library)
 npm run test:tooling     # Tooling tests (merge-pages, build integrity — 23 tests)
 npm run test:e2e         # Browser E2E smoke vs local dev servers
 npm run test:e2e:staging # Browser E2E vs staging
@@ -264,7 +264,7 @@ its `/*.js`/`/*.json` immutable patterns were a standalone-deploy footgun).
 ### Other known items
 - **The `minimal-light` preset exists** but has no light-mode `.glass`/`.glass-card` equivalents — would need light variants for a true light theme.
 - **Only 1 admin per masjid** — the `admins` table has a UNIQUE FK on `masjid_id`.
-- **Admin app is fully built** — 15 pages (login, register, dashboard, bot chat, 11 settings pages). See `docs/admin-manual-settings.md` and `docs/admin-ai-capabilities.md`.
+- **Admin app is fully built** — 16 pages (login, register, dashboard, bot chat, 12 settings pages). See `docs/admin-manual-settings.md` and `docs/admin-ai-capabilities.md`.
 - **TV frontend shares theming with consumer** — both use `@masjid/ui-utils` for preset tokens and `applyTheme()`. All 15 theme fields (including `time_format` and `label_*`) are used.
 - **The `+error.svelte` page is basic** — shows a generic error message. Could be improved.
 
@@ -459,7 +459,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 | `/login` | Admin login (email + password) |
 | `/register` | New masjid registration (creates masjid + admin account) |
 | `/admin/[slug]` | Dashboard (stats, status, quick actions) |
-| `/admin/[slug]/settings/profile` | Masjid profile (18 fields) |
+| `/admin/[slug]/settings/profile` | Masjid profile (16 fields) |
 | `/admin/[slug]/settings/theme` | Theme settings (presets, colors, fonts, labels, style system) |
 | `/admin/[slug]/settings/prayer` | Prayer rules table + dry-run simulator |
 | `/admin/[slug]/settings/jumuah` | Jumu'ah sessions management |
@@ -467,6 +467,7 @@ SvelteKit static SPA on port 5176. Admin dashboard for manual settings and AI bo
 | `/admin/[slug]/settings/announcements` | Announcements with markdown editor |
 | `/admin/[slug]/settings/content` | Unified content management (posts + pages) with markdown editor, homepage/info pins, type badges |
 | `/admin/[slug]/settings/navigation` | Nav items (add/reorder built-in routes, custom pages, external links; desktop/mobile toggles) |
+| `/admin/[slug]/settings/donations` | Donation settings (donation links, share QR toggle, donate appeal, "Why Give?" cards) |
 | `/admin/[slug]/settings/domain` | Custom domain management |
 | `/admin/[slug]/settings/snapshots` | Configuration snapshots + rollback |
 | `/admin/[slug]/settings/account` | Password change |
