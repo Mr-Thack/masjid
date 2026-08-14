@@ -990,16 +990,18 @@ if (!cfg.adminEmail || !authState) {
         return;
       }
       await deleteBtn.click();
-      // Confirm dialog should appear
+      // Confirm dialog should appear ("Delete Content" title, "Confirm" action)
       await page.waitForSelector('text=Delete Content', { timeout: 5000 }).catch(() => {});
-      const confirmBtn = page.locator('button:has-text("Delete")').last();
+      const confirmBtn = page.locator('button:has-text("Confirm")').last();
       if (await confirmBtn.count() > 0) {
         await confirmBtn.click();
-        // Wait for item to disappear
-        await new Promise((r) => setTimeout(r, 2000));
       }
-      const stillVisible = await page.evaluate((t) => document.body.innerText.includes(t), title);
-      t.assert(!stillVisible, `ADM-33 item removed after delete: ${!stillVisible}`);
+      // Wait for the item to disappear (up to 10s)
+      const removed = await page.waitForFunction(
+        (t) => !document.body.innerText.includes(t), title,
+        { timeout: 10000 },
+      ).then(() => true).catch(() => false);
+      t.assert(removed, `ADM-33 item removed after delete: ${removed}`);
       t.assert(b.pageErrors.length === 0, `ADM-33 delete no errors — ${JSON.stringify(b.pageErrors)}`);
     } finally {
       await context.close();
