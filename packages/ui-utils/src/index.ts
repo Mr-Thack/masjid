@@ -6,6 +6,7 @@ export {
   resolveStyleOptions,
   MISHKAAT_OPTION_DEFAULTS,
   DONATE_REASON_DEFAULTS,
+  DEFAULT_HERO_URL,
   STOCK_ACCENT_COLOR,
   STOCK_PRIMARY_COLOR,
   type DensityOption,

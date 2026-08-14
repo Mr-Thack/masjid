@@ -19,7 +19,7 @@ The original Workstream B put the hero and prayer table in the left 2/3 column �
 - **Mobile (single column):** hero → announcement → post → donate → prayer table → Jumu'ah (with `photoUrl`: photo hero → announcement → … → prayer/Jumu'ah).
 - Implementation: explicit `lg:col-start-*`/`lg:row-start-*`/`lg:row-span-*` placement on the three grid children (hero, content, timings) + `order-*` for mobile — no orphan cells by construction.
 - **Header logo pitfall:** an SVG logo without intrinsic `width`/`height` contributes ~0 to the header flex basis and squeezes the masjid name into ellipsis. `.c-logo-img` is a definite 38×38 box (`object-fit: contain`) so any image sizes correctly.
-- **Seed data:** Al-Noor (Mishkaat) seeds `photoUrl`/`logoUrl`/`whatsappGroupUrl`/`donateReasons` (assets committed at `apps/consumer/static/uploads/seed/`); Al-Jabal (Sakeenah) seeds `whatsappGroupUrl`/`donateReasons`, a homepage post, a Resources custom page, and a full nav item set — every overhaul branch is covered by one seed masjid or the other.
+- **Seed data:** Al-Noor (Mishkaat) seeds `photoUrl`/`logoUrl`/`whatsappGroupUrl`/`donateReasons` (the hero uses the bundled **default image** `apps/consumer/static/uploads/default-hero.svg` via `DEFAULT_HERO_URL`; the logo is `apps/consumer/static/uploads/seed/noor-logo.svg`); Al-Jabal (Sakeenah) seeds `whatsappGroupUrl`/`donateReasons`, a homepage post, a Resources custom page, and a full nav item set — every overhaul branch is covered by one seed masjid or the other. Masjids without their own photo can opt into the default image from the admin theme page's "Use default image" button.
 
 ---
 

@@ -210,9 +210,6 @@
     return countdownDisplay;
   });
 
-  // Jumu'ah pinning — mirrors the soul-column rule: pinned Thursday–Friday.
-  let jumuahPinned = $derived(mishkaat && hasJumuah && (now.getDay() === 4 || now.getDay() === 5));
-
   $effect(() => {
     const t = setInterval(() => {
       now = new Date();
@@ -331,12 +328,14 @@
       <section class="text-center lg:text-left">
         <a
           href="/{masjid?.slug}/donate"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-all duration-300 hover:scale-105 hover:shadow-xl active:scale-95 bg-accent shadow-lg"
+          class="c-donate-cta inline-flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-white no-underline transition-transform duration-300 hover:scale-105 active:scale-95 bg-accent"
           style="text-shadow: 0 1px 2px rgba(0,0,0,0.2);"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
+          <span class="c-donate-heart" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" class="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </span>
           Support This Masjid
         </a>
       </section>
@@ -372,10 +371,6 @@
   <div
     class="{opts.photoUrl ? 'order-2' : 'order-3'} lg:col-start-3 {opts.photoUrl ? 'lg:row-start-1' : 'lg:row-start-2'} lg:row-span-2 space-y-6"
   >
-    {#if jumuahPinned}
-      {@render jumuahSection()}
-    {/if}
-
     <section class="c-prayer-compact">
       <h2 class="text-lg font-semibold mb-3 uppercase tracking-wider font-heading text-accent">
         Today&rsquo;s Prayer Times
@@ -394,8 +389,6 @@
       {/if}
     </section>
 
-    {#if !jumuahPinned}
-      {@render jumuahSection()}
-    {/if}
+    {@render jumuahSection()}
   </div>
 </div>

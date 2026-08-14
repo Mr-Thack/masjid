@@ -2,7 +2,7 @@
   import { toast } from 'svelte-sonner';
   import { api } from '$lib/api';
   import { auth } from '$lib/auth.svelte';
-  import { metalPalettes } from '@masjid/ui-utils';
+  import { metalPalettes, DEFAULT_HERO_URL } from '@masjid/ui-utils';
   import ImageTracer from 'imagetracerjs';
   import SkeletonForm from '$lib/components/SkeletonForm.svelte';
 
@@ -88,6 +88,13 @@
   ];
 
   function handleChange() { dirty = true; }
+
+  const usingDefaultImage = $derived(form.style_options.photoUrl === DEFAULT_HERO_URL);
+
+  function toggleDefaultImage() {
+    dirty = true;
+    form.style_options.photoUrl = usingDefaultImage ? '' : DEFAULT_HERO_URL;
+  }
 
   function toggleFrame(frame: string) {
     dirty = true;
@@ -738,6 +745,18 @@
               {#if form.style_options.photoUrl}
                 <img src={form.style_options.photoUrl} alt="Homepage photo preview" class="mt-2 rounded-lg max-h-32 border border-border" onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               {/if}
+              <button
+                type="button"
+                class="btn-secondary text-xs mt-2"
+                onclick={toggleDefaultImage}
+              >
+                {usingDefaultImage ? 'Remove default image' : 'Use default image'}
+              </button>
+              <p class="text-xs text-text-dim mt-1">
+                {usingDefaultImage
+                  ? 'Using the bundled default hero. Save to apply it to your homepage.'
+                  : 'No photo yet? Use the bundled default hero image.'}
+              </p>
             </div>
             <div class="form-group">
               <label for="logoUrl">Header Logo URL</label>

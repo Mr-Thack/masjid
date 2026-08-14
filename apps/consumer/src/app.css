@@ -738,6 +738,69 @@ html[data-style-system='mishkaat'][data-theme-mode='light'] .c-app[data-ambient-
   object-fit: cover;
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Donate CTA — the homepage's one attention magnet: breathing glow ring,
+   sweeping shine, and a beating heart. Purely decorative; the reduced-motion
+   block at the end of this file freezes all of it for prefers-reduced-motion.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.c-donate-cta {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  animation: donate-glow 2.6s ease-in-out infinite;
+}
+
+.c-donate-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.28) 45%,
+    rgba(255, 255, 255, 0.42) 50%,
+    rgba(255, 255, 255, 0.28) 55%,
+    transparent 75%
+  );
+  background-size: 250% 100%;
+  background-position: 130% 0;
+  animation: donate-shine 3.6s ease-in-out infinite;
+}
+
+.c-donate-heart {
+  display: inline-flex;
+  transform-origin: center;
+  animation: donate-heartbeat 1.8s ease-in-out infinite;
+}
+
+@keyframes donate-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-accent-light) 40%, transparent),
+      0 8px 22px -8px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--color-accent-light) 22%, transparent),
+      0 10px 38px -6px color-mix(in srgb, var(--color-accent) 80%, transparent);
+  }
+}
+
+@keyframes donate-shine {
+  0%, 55% { background-position: 130% 0; }
+  100%   { background-position: -30% 0; }
+}
+
+@keyframes donate-heartbeat {
+  0%, 100% { transform: scale(1); }
+  14%      { transform: scale(1.2); }
+  28%      { transform: scale(1); }
+  42%      { transform: scale(1.14); }
+  56%      { transform: scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

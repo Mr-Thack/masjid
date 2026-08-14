@@ -5,6 +5,7 @@
 import { getDb } from '../apps/api/src/lib/server/db/index.js';
 import { hashPassword } from '../apps/api/src/lib/server/auth/password.js';
 import * as schema from '../apps/api/src/lib/server/db/schema.js';
+import { DEFAULT_HERO_URL } from '@masjid/ui-utils';
 import { eq } from 'drizzle-orm';
 
 const db = getDb();
@@ -94,14 +95,15 @@ async function seed() {
   // Al-Jabal stays on Sakeenah — one seed masjid per style system.
   // style_options exercises the consumer homepage overhaul features
   // (docs/consumer-homepage-overhaul.md): photo hero, header logo, WhatsApp
-  // group link, and configurable donate reasons. The image assets are
-  // committed under apps/consumer/static/uploads/seed/ so the URLs resolve
+  // group link, and configurable donate reasons. Al-Noor's hero uses the
+  // bundled default image (DEFAULT_HERO_URL, committed at
+  // apps/consumer/static/uploads/default-hero.svg) so the URLs resolve
   // identically in local dev, staging, and prod.
   db.insert(schema.masjidThemes).values({
     masjidId: NOOR_MASJID_ID,
     styleSystem: 'mishkaat',
     styleOptions: JSON.stringify({
-      photoUrl: '/uploads/seed/noor-hero.svg',
+      photoUrl: DEFAULT_HERO_URL,
       logoUrl: '/uploads/seed/noor-logo.svg',
       whatsappGroupUrl: 'https://chat.whatsapp.com/ENoorCommunity2026',
       donateReasons: [

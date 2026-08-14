@@ -359,8 +359,11 @@ scroll.
 - **Hadith of the Day card** — the TV hadith frame as a static card (Arabic +
   English + source, same curated collection, same date-seeded pick, same
   occasion tags via `hadithTagsForContext`).
-- **Jumu'ah pinning** mirrors the soul-column rule: the Jumu'ah card leads the
-  sidebar Thursday–Friday.
+- **Jumu'ah in the timings column** — the Jumu'ah section sits below the prayer
+  table every day. (An earlier build pinned it above the prayer table
+  Thursday–Friday, mirroring the soul-column rule; removed 2026-08-13 because
+  daily prayer times are more important on the homepage. The TV soul column
+  still pins Jumu'ah frames Thu–Fri.)
 - **Hero moments** — the same shared `computeCeremony` state machine drives the
   hero only: at adhaan it names the prayer; adhaan→iqaamah it counts down to
   iqaamah; otherwise the usual next-iqaamah countdown.

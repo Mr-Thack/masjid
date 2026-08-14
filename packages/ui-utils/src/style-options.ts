@@ -76,6 +76,15 @@ export interface ResolvedMishkaatOptions {
   engravedSvg: string;
 }
 
+/**
+ * Bundled "default image" hero shipped with the consumer app
+ * (`apps/consumer/static/uploads/default-hero.svg`). Any masjid can opt into it
+ * from the admin theme page when they don't have their own photo — the admin
+ * sets `photoUrl` to this path. Served from the consumer static bundle, so it
+ * resolves identically in local dev, staging, and prod.
+ */
+export const DEFAULT_HERO_URL = '/uploads/default-hero.svg';
+
 export const DONATE_REASON_DEFAULTS: DonateReason[] = [
   { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Keep our masjid clean, safe, and welcoming' },
   { icon: '📚', title: 'Support Education', desc: 'Fund classes, lectures, and youth programs' },

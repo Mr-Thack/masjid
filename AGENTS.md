@@ -5,14 +5,14 @@ The project is a fully implemented monorepo with:
 - **Working API** (SvelteKit + D1, 673 tests)
 - **Working TV frontend** (SvelteKit static, 266 tests — no Tailwind, hand-written CSS)
 - **Working consumer frontend** (SvelteKit static/SPA, 165 tests)
-- **Working WhatsApp worker** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 231 tests)
+- **WhatsApp worker — NOT fully implemented / not working correctly** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 231 tests — but the end-to-end WhatsApp flow is not yet working right; see the "WhatsApp Zero-UI worker" section below)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — 47 tools, runner, prompts, api-client, session, media)
 - **Admin app** (SvelteKit static/SPA on port 5176 — auth, dashboard, 11 settings pages, bot chat panel — 230 tests)
 - **Tooling tests** (23 tests covering merge-pages, build integrity, schema drift)
 - **Runtime D1 schema checks removed (2026-08-13)**: `ensureD1Columns`, `waitForD1Migrations`, `COLUMN_MIGRATIONS`, and all runtime `ALTER TABLE` logic removed from the Worker (see "Schema management" below). The isolated D1 binding hang that caused intermittent staging E2E failures (consumer suite bucket-clean missing-text with zero CPU, §deploy-lessons-55) is eliminated — the Worker no longer awaits D1 calls before routing requests. Schema correctness is enforced entirely by the CI pipeline: `check-schema` (static) + `check-d1-drift` (live D1) + staging reseed — the Worker is a pure consumer, never a schema manager.
 - **Mishkaat style system shipped (Phases 0-3, 2026-07-29)** — `style_system`/`style_options` columns, Mishkaat preset (espresso/gold), RTL TV layout, Amiri headings, star-and-octagon band (default motif; honeycomb opt-in), arch clock-niche + rosette ornaments, classic clock, server-time sync, soul-column frames (hadith/jumu'ah/announcements/donate appeal + QR as two slides), schedule changes rolling through the prayer board (45s/15s cycle, adhaan→iqaamah+5min holdoff), ceremony states (adhaan → countdown → in-progress → quiet → night calm: 20% veil, board stays readable), Friday/Ramadan/Eid modes, ambient palette. Sakeenah unchanged. New registrations default to Mishkaat. See `docs/design-language.md`.
 - **Prayer tables shipped (2026-07-30)** — the homepage prayer section is the classic masjid timetable (`PrayerTable`: one row per prayer, adhaan/iqaamah columns, sunrise row, current-row highlight + rosette, next chip, right-after-adhaan and dual-Asr notes) and the Times tab is the weekly timetable (`WeeklyPrayerTable`: days × prayers, iqaamah over adhaan per cell, today row, cross-week change accents, styled legend) — BOTH style systems, replacing the card grid and the stacked day cards. `PrayerCard`/`PrayerList`/`SkeletonPrayerCard` deleted.
-- **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
+- **Mishkaat consumer adaptation shipped (§7.11, 2026-07-30)** — the soul comes to the mobile main page when Mishkaat is selected: mihrab hero niche (shared arch geometry), star band + rosette header glyph, Hadith of the Day card, adhaan/iqaamah hero moments (shared `computeCeremony`), mild ambient background, current-prayer rosette marker. Ceremony overlays/rotation/board roll deliberately stay TV-only. Shared ornaments/state machine now live in `@masjid/ui-utils` (`components/`, `arch.ts`, `ceremony.ts`).
 - **Everything runs locally** — API on 5173, TV on 5174, consumer on 5175, admin on 5176
 - **Production deployed** — API on mapi.mr-thack.workers.dev; ALL 3 page apps (consumer + TV + admin) unified on **masjid-live.pages.dev** via Pages advanced mode (`_worker.js` router in the merged deploy)
 - **Unified deploy live (2026-07-29)** — one domain for everything. **Read `docs/unified-deploy.md` before touching deployment.** Old `masjid-live-tv`/`masjid-live-admin` Pages projects deleted; cutover complete.
@@ -97,6 +97,15 @@ npm run test:all:ci      # all vitest suites + schema check (must be green)
 npm run typecheck        # or: npm run check --workspaces --if-present
 ```
 
+> **Known irrelevant TS warning**: raw `tsc --noEmit` (not the project's gate) reports
+> `Module '"*.svelte"' has no exported member 'WeekDay'` in
+> `apps/consumer/src/__tests__/components/WeeklyPrayerTable.test.ts:8`. It's a false
+> positive — `WeekDay` is legitimately exported from `<script module lang="ts">` in
+> `WeeklyPrayerTable.svelte`, but plain `tsc` only sees Svelte's ambient `*.svelte`
+> shim (default export only). `svelte-check` (what `npm run typecheck` actually runs)
+> resolves it correctly with 0 errors. Ignore it; no fix needed unless raw-`tsc` ever
+> becomes a CI gate.
+
 **Before writing or modifying ANY E2E test, first read:**
 - **`docs/integration-testing.md`** — the determinism rules (§5.2), conventions (§7), and incident regression map (§9)
 - **`docs/e2e-determinism.md`** — root causes, plan, and handoff lessons
@@ -120,7 +129,7 @@ Also:
 - Who slug: `masjid-al-noor` (note dashes, not underscores)
 - WhatsApp: `+15551230001` (Zero-UI admin)
 - Style system: **Mishkaat** (gold, `layout_preset='mishkaat'`, Amiri headings) — the flagship seed
-- `style_options`: `photoUrl` + `logoUrl` (committed SVG assets in `apps/consumer/static/uploads/seed/`), `whatsappGroupUrl`, `donateReasons` — exercises the photo hero, header logo, WhatsApp link, and custom donate cards
+- `style_options`: `photoUrl` (the bundled **default image** — `apps/consumer/static/uploads/default-hero.svg`, shared constant `DEFAULT_HERO_URL` from `@masjid/ui-utils`) + `logoUrl` (`apps/consumer/static/uploads/seed/noor-logo.svg`), `whatsappGroupUrl`, `donateReasons` — exercises the photo hero, header logo, WhatsApp link, and custom donate cards
 - API endpoint: `http://localhost:5173/api/v1/masjids/masjid-al-noor`
 - Consumer page: `http://localhost:5175/masjid-al-noor`
 - TV page: `http://localhost:5174/display/masjid-al-noor`
@@ -205,7 +214,7 @@ its `/*.js`/`/*.json` immutable patterns were a standalone-deploy footgun).
 
 ### Theme & display settings (extensible, per-masjid)
 - **`@masjid/ui-utils`**: Shared `presetTokens` and `applyTheme(theme)` used by both consumer and TV. Also hosts the shared Mishkaat modules: `components/Rosette.svelte` + `components/StarBand.svelte` (subpath exports `@masjid/ui-utils/components/*`), `arch.ts` (canonical mihrab geometry), `ceremony.ts` (`computeCeremony`, `getAmbientPhase`, Hijri helpers — TV re-exports via `$lib/ceremony`), `hadith.ts` (collection + `hadithTagsForContext`).
-- **Mishkaat consumer adaptation (§7.11)**: `style_system` flows through the page payload; pages branch via `resolveStyleSystem(theme)`. Hero mihrab niche (`HeroNiche`), header star band + rosette glyph, `HadithCard`, Jumu'ah pinned Thu–Fri, adhaan/iqaamah hero moments, ambient background via `src/lib/ambient.ts` (`data-ambient-phase` on the app root), `rosetteMarker` on the prayer table's current row. All Mishkaat CSS keys off `html[data-style-system='mishkaat']` or renders only under the branch.
+- **Mishkaat consumer adaptation (§7.11)**: `style_system` flows through the page payload; pages branch via `resolveStyleSystem(theme)`. Hero mihrab niche (`HeroNiche`), header star band + rosette glyph, `HadithCard`, adhaan/iqaamah hero moments, ambient background via `src/lib/ambient.ts` (`data-ambient-phase` on the app root), `rosetteMarker` on the prayer table's current row. All Mishkaat CSS keys off `html[data-style-system='mishkaat']` or renders only under the branch. (2026-08-13: homepage Jumu'ah pinning Thu–Fri removed — the prayer table always sits above Jumu'ah; the TV soul column still pins Jumu'ah frames.)
 - **`src/lib/theme/context.svelte.ts`**: Thin re-export of `applyTheme` from `@masjid/ui-utils` for consumer-specific import paths.
 - **`layout_preset` field** in `masjid_themes` table switches presets. Al-Noor seeds to `'mishkaat'` (Mishkaat style system); Al-Jabal seeds to `'minimal-light'` (Sakeenah). Unknown values fall through to the style system's default preset.
 - **`masjid_themes` also stores display vocabulary**: `time_format` (`12h`/`24h`) and custom labels for `adhaan`, `iqaamah`, `jumuah`, `sunrise`, and each prayer name (`fajr`, `dhuhr`, `asr`, `maghrib`, `isha`). These flow through the public API and are consumed by `PrayerTable` and the weekly prayer view.
@@ -343,6 +352,11 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 ## WhatsApp Zero-UI worker (`workers/whatsapp/`)
 
 > **NOT DEPLOYED (2026-08-06)**: WhatsApp/push workers are disabled until launch and have never been deployed (the account runs `mapi` + `mapi-staging` only). The prod deploy matrix in `deploy.yml` skips them — their entries are commented out with re-add instructions (no-op `build` scripts already in place; wrangler compiles TS at deploy time, no build step needed). `wrangler.toml` carries `global_fetch_strictly_public` so its calls to `mapi`'s public URL won't hit CF error 1042 when re-enabled (lesson 54).
+
+> **NOT FULLY IMPLEMENTED (2026-08-13)**: the end-to-end WhatsApp flow is not yet
+> working correctly despite Stages 1-4 (and 231 tests) being complete. Do not treat
+> this worker as production-ready; the tests cover the individual stages, not the
+> full working WhatsApp loop.
 
 Stages 1-3 are complete. The worker handles Meta webhook verification, inbound message parsing,
 phone-to-tenant resolution, branch lifecycle (OPEN/MERGED/ABANDONED), media file handling,

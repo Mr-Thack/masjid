@@ -1,13 +1,15 @@
 // Mishkaat style system the homepage gains the mihrab hero niche, the Hadith
-// of the Day card, Thursday–Friday Jumu'ah pinning, adhaan/iqaamah hero
-// moments, and the current-prayer rosette marker in the prayer table. Under
-// Sakeenah none of this renders. (The prayer table itself is shared by both
-// style systems — only the Mishkaat extras branch.)
+// of the Day card, adhaan/iqaamah hero moments, and the current-prayer
+// rosette marker in the prayer table. Under Sakeenah none of this renders.
+// (The prayer table itself is shared by both style systems — only the
+// Mishkaat extras branch.)
 //
 // Note (2026-08-13): HadithCard was removed from the homepage per the
 // consumer homepage overhaul. The announcement is front-and-center in the
 // left content column (.c-announce-prominent); the hero, prayer table, and
-// Jumu'ah form the right-hand timings column.
+// Jumu'ah form the right-hand timings column — with the prayer table always
+// above Jumu'ah (2026-08-13: Thursday/Friday Jumu'ah pinning was removed
+// because daily prayer times are more important).
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/svelte';
@@ -116,7 +118,7 @@ describe('homepage — Mishkaat (§7.11)', () => {
     expect(prominent!.textContent).toContain('Eid Announcement');
   });
 
-  it('renders Jumu\u2019ah pinned above the prayer table on Thursday', () => {
+  it('renders Jumu\u2019ah below the prayer table on Thursday (prayer always first)', () => {
     vi.setSystemTime(new Date('2026-07-30T10:00:00')); // Thursday
     const { container } = render(HomePage);
 
@@ -126,15 +128,16 @@ describe('homepage — Mishkaat (§7.11)', () => {
     expect(screen.getByText('13:30')).toBeInTheDocument();
 
     // Content column (Announcement) precedes the timings column; within the
-    // timings column the pinned Jumu'ah sits above the prayer table.
+    // timings column the prayer table always sits above Jumu'ah — even on
+    // Thursday/Friday, because daily prayer times are more important.
     const order = h2Order(container);
     const annIdx = order.indexOf('Announcement');
     const prayerIdx = order.indexOf(PRAYER_HEADING);
     const jumIdx = order.indexOf("Jumu'ah Timings");
 
     expect(annIdx).toBeGreaterThanOrEqual(0);
-    expect(jumIdx).toBeGreaterThan(annIdx);
-    expect(prayerIdx).toBeGreaterThan(jumIdx);
+    expect(prayerIdx).toBeGreaterThan(annIdx);
+    expect(jumIdx).toBeGreaterThan(prayerIdx);
   });
 
   it('renders Jumu\u2019ah below the prayer table on Wednesday (standard position)', () => {
