@@ -199,6 +199,15 @@ describe('resolveStyleOptions', () => {
     expect(resolveStyleOptions({}).whatsappGroupUrl).toBe('');
   });
 
+  it('parses hideHomeNav (boolean only, defaults to false)', () => {
+    expect(parseStyleOptions({ hideHomeNav: true }).hideHomeNav).toBe(true);
+    expect(parseStyleOptions({ hideHomeNav: false }).hideHomeNav).toBe(false);
+    expect(parseStyleOptions({ hideHomeNav: 'yes' }).hideHomeNav).toBeUndefined();
+    expect(parseStyleOptions({ hideHomeNav: 1 }).hideHomeNav).toBeUndefined();
+    expect(resolveStyleOptions({}).hideHomeNav).toBe(false);
+    expect(resolveStyleOptions({ hideHomeNav: true }).hideHomeNav).toBe(true);
+  });
+
   it('parses donateReasons (validates icon/title/desc, drops invalid, caps at 8)', () => {
     expect(parseStyleOptions({
       donateReasons: [

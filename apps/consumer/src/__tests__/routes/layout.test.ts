@@ -350,6 +350,83 @@ describe('layout shell', () => {
     });
   });
 
+  describe('home tab option', () => {
+    it('renders the Home tab by default (fallback nav)', () => {
+      mockPageStore.set({
+        data: {
+          masjid: { slug: 'masjid-al-noor', name: 'Masjid Al-Noor' },
+          theme: minimalTheme,
+          prayer_times: prayerTimes,
+          jumuah: [],
+          pinned_announcement: null,
+          recent_announcements: [],
+          homepage_post: null,
+          info_post: null,
+          nav_items: [],
+        },
+      });
+
+      const { container } = render(Layout, { props: { children: (() => 'content') as any } });
+
+      const desktop = container.querySelector('nav[aria-label="Main navigation"]')!;
+      const mobile = container.querySelector('nav[aria-label="Mobile navigation"]')!;
+      expect(desktop.textContent).toContain('Home');
+      expect(mobile.textContent).toContain('Home');
+    });
+
+    it('hides the Home tab when hideHomeNav is set in style_options', () => {
+      mockPageStore.set({
+        data: {
+          masjid: { slug: 'masjid-al-noor', name: 'Masjid Al-Noor' },
+          theme: { ...minimalTheme, style_options: { hideHomeNav: true } },
+          prayer_times: prayerTimes,
+          jumuah: [],
+          pinned_announcement: null,
+          recent_announcements: [],
+          homepage_post: null,
+          info_post: null,
+          nav_items: [
+            { kind: 'route', route_segment: 'prayer', label: 'Times', icon: 'Clock', show_on_desktop_header: true, show_on_mobile_bottom: true },
+          ],
+        },
+      });
+
+      const { container } = render(Layout, { props: { children: (() => 'content') as any } });
+
+      const desktop = container.querySelector('nav[aria-label="Main navigation"]')!;
+      const mobile = container.querySelector('nav[aria-label="Mobile navigation"]')!;
+      expect(desktop.textContent).not.toContain('Home');
+      expect(mobile.textContent).not.toContain('Home');
+      expect(desktop.textContent).toContain('Times');
+      expect(mobile.textContent).toContain('Times');
+    });
+
+    it('still shows the logo/name as the home link when the Home tab is hidden', () => {
+      mockPageStore.set({
+        data: {
+          masjid: { slug: 'masjid-al-noor', name: 'Masjid Al-Noor' },
+          theme: { ...minimalTheme, style_options: { hideHomeNav: true, logoUrl: 'https://example.com/logo.png' } },
+          prayer_times: prayerTimes,
+          jumuah: [],
+          pinned_announcement: null,
+          recent_announcements: [],
+          homepage_post: null,
+          info_post: null,
+          nav_items: [
+            { kind: 'route', route_segment: 'prayer', label: 'Times', icon: 'Clock', show_on_desktop_header: true, show_on_mobile_bottom: true },
+          ],
+        },
+      });
+
+      const { container } = render(Layout, { props: { children: (() => 'content') as any } });
+
+      const homeLink = container.querySelector('header a[href="/masjid-al-noor"]')!;
+      expect(homeLink).toBeInTheDocument();
+      expect(homeLink.querySelector('.c-logo-img')).toBeInTheDocument();
+      expect(container.querySelector('nav[aria-label="Main navigation"]')!.textContent).not.toContain('Home');
+    });
+  });
+
   describe('embed mode', () => {
     it('hides header and footer when embed param is present', () => {
       mockPageStore.set({

@@ -97,6 +97,14 @@ New registrations get these 4 items (Home is implicit):
 
 Existing masjids: a migration backfills these 4 items for every masjid that has zero nav_items.
 
+### 2.5 Hiding the Home Tab (2026-08-13)
+
+Home is injected by the consumer layout as the first item (desktop header + mobile
+bottom nav). Because the header logo/name already links home, masjids can hide the
+tab entirely via `style_options.hideHomeNav: true` (admin → Theme → Images → "Hide
+the Home tab"). The option lives in `style_options` (not `nav_items`) because Home
+is implicit — it is never a row in `nav_items`. Default `false` (tab shown).
+
 ---
 
 ## 3. API Endpoints

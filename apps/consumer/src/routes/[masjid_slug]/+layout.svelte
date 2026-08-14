@@ -95,10 +95,15 @@
 
   const navItems = $derived.by(() => {
     const fromApi = $page.data.nav_items;
+    // The header logo/name already links home, so the Home tab is optional —
+    // style_options.hideHomeNav drops it from both desktop and mobile nav.
+    const skipHome = opts.hideHomeNav;
     if (fromApi && fromApi.length > 0) {
-      const items: Array<{ segment: string; label: string; icon: string; kind: string; page_slug?: string; external_url?: string; show_on_desktop_header: boolean; show_on_mobile_bottom: boolean }> = [
-        { segment: '', label: 'Home', icon: 'Home', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
-      ];
+      const items: Array<{ segment: string; label: string; icon: string; kind: string; page_slug?: string; external_url?: string; show_on_desktop_header: boolean; show_on_mobile_bottom: boolean }> = skipHome
+        ? []
+        : [
+            { segment: '', label: 'Home', icon: 'Home', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
+          ];
       for (const ni of fromApi) {
         const seg = ni.kind === 'route' ? (ni.route_segment ?? '') : '';
         items.push({
@@ -115,13 +120,14 @@
       return items;
     }
     // fallback defaults
-    return [
+    const fallback = [
       { segment: '', label: 'Home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
       { segment: 'prayer', label: 'Times', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
       { segment: 'news', label: 'News', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
       { segment: 'info', label: 'Info', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
       { segment: 'maktab', label: 'Maktab', icon: 'M12 14l9-5-9-5-9 5 9 5z M5 15l7 4 7-4', kind: 'route', show_on_desktop_header: true, show_on_mobile_bottom: true },
     ];
+    return skipHome ? fallback.slice(1) : fallback;
   });
 
   const ICON_PATHS: Record<string, string> = {

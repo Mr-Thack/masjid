@@ -54,6 +54,8 @@ export interface MishkaatStyleOptions {
   donateReasons?: DonateReason[];
   /** Pre-computed SVG engraving of the masjid photo (generated in admin, served statically). */
   engravedSvg?: string;
+  /** Hide the "Home" nav tab (desktop + mobile) — the header logo/name is the home link. */
+  hideHomeNav?: boolean;
 }
 
 export interface ResolvedMishkaatOptions {
@@ -74,6 +76,7 @@ export interface ResolvedMishkaatOptions {
   whatsappGroupUrl: string;
   donateReasons: DonateReason[];
   engravedSvg: string;
+  hideHomeNav: boolean;
 }
 
 /**
@@ -113,6 +116,7 @@ export const MISHKAAT_OPTION_DEFAULTS: ResolvedMishkaatOptions = {
   whatsappGroupUrl: '',
   donateReasons: [...DONATE_REASON_DEFAULTS],
   engravedSvg: '',
+  hideHomeNav: false,
 };
 
 const METALS: readonly MetalName[] = ['gold', 'silver', 'copper', 'rose'];
@@ -202,6 +206,7 @@ export function parseStyleOptions(
     const svg = input.engravedSvg.trim();
     if (svg.length >= 1 && svg.length <= 500000) out.engravedSvg = svg;
   }
+  if (typeof input.hideHomeNav === 'boolean') out.hideHomeNav = input.hideHomeNav;
   if (input.quietHours && typeof input.quietHours === 'object' && !Array.isArray(input.quietHours)) {
     const qh = input.quietHours as Record<string, unknown>;
     const quietHours: QuietHoursOptions = {};
@@ -252,6 +257,7 @@ export function resolveStyleOptions(
       ? input.donateReasons
       : [...defaults.donateReasons],
     engravedSvg: input?.engravedSvg ?? defaults.engravedSvg,
+    hideHomeNav: input?.hideHomeNav ?? defaults.hideHomeNav,
   };
 }
 
