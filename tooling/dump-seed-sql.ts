@@ -41,6 +41,7 @@ const DELETE_ORDER = [
   'mkt_outbox',
   'mkt_settings', // references mkt_terms via active_term_id — before mkt_terms
   'mkt_terms',
+  'masjid_integrations', // references masjids — before masjids
   'admins',
   'masjid_themes',
   'masjids',

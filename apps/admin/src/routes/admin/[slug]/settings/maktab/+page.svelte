@@ -439,7 +439,7 @@
             {/if}
           </ul>
           <a
-            href="/admin/{data.masjidSlug}/settings/integrations"
+            href="/admin/{masjidSlug}/settings/integrations"
             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 transition-colors"
           >
             <ShieldOff size={14} />

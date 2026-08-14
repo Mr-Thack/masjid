@@ -806,8 +806,7 @@ if (!cfg.adminEmail || !authState) {
       await postBtn.waitFor({ state: 'visible', timeout: 10000 });
       await postBtn.click();
       // Fill the form
-      const titleInput = page.locator('form textarea').first().locator('..').locator('input[type="text"]').first();
-      // Try more specific: form with h3 containing "New Post"
+      const titleInput = page.locator('form:has(h3:has-text("New Post")) input[type="text"]').first();
       await titleInput.waitFor({ state: 'visible', timeout: 10000 });
       await titleInput.fill(title);
       // Fill content_markdown textarea
@@ -896,20 +895,9 @@ if (!cfg.adminEmail || !authState) {
       // Fill slug
       const slugInput = page.locator('form:has(h3:has-text("New Page")) input.font-mono');
       await slugInput.fill(pageSlug);
-      // Fill title
-      const titleInputs = page.locator('form:has(h3:has-text("New Page")) input[type="text"]');
-      const titleInput = titleInputs.nth(titleInputs.count() - 1 > 0 ? 1 : 0); // second text input (after slug)
-      if (await titleInput.count() > 0) {
-        const allTextInputs = page.locator('form:has(h3:has-text("New Page")) input[type="text"]');
-        const count = await allTextInputs.count();
-        for (let i = 0; i < count; i++) {
-          const val = await allTextInputs.nth(i).inputValue();
-          if (val === '') {
-            await allTextInputs.nth(i).fill(title);
-            break;
-          }
-        }
-      }
+      // Fill title (last text input — slug is first)
+      const titleInput = page.locator('form:has(h3:has-text("New Page")) input[type="text"]').last();
+      await titleInput.fill(title);
       // Fill content
       const contentArea = page.locator('form:has(h3:has-text("New Page")) textarea');
       await contentArea.fill('# E2E Page\n\nTest content.');
@@ -923,7 +911,7 @@ if (!cfg.adminEmail || !authState) {
         (t) => document.body.innerText.includes(t), title,
         { timeout: 10000 },
       ).then(() => true).catch(() => false);
-      const hasSlug = await page.evaluate(() => document.body.innerText.includes(pageSlug));
+      const hasSlug = await page.evaluate((slug) => document.body.innerText.includes(slug), pageSlug);
       t.assert(hasTitle, `ADM-31 page title "${title}" appeared: ${hasTitle}`);
       t.assert(hasSlug, `ADM-31 page slug "${pageSlug}" appeared: ${hasSlug}`);
       t.assert(b.pageErrors.length === 0, `ADM-31 create page no errors — ${JSON.stringify(b.pageErrors)}`);
@@ -995,8 +983,8 @@ if (!cfg.adminEmail || !authState) {
       ).then(() => true).catch(() => false);
       t.assert(titleVisible, `ADM-33 item visible before delete: ${titleVisible}`);
       // Click the delete (trash) button — it's the red hover button
-      const parentEl = page.locator(`text="${title}"`).locator('..').locator('..');
-      const deleteBtn = parentEl.locator('button.text-red-400, button[class*="red"]').last();
+      const rowEl = page.locator(`text="${title}"`).locator('..').locator('..').locator('..');
+      const deleteBtn = rowEl.locator('button.text-red-400, button[class*="red"]').last();
       if (await deleteBtn.count() === 0) {
         t.assert(true, 'ADM-33 delete button not found in row');
         return;
@@ -1045,7 +1033,7 @@ if (!cfg.adminEmail || !authState) {
         { timeout: 10000 },
       );
       // Click the Edit button on the row
-      const editBtn = page.locator(`text="${original}"`).locator('..').locator('..').locator('button:has-text("Edit")');
+      const editBtn = page.locator(`text="${original}"`).locator('..').locator('..').locator('..').locator('button:has-text("Edit")');
       await editBtn.waitFor({ state: 'visible', timeout: 10000 });
       await editBtn.click();
       // Edit form should appear with h3 "Edit Post"

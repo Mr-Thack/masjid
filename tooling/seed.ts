@@ -366,18 +366,20 @@ async function seed() {
   }).run();
 
   // ── Integrations — Suffah Masjid values ──────────────────────────────────
-  // Sensitive keys (access_token, api_key) are left empty — fill them in
-  // through the admin dashboard at Settings > Integrations.
+  // Sensitive keys (access_token, api_key) are seeded from the environment
+  // when present (staging CI + local .env.dev) so the E2E payment flow and
+  // confirmation emails work out of the box; otherwise they fall back to
+  // empty and must be filled in via Settings > Integrations.
   db.insert(schema.masjidIntegrations).values([
-    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'access_token', value: '' },
-    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'app_id', value: '' },
-    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'location_id', value: '' },
-    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'api_key', value: '' },
-    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'sender_email', value: 'automated@masjidsuffah.com' },
-    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'sender_name', value: 'Masjid Suffah' },
-    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'forward_to_email', value: 'suffahmasjid@gmail.com' },
-    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'logging_email', value: 'masjidsuffahlogging@gmail.com' },
-    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'bot_name', value: 'masjid-api/1.0' },
+    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'access_token', value: process.env.SQUARE_ACCESS_TOKEN || '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'app_id', value: process.env.SQUARE_APP_ID || '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'square', keyName: 'location_id', value: process.env.SQUARE_LOCATION_ID || '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'api_key', value: process.env.BREVO_API_KEY || '' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'sender_email', value: process.env.SENDER_EMAIL || 'automated@masjidsuffah.com' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'sender_name', value: process.env.SENDER_NAME || 'Masjid Suffah' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'forward_to_email', value: process.env.FORWARD_TO_EMAIL || 'suffahmasjid@gmail.com' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'logging_email', value: process.env.LOGGING_EMAIL || 'masjidsuffahlogging@gmail.com' },
+    { masjidId: NOOR_MASJID_ID, provider: 'brevo', keyName: 'bot_name', value: process.env.BOT_NAME || 'masjid-api/1.0' },
   ]).run();
 
   // ─────────────────────────────────────────────────────────────────────────────
