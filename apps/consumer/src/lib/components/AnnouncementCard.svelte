@@ -59,7 +59,7 @@
 
   {#if announcement.compiled_html}
     <div
-      class="mt-3 pt-3 border-t border-white/5 text-sm leading-relaxed"
+      class="c-markdown mt-3 pt-3 border-t border-white/5 text-sm"
       class:hidden={!expanded}
       style="color: var(--color-text-muted);"
     >

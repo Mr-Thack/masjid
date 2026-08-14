@@ -43,7 +43,7 @@
 
   {#if masjid?.about_html}
     <section class="glass-card p-6">
-      <div class="prose-base leading-relaxed" style="color: var(--color-text);">
+      <div class="c-markdown" style="color: var(--color-text);">
         {@html masjid.about_html}
       </div>
     </section>
@@ -130,7 +130,7 @@
   {#if !masjid?.about_html && data.info_post}
     <section class="glass-card p-5">
       <h2 class="text-sm font-semibold uppercase tracking-wider mb-3" style="color: var(--color-text-muted);">{data.info_post.title}</h2>
-      <div class="prose-base leading-relaxed" style="color: var(--color-text);">
+      <div class="c-markdown" style="color: var(--color-text);">
         {@html data.info_post.compiled_html}
       </div>
     </section>

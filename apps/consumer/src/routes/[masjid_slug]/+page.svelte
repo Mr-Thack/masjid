@@ -299,7 +299,7 @@
           Announcement
         </h2>
         <h3 class="text-base font-bold mb-2" style="color: var(--color-text);">{pinnedAnnouncement.title}</h3>
-        <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+        <div class="c-markdown text-sm" style="color: var(--color-text-muted);">
           {@html pinnedAnnouncement.compiled_html}
         </div>
       </section>
@@ -317,7 +317,7 @@
           {homepagePost.title}
         </h2>
         <div class="glass-card p-5 border-l-4" style="border-left-color: var(--color-accent);">
-          <div class="text-sm leading-relaxed" style="color: var(--color-text-muted);">
+          <div class="c-markdown text-sm" style="color: var(--color-text-muted);">
             {@html homepagePost.compiled_html}
           </div>
         </div>

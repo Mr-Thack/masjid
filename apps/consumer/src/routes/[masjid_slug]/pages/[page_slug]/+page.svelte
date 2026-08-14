@@ -19,7 +19,7 @@
     </h1>
 
     {#if pageData?.compiled_html}
-      <div class="text-base leading-relaxed space-y-4" style="color: var(--color-text);">
+      <div class="c-markdown" style="color: var(--color-text);">
         {@html pageData.compiled_html}
       </div>
     {:else}

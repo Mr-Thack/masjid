@@ -151,6 +151,87 @@ svg {
   pointer-events: none;
 }
 
+/* ───────────────────────────────────────────────────────────────────────────
+   Markdown content (compiled_html / about_html)
+   Tailwind preflight strips heading + list styling, so compiled markdown must
+   re-establish it explicitly. Applied to every container that renders @html.
+   ─────────────────────────────────────────────────────────────────────────── */
+.c-markdown { line-height: 1.7; color: var(--color-text); }
+.c-markdown > :first-child { margin-top: 0; }
+.c-markdown > :last-child { margin-bottom: 0; }
+
+.c-markdown h1,
+.c-markdown h2,
+.c-markdown h3,
+.c-markdown h4,
+.c-markdown h5,
+.c-markdown h6 {
+  margin: 1.4em 0 0.6em;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-text);
+}
+.c-markdown h1 { font-size: 1.5rem; }
+.c-markdown h2 { font-size: 1.25rem; }
+.c-markdown h3 { font-size: 1.1rem; }
+.c-markdown h4 { font-size: 1rem; }
+.c-markdown h5 { font-size: 0.9rem; }
+.c-markdown h6 { font-size: 0.85rem; color: var(--color-text-muted); }
+
+.c-markdown p { margin: 0.75em 0; }
+
+.c-markdown ul,
+.c-markdown ol {
+  margin: 0.75em 0;
+  padding-left: 1.5em;
+  list-style: revert;
+}
+.c-markdown ul { list-style-type: disc; }
+.c-markdown ol { list-style-type: decimal; }
+.c-markdown li { margin: 0.3em 0; }
+
+.c-markdown a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.c-markdown a:hover { color: var(--color-accent-light); }
+
+.c-markdown strong { font-weight: 700; color: var(--color-text); }
+.c-markdown em { font-style: italic; }
+
+.c-markdown hr {
+  margin: 1.5em 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.c-markdown blockquote {
+  margin: 0.75em 0;
+  padding: 0.25em 1em;
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-text-muted);
+}
+
+.c-markdown code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.3em;
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+.c-markdown pre {
+  margin: 0.75em 0;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  border-radius: var(--radius-btn);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  border: 1px solid var(--color-border);
+}
+.c-markdown pre code { padding: 0; background: transparent; }
+
 /* Prayer table — the classic timetable pattern: one row per prayer, adhaan
    and iqaamah in scannable columns. Shared by both style systems; the skins
    come from the theme CSS variables (Mishkaat-only tweaks live below). */
