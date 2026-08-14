@@ -238,4 +238,35 @@ describe('PUT /admin/masjids/:id — style fields', () => {
     expect(board.theme.style_system).toBe('mishkaat');
     expect(board.theme.style_options).toEqual({ metal: 'gold', motif: 'eight-point-star' });
   });
+
+  it('accepts empty photoUrl/logoUrl from the admin theme form', async () => {
+    const { id } = await seedMasjid('put-empty-urls');
+    const res = await callAdminPut(id, {
+      style_system: 'mishkaat',
+      style_options: { metal: 'gold', photoUrl: '', logoUrl: '', engravedSvg: '' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.theme.style_system).toBe('mishkaat');
+    expect(body.theme.style_options).toEqual({
+      metal: 'gold',
+      photoUrl: '',
+      logoUrl: '',
+      engravedSvg: '',
+    });
+  });
+
+  it('accepts the default hero URL for photoUrl', async () => {
+    const { id } = await seedMasjid('put-default-hero');
+    const res = await callAdminPut(id, {
+      style_system: 'mishkaat',
+      style_options: { photoUrl: '/uploads/default-hero.svg', logoUrl: '' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.theme.style_options).toEqual({
+      photoUrl: '/uploads/default-hero.svg',
+      logoUrl: '',
+    });
+  });
 });

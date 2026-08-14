@@ -65,6 +65,29 @@ describe('StyleOptionsSchema', () => {
     expect(() => StyleOptionsSchema.parse({ donateAppeal: 42 })).toThrow();
   });
 
+  it('accepts empty URL fields (trimmed) — the admin theme form sends them as ""', () => {
+    const parsed = StyleOptionsSchema.parse({ photoUrl: '', logoUrl: '', whatsappGroupUrl: '' });
+    expect(parsed.photoUrl).toBe('');
+    expect(parsed.logoUrl).toBe('');
+    expect(parsed.whatsappGroupUrl).toBe('');
+  });
+
+  it('accepts and trims URL fields', () => {
+    const parsed = StyleOptionsSchema.parse({
+      photoUrl: '  /uploads/default-hero.svg  ',
+      logoUrl: '/uploads/seed/noor-logo.svg',
+      whatsappGroupUrl: ' https://chat.whatsapp.com/abc ',
+    });
+    expect(parsed.photoUrl).toBe('/uploads/default-hero.svg');
+    expect(parsed.logoUrl).toBe('/uploads/seed/noor-logo.svg');
+    expect(parsed.whatsappGroupUrl).toBe('https://chat.whatsapp.com/abc');
+  });
+
+  it('rejects non-string URL fields', () => {
+    expect(() => StyleOptionsSchema.parse({ photoUrl: 42 })).toThrow();
+    expect(() => StyleOptionsSchema.parse({ logoUrl: true })).toThrow();
+  });
+
   it('rejects invalid enum values', () => {
     expect(() => StyleOptionsSchema.parse({ metal: 'platinum' })).toThrow();
     expect(() => StyleOptionsSchema.parse({ motif: 'paisley' })).toThrow();

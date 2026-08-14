@@ -56,9 +56,9 @@ export const StyleOptionsSchema = z
     frames: z.array(z.string()).optional(),
     emblem: StyleEmblem.optional(),
     donateAppeal: z.string().trim().max(80).optional(),
-    photoUrl: z.string().min(1).max(2000).optional(),
-    logoUrl: z.string().min(1).max(2000).optional(),
-    whatsappGroupUrl: z.string().min(1).max(2000).optional(),
+    photoUrl: z.string().trim().max(2000).optional(),
+    logoUrl: z.string().trim().max(2000).optional(),
+    whatsappGroupUrl: z.string().trim().max(2000).optional(),
     donateReasons: z
       .array(
         z.object({
