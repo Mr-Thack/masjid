@@ -21,6 +21,8 @@ let mockGetPages: ReturnType<typeof vi.fn>;
 let mockCreateContent: ReturnType<typeof vi.fn>;
 let mockUpdateContent: ReturnType<typeof vi.fn>;
 let mockDeleteContent: ReturnType<typeof vi.fn>;
+let mockGetProfile: ReturnType<typeof vi.fn>;
+let mockUpdateProfile: ReturnType<typeof vi.fn>;
 
 function createMocks() {
   mockGetNavItems = vi.fn().mockResolvedValue({ nav_items: [] });
@@ -32,6 +34,8 @@ function createMocks() {
   mockCreateContent = vi.fn().mockResolvedValue({ id: 'page-id', slug: 'test', title: 'Test' });
   mockUpdateContent = vi.fn().mockResolvedValue({});
   mockDeleteContent = vi.fn().mockResolvedValue({});
+  mockGetProfile = vi.fn().mockResolvedValue({ theme: { style_options: {} } });
+  mockUpdateProfile = vi.fn().mockResolvedValue({});
 }
 
 createMocks();
@@ -47,6 +51,8 @@ vi.mock('$lib/api', () => ({
     createContent: (...args: unknown[]) => mockCreateContent(...args),
     updateContent: (...args: unknown[]) => mockUpdateContent(...args),
     deleteContent: (...args: unknown[]) => mockDeleteContent(...args),
+    getProfile: (...args: unknown[]) => mockGetProfile(...args),
+    updateProfile: (...args: unknown[]) => mockUpdateProfile(...args),
   },
 }));
 
@@ -143,7 +149,8 @@ describe('Navigation settings page', () => {
       await waitFor(() => { expect(screen.getByText('Times')).toBeInTheDocument(); });
 
       const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      const highlightCheckbox = checkboxes[2] as HTMLInputElement;
+      // [0] = "Hide the Home tab", [1] = desktop, [2] = mobile, [3] = highlight
+      const highlightCheckbox = checkboxes[3] as HTMLInputElement;
       expect(highlightCheckbox.checked).toBe(true);
     });
 
@@ -155,7 +162,8 @@ describe('Navigation settings page', () => {
       await waitFor(() => { expect(screen.getByText('Times')).toBeInTheDocument(); });
 
       const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      const desktopCheckbox = checkboxes[0] as HTMLInputElement;
+      // [0] = "Hide the Home tab", [1] = desktop, [2] = mobile, [3] = highlight
+      const desktopCheckbox = checkboxes[1] as HTMLInputElement;
       expect(desktopCheckbox.checked).toBe(true);
     });
   });
@@ -259,7 +267,8 @@ describe('Navigation settings page', () => {
       await waitFor(() => { expect(screen.getByText('Times')).toBeInTheDocument(); });
 
       const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      const highlightCheckbox = checkboxes[2] as HTMLInputElement;
+      // [0] = "Hide the Home tab", [1] = desktop, [2] = mobile, [3] = highlight
+      const highlightCheckbox = checkboxes[3] as HTMLInputElement;
       await fireEvent.click(highlightCheckbox);
 
       expect(mockUpdateNavItem).toHaveBeenCalledWith('masjid-1', 'nav-1', expect.objectContaining({
@@ -275,7 +284,8 @@ describe('Navigation settings page', () => {
       await waitFor(() => { expect(screen.getByText('Times')).toBeInTheDocument(); });
 
       const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-      const desktopCheckbox = checkboxes[0] as HTMLInputElement;
+      // [0] = "Hide the Home tab", [1] = desktop, [2] = mobile, [3] = highlight
+      const desktopCheckbox = checkboxes[1] as HTMLInputElement;
       await fireEvent.click(desktopCheckbox);
 
       expect(mockUpdateNavItem).toHaveBeenCalledWith('masjid-1', 'nav-1', expect.objectContaining({
@@ -352,6 +362,41 @@ describe('Navigation settings page', () => {
       await fireEvent.click(downButtons[0]);
 
       expect(mockReorderNavItems).toHaveBeenCalledWith('masjid-1', ['nav-2', 'nav-1']);
+    });
+  });
+
+  // ── home tab option ───────────────────────────────────────────────────────
+
+  describe('home tab option', () => {
+    it('loads hideHomeNav from profile style_options', async () => {
+      mockGetProfile.mockResolvedValue({
+        theme: { style_options: { photoUrl: '/uploads/default-hero.svg', hideHomeNav: true } },
+      });
+      render(NavPage, { props: slugData });
+      await waitFor(() => { expect(screen.getByText('Hide the Home tab')).toBeInTheDocument(); });
+
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      const homeCheckbox = checkboxes[0] as HTMLInputElement;
+      expect(homeCheckbox.checked).toBe(true);
+    });
+
+    it('calls updateProfile with the full style_options when toggled', async () => {
+      mockGetProfile.mockResolvedValue({
+        theme: { style_options: { photoUrl: '/uploads/default-hero.svg', hideHomeNav: false } },
+      });
+      render(NavPage, { props: slugData });
+      await waitFor(() => { expect(screen.getByText('Hide the Home tab')).toBeInTheDocument(); });
+
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      const homeCheckbox = checkboxes[0] as HTMLInputElement;
+      await fireEvent.click(homeCheckbox);
+
+      await waitFor(() => {
+        expect(mockUpdateProfile).toHaveBeenCalledWith('masjid-1', {
+          style_options: { photoUrl: '/uploads/default-hero.svg', hideHomeNav: true },
+        });
+      });
+      expect(toast.success).toHaveBeenCalled();
     });
   });
 

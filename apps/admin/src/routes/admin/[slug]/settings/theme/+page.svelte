@@ -40,7 +40,6 @@
       photoUrl: '',
       logoUrl: '',
       engravedSvg: '',
-      hideHomeNav: false,
       donateReasons: [
         { icon: '🕌', title: 'Maintain the House of Allah', desc: 'Keep our masjid clean, safe, and welcoming' },
         { icon: '📚', title: 'Support Education', desc: 'Fund classes, lectures, and youth programs' },
@@ -773,20 +772,6 @@
               {#if form.style_options.logoUrl}
                 <img src={form.style_options.logoUrl} alt="Logo preview" class="mt-2 rounded-lg max-h-12 border border-border" onerror={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               {/if}
-            </div>
-            <div class="form-group">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  class="w-4 h-4 rounded accent-amber-400"
-                  checked={form.style_options.hideHomeNav}
-                  onchange={(e) => { form.style_options.hideHomeNav = (e.target as HTMLInputElement).checked; handleChange(); }}
-                />
-                <span>Hide the Home tab</span>
-              </label>
-              <p class="text-xs text-text-muted mt-1">
-                The header logo/name already links back to the homepage, so the Home tab is redundant. Hide it to keep navigation clean.
-              </p>
             </div>
           </div>
         </div>

@@ -15,6 +15,8 @@
   let saving = $state(false);
   let navItems = $state<any[]>([]);
   let allPages = $state<any[]>([]);
+  let hideHomeNav = $state(false);
+  let styleOptions = $state<Record<string, unknown>>({});
   let showAddRoute = $state(false);
   let showAddLink = $state(false);
   let showAddPage = $state(false);
@@ -54,12 +56,17 @@
 
   async function load() {
     try {
-      const [navRes, pagesRes] = await Promise.all([
+      const [navRes, pagesRes, profileRes] = await Promise.all([
         api.getNavItems(auth.admin!.masjid_id),
         api.getPages(auth.admin!.masjid_id),
+        api.getProfile(auth.admin!.masjid_id),
       ]);
       navItems = navRes.nav_items || [];
       allPages = (pagesRes.content || []).filter((c: any) => c.content_type === 'page');
+      styleOptions = (profileRes?.theme?.style_options && typeof profileRes.theme.style_options === 'object')
+        ? profileRes.theme.style_options
+        : {};
+      hideHomeNav = styleOptions.hideHomeNav === true;
 
       if (navItems.length === 0 && !hasSeeded) {
         hasSeeded = true;
@@ -75,6 +82,22 @@
       toast.error(e instanceof Error ? e.message : 'Failed to load');
     } finally {
       loading = false;
+    }
+  }
+
+  async function toggleHomeNav() {
+    const next = !hideHomeNav;
+    hideHomeNav = next;
+    // The profile API replaces style_options wholesale, so send the full object.
+    try {
+      await api.updateProfile(auth.admin!.masjid_id, {
+        style_options: { ...styleOptions, hideHomeNav: next },
+      });
+      styleOptions = { ...styleOptions, hideHomeNav: next };
+      toast.success(next ? 'Home tab hidden — the logo/name links home' : 'Home tab restored');
+    } catch (e: unknown) {
+      hideHomeNav = !next; // revert on error
+      toast.error(e instanceof Error ? e.message : 'Failed');
     }
   }
 
@@ -293,6 +316,23 @@
       <p class="text-text-muted text-sm mt-1">Configure which links appear on your masjid's public page.</p>
     </div>
   </div>
+
+  {#if !loading}
+    <div class="bg-surface border border-border rounded-xl p-4 mb-6">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          class="w-4 h-4 rounded accent-amber-400 mt-0.5"
+          checked={hideHomeNav}
+          onchange={toggleHomeNav}
+        />
+        <span>
+          <span class="text-sm font-medium text-text">Hide the Home tab</span>
+          <span class="block text-xs text-text-muted mt-0.5">The header logo/name already links back to the homepage, so the Home tab is redundant. Hide it from both the desktop header and the mobile bottom bar.</span>
+        </span>
+      </label>
+    </div>
+  {/if}
 
   {#if loading}
     <SkeletonForm fields={4} />
