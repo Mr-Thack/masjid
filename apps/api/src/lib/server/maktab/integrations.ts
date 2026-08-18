@@ -5,6 +5,7 @@ import type { SquareEnv, MaktabConfig } from './types';
 export async function getSquareEnv(
   db: ReturnType<typeof getDb>,
   masjidId: string,
+  environment?: string,
 ): Promise<Partial<SquareEnv>> {
   const integrations = await getMasjidIntegrations(db, masjidId);
   const square = integrations.square ?? {};
@@ -12,13 +13,14 @@ export async function getSquareEnv(
     SQUARE_ACCESS_TOKEN: square.access_token || '',
     SQUARE_APP_ID: square.app_id || '',
     SQUARE_LOCATION_ID: square.location_id || '',
-    ENVIRONMENT: process.env.ENVIRONMENT,
+    ENVIRONMENT: environment || process.env.ENVIRONMENT,
   };
 }
 
 export async function getMaktabConfig(
   db: ReturnType<typeof getDb>,
   masjidId: string,
+  environment?: string,
 ): Promise<MaktabConfig> {
   const integrations = await getMasjidIntegrations(db, masjidId);
   const square = integrations.square ?? {};
@@ -33,7 +35,7 @@ export async function getMaktabConfig(
     FORWARD_TO_EMAIL: brevo.forward_to_email || '',
     LOGGING_EMAIL: brevo.logging_email || '',
     BOT_NAME: brevo.bot_name || '',
-    ENVIRONMENT: process.env.ENVIRONMENT,
+    ENVIRONMENT: environment || process.env.ENVIRONMENT,
   };
 }
 

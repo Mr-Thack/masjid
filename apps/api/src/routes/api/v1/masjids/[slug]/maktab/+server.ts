@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ params, platform }) => {
           .get()
       : null;
 
-    const squareEnv = await getSquareEnv(db, masjid.id);
+    const squareEnv = await getSquareEnv(db, masjid.id, platform?.env?.ENVIRONMENT);
 
     return JsonResponse({
       open: !!activeTerm && !!settings?.enrollmentOpen,

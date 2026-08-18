@@ -55,7 +55,7 @@ try {
     const body = TermCreateSchema.parse(await request.json());
 
     const db = getDb(platform?.env?.DB);
-    const squareEnv = await getSquareEnv(db, params.id);
+    const squareEnv = await getSquareEnv(db, params.id, platform?.env?.ENVIRONMENT);
 
     // 1. Create Square plan FIRST — if this fails, nothing is persisted
     const refs = await createSquareTermPlan(

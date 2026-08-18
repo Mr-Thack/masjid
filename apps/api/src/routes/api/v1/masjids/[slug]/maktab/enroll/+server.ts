@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ params, request, platform }) => {
 
     const refs: PaymentRefs = JSON.parse(term.paymentRefsJson || '{}');
 
-    const maktabConfig = await getMaktabConfig(db, masjid.id);
+    const maktabConfig = await getMaktabConfig(db, masjid.id, platform?.env?.ENVIRONMENT);
 
     const childrenCount = body.children.length;
     const monthlyAmountCents = monthlyAmount(term, childrenCount);

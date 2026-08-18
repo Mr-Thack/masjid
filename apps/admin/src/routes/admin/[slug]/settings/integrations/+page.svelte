@@ -175,7 +175,10 @@
             placeholder="EAAAE... (sandbox) or production token"
             bind:value={square.access_token}
           />
-          <span class="text-xs text-text-dim">Never exposed to visitors. Starts with <code>EAAAE</code> for sandbox.</span>
+          <span class="text-xs text-text-dim">
+            Never exposed to visitors. Starts with <code>EAAAE</code> for sandbox,
+            <code>EAAAl_</code> for production.
+          </span>
         </label>
 
         <label class="block space-y-1">
