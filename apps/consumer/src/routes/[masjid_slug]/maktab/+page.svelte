@@ -78,7 +78,7 @@
       <p style="color: var(--color-text-muted);">No active Maktab term is configured.</p>
     {/if}
 
-    {#if maktab?.open && maktab?.term}
+    {#if maktab?.open && maktab?.term && maktab?.square_config}
       <a
         href="/{$page.params.masjid_slug}/maktab/enroll"
         class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white no-underline transition-transform hover:scale-[1.02]"
@@ -86,6 +86,11 @@
       >
         Enroll Now
       </a>
+    {:else if maktab?.open && maktab?.term}
+      <div class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold" style="background-color: var(--color-surface); color: var(--color-text-muted);">
+        Enrollment Unavailable
+      </div>
+      <p class="text-sm" style="color: var(--color-text-dim);">Online enrollment is not available right now. Please contact the masjid to enroll.</p>
     {:else}
       <div class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold" style="background-color: var(--color-surface); color: var(--color-text-muted);">
         Enrollment Closed

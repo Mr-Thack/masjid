@@ -305,6 +305,13 @@
         <p class="mt-2 text-sm" style="color: var(--color-text-dim);">{maktab.status_message}</p>
       {/if}
     </div>
+  {:else if !maktab?.square_config}
+    <div class="glass-card rounded-2xl p-8 text-center" style="color: var(--color-text-muted);">
+      <p class="text-lg">Online enrollment is currently unavailable.</p>
+      <p class="mt-2 text-sm" style="color: var(--color-text-dim);">
+        Online payments are not configured. Please contact the masjid to enroll.
+      </p>
+    </div>
   {:else if success}
     <div class="glass-card rounded-2xl p-8 text-center space-y-4">
       <div class="text-5xl">🎉</div>
