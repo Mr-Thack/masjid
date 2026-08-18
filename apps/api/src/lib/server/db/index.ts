@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/d1';
 import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -230,7 +230,11 @@ export async function upsertIntegrationValue(
       .update(schema.masjidIntegrations)
       .set({ value, updatedAt: now })
       .where(
-        eq(schema.masjidIntegrations.masjidId, masjidId),
+        and(
+          eq(schema.masjidIntegrations.masjidId, masjidId),
+          eq(schema.masjidIntegrations.provider, provider),
+          eq(schema.masjidIntegrations.keyName, keyName),
+        ),
       );
   } else {
     await db.insert(schema.masjidIntegrations).values({
