@@ -186,6 +186,28 @@ header, so every call 401'd.
 - Pre-hydration form clicks trigger **native** form submits (the `waitForURL` CI flake).
 - Fixed `sleep 30` post-deploy replaced by the build-id probe (`8a9d2f8`).
 
+### 15. Dev/prod divergence at the data layer (local mocks that swallow errors)
+
+- The local D1 shim (`getD1Shim` in `apps/api/src/lib/server/db/index.ts`) wrapped every SQL operation in try/catch — `first()` returned `null`, `all()` returned `[]`, `run()` returned `{success: false}`, all without throwing.
+- The WhatsApp agent flows use this shim in local dev. Every failed INSERT (missing table, constraint violation) silently no-op'd — the chat flow proceeded, mutations were never stored, confirm reported "0 changes" success. Production D1 throws on SQL errors, so this failure mode was **invisible until deploy**.
+- Root cause: the shim was written for the happy path (bridge better-sqlite3 ↔ D1) but copied the *type signatures* without preserving the *error semantics*. A local mock that changes the contract in error paths makes the local loop useless for finding bugs.
+
+**Dumb test**: every local mock/shim for a remote service must preserve error semantics. If the real service throws on invalid SQL, the shim must throw. Add a test that sends deliberately bad SQL and asserts the shim throws (not returns null).
+
+### 16. Stale numeric/format expectations (the "green test, wrong answer")
+
+- The WhatsApp tool count test asserted `toHaveLength(32)`. The tool set grew to 43 (matching AGENTS.md) but the assertion was never updated. Four runner tests asserted the exact string `'Something went wrong'` — commit `29ab505` deliberately changed the error text to `'Error: ${errMsg}'` (more informative), but the tests stayed on the old copy. The suite was documented as "broken" so nobody noticed.
+- This is Pattern 5 (dead tests) but with a different failure mode: the assertions are **present and active**, not skipped by a guard, but they assert a value nobody remembers to keep in sync. Exact counts and exact-format strings are the most drift-prone.
+
+**Dumb test**: every exact-count or exact-string assertion should include a comment pointing to the canonical source (e.g., `// AGENTS.md documents 43 MCP tools`). When the source changes, the comment tells you to update the test. Better: assert a floor + specific entries (e.g., `expect(tools.length).toBeGreaterThan(40); expect(tools.find(t => t.name === 'theme_get')).toBeDefined()`).
+
+### 17. Tests that pass for the wrong reason (unscoped queries)
+
+- The merged-branch confirm/cancel tests did `db.select().from(configBranches).where(eq(configBranches.status, 'MERGED')).get()` — no `masjidId` filter. The query picked up a MERGED branch from a **different test masjid** (created by earlier test runs), so the route's ownership check correctly returned 403 instead of the expected 409. The test passed — it got an error — but for the wrong reason (cross-masjid rejection rather than the status check it intended to cover).
+- Lesson: when a test asserts an error code from a route that has **multiple rejection checks** (NOT_FOUND → FORBIDDEN → CONFLICT), a query scoped to "any row matching a condition" can silently select a row from the wrong entity, hitting an earlier check and masking the failure. Same bug bit both confirm and cancel tests identically.
+
+**Dumb test**: every test that queries for test fixtures must scope its queries to the entity it created (by ID, masjidId, or other owner column), never by global filter alone. A `get()` without the entity's own PK in the WHERE clause is a red flag.
+
 ---
 
 ## The dumb-test checklist (prioritized by bug frequency)
@@ -207,6 +229,8 @@ header, so every call 401'd.
 | 13 | **404-not-SPA**: missing asset chunk → 404 + no-store, never 200 HTML; SPA HTML → no-store; exactly one cache directive per asset class | 9 |
 | 14 | **Degenerate-config property tests**: state machines get iqaamah==adhaan, polar latitudes, NaN times — no negative durations, no 500s | 10 |
 | 15 | **204/non-JSON/non-ok**: test all three cases for every HTTP client wrapper | 8 |
+| 16 | **Shim/mock error semantics**: every local mock of a remote service must preserve error semantics — deliberately send bad SQL and assert the shim throws, not returns null | 15 |
+| 17 | **Query-scoped test fixtures**: every test query that fetches a fixture must filter by the entity's owner column (not just by global status like `status='MERGED'`) — unscoped `.get()` hits the wrong entity | 17 |
 
 ## Per-artifact rules (what to write when you write code)
 
@@ -233,6 +257,16 @@ by definition.
 
 **E2E mutation:** one `testCase` per mutation, unique per-run names, UI
 creates but **API restores in `finally`**. Precondition via API first.
+Tests must scope fixture queries by entity owner column — never global
+status/type filters that pick up rows from other test entities (#17).
+
+**Local mock/shim:** must preserve the remote service's error semantics
+(#16). If production throws on SQL errors, the shim must throw. Test with
+deliberately bad input.
+
+**Exact-count or exact-string assertion:** include a comment pointing to
+the canonical source. When the source changes, the comment tells you the
+test must change too.
 
 **External API integration:** one live sandbox test per provider.
 
