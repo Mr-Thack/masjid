@@ -7,7 +7,7 @@ import {
   GET as getAdminMasjid,
   PUT as putAdminMasjid,
 } from '../../routes/api/v1/admin/masjids/[id]/+server';
-import { parseStyleOptionsJson } from '$lib/server/style-options';
+import { parseStyleOptionsJson, mergeStyleOptions } from '$lib/server/style-options';
 
 // ---------------------------------------------------------------------------
 // Style system pass-through (docs/design-language.md — Phase 0 plumbing)
@@ -108,6 +108,53 @@ describe('parseStyleOptionsJson', () => {
       metal: 'copper',
       arch: false,
     });
+  });
+});
+
+describe('mergeStyleOptions', () => {
+  it('adds new keys from incoming', () => {
+    const merged = mergeStyleOptions(
+      { metal: 'gold' },
+      { arch: false },
+    );
+    expect(merged).toEqual({ metal: 'gold', arch: false });
+  });
+
+  it('overrides existing keys with incoming values', () => {
+    const merged = mergeStyleOptions(
+      { metal: 'silver', photoUrl: '/old.svg' },
+      { metal: 'gold' },
+    );
+    expect(merged).toEqual({ metal: 'gold', photoUrl: '/old.svg' });
+  });
+
+  it('deep-merges nested plain objects like quietHours', () => {
+    const merged = mergeStyleOptions(
+      {
+        metal: 'gold',
+        quietHours: { enabled: true, quietMinutes: 30, sleepAfterIshaMinutes: 90 },
+      },
+      {
+        quietHours: { enabled: false },
+      },
+    );
+    expect(merged).toEqual({
+      metal: 'gold',
+      quietHours: { enabled: false, quietMinutes: 30, sleepAfterIshaMinutes: 90 },
+    });
+  });
+
+  it('replaces arrays wholesale (not merged)', () => {
+    const merged = mergeStyleOptions(
+      { frames: ['hadith', 'jumuah'], metal: 'gold' },
+      { frames: ['donate'] },
+    );
+    expect(merged).toEqual({ frames: ['donate'], metal: 'gold' });
+  });
+
+  it('returns stored object when incoming is empty', () => {
+    const merged = mergeStyleOptions({ metal: 'gold', photoUrl: '/x.svg' }, {});
+    expect(merged).toEqual({ metal: 'gold', photoUrl: '/x.svg' });
   });
 });
 
@@ -306,6 +353,29 @@ describe('PUT /admin/masjids/:id — style fields', () => {
     expect(body.theme.style_options).toEqual({
       photoUrl: '/uploads/hero.svg',
       metal: 'gold',
+    });
+  });
+
+  it('deep-merges nested quietHours via PUT — preserves sibling keys', async () => {
+    const { id } = await seedMasjid('put-deep-quiet');
+    await db
+      .update(masjidThemes)
+      .set({
+        styleOptions: JSON.stringify({
+          metal: 'gold',
+          quietHours: { enabled: true, quietMinutes: 30, sleepAfterIshaMinutes: 90 },
+        }),
+      })
+      .where(eq(masjidThemes.masjidId, id));
+
+    const res = await callAdminPut(id, {
+      style_options: { quietHours: { enabled: false } },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.theme.style_options).toEqual({
+      metal: 'gold',
+      quietHours: { enabled: false, quietMinutes: 30, sleepAfterIshaMinutes: 90 },
     });
   });
 

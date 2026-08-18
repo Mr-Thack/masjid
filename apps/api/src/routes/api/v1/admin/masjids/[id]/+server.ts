@@ -8,7 +8,7 @@ import { getDb, fetchThemeRow } from '$lib/server/db';
 import { masjids, masjidThemes } from '$lib/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { invalidateMasjidCache, invalidatePageCache } from '$lib/server/prayer/cache';
-import { parseStyleOptionsJson } from '$lib/server/style-options';
+import { parseStyleOptionsJson, mergeStyleOptions } from '$lib/server/style-options';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals, platform }) => {
@@ -174,13 +174,13 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
       if (themeUpdate.data.style_options !== undefined) {
         // Merge partial style_options over the stored blob so a partial send
         // (e.g. the WhatsApp agent sending {metal:"gold"}) preserves unrelated
-        // keys like photoUrl/logoUrl/donateReasons.
+        // keys like photoUrl/logoUrl/donateReasons. Uses deep merge so nested
+        // objects (quietHours) also preserve sibling keys.
         const currentTheme = await fetchThemeRow(db, params.id, platform?.env?.DB);
         const existingOptions = currentTheme ? parseStyleOptionsJson(currentTheme.style_options) : {};
-        themeData.styleOptions = JSON.stringify({
-          ...existingOptions,
-          ...(themeUpdate.data.style_options as Record<string, unknown>),
-        });
+        themeData.styleOptions = JSON.stringify(
+          mergeStyleOptions(existingOptions, themeUpdate.data.style_options as Record<string, unknown>),
+        );
       }
       if (themeUpdate.data.layout_preset !== undefined) themeData.layoutPreset = themeUpdate.data.layout_preset;
       if (themeUpdate.data.primary_color !== undefined) themeData.primaryColor = themeUpdate.data.primary_color;

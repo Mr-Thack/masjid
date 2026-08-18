@@ -1,4 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { getDb } from '$lib/server/db';
+import { masjids, masjidThemes, admins, configSnapshots } from '$lib/server/db/schema';
+import { eq } from 'drizzle-orm';
+import { GET as getIntegrations, PUT as putIntegrations } from '../../routes/api/v1/admin/masjids/[id]/integrations/+server';
+import { POST as postRollback } from '../../routes/api/v1/admin/masjids/[id]/rollback/+server';
 
 // ---------------------------------------------------------------------------
 // Integration-style API route tests
@@ -573,10 +578,64 @@ describe('Error responses', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Rollback endpoint tests
+// Rollback endpoint — integration tests (real DB)
+//
+// These test real rollback restore against the local SQLite DB, verifying
+// that every column mapped in the rollback route is actually written.
 // ---------------------------------------------------------------------------
+let rollbackDb: ReturnType<typeof getDb>;
+
+beforeAll(() => {
+  rollbackDb = getDb();
+});
+
+function adminLocals(masjidId: string) {
+  return {
+    admin: {
+      sub: 'admin-test',
+      masjid_id: masjidId,
+      email: 'admin@example.com',
+      display_name: 'Test Admin',
+    },
+  };
+}
+
+async function seedRollbackMasjid(tag: string) {
+  const id = `rb-test-${tag}-${Date.now()}`;
+  const slug = `rb-${tag}-${Date.now()}`;
+  await rollbackDb.insert(masjids).values({
+    id,
+    slug,
+    name: 'Rollback Test',
+    latitude: 33.9,
+    longitude: -84.6,
+    timezone: 'America/New_York',
+  });
+  await rollbackDb.insert(masjidThemes).values({ masjidId: id });
+  await rollbackDb.insert(admins).values({
+    id: `admin-${id}`,
+    masjidId: id,
+    email: `admin-${id}@example.com`,
+    passwordHash: 'unused',
+  });
+  return id;
+}
+
 describe('POST /admin/masjids/:id/rollback', () => {
-  it('requires snapshot_id in request body', async () => {
+  function callRollback(id: string, body: unknown, locals: Record<string, unknown>) {
+    const req = createTestRequest('POST', `/api/v1/admin/masjids/${id}/rollback`, body);
+    return postRollback({
+      params: { id },
+      request: req,
+      url: new URL(req.url),
+      locals,
+      platform: { env: {} },
+      cookies: {} as any,
+      fetch: globalThis.fetch,
+    } as any);
+  }
+
+  it('requires snapshot_id in request body (Zod validation)', async () => {
     const req = createTestRequest('POST', '/api/v1/admin/masjids/test-id/rollback', {
       snapshot_id: 'snap-abc-123',
     });
@@ -585,13 +644,188 @@ describe('POST /admin/masjids/:id/rollback', () => {
     expect(req.method).toBe('POST');
   });
 
-  it('validates non-empty snapshot_id', () => {
-    // Empty snapshot_id should be rejected by Zod (min: 1)
-    const req = createTestRequest('POST', '/api/v1/admin/masjids/test-id/rollback', {
-      snapshot_id: '',
+  it('restores masjid profile fields including asr_madhab and show_dual_asr', async () => {
+    const id = await seedRollbackMasjid('profile');
+    const snapshotId = `snap-prof-${Date.now()}`;
+    await rollbackDb.insert(configSnapshots).values({
+      id: snapshotId,
+      masjidId: id,
+      summary: 'Restore profile',
+      fullStateJson: JSON.stringify({
+        version: 1,
+        summary: 'Restore profile',
+        created_at: new Date().toISOString(),
+        masjid: {
+          name: 'Restored Masjid',
+          latitude: 34.0,
+          longitude: -85.0,
+          timezone: 'America/Chicago',
+          calculation_method: 3,
+          asr_madhab: 'hanafi',
+          high_latitude_rule: 'middle_of_night',
+          show_dual_asr: true,
+          show_donate_qr: false,
+          about_markdown: '# About Us',
+          donation_links: '[{"label":"Donate","url":"https://x.com"}]',
+        },
+      }),
     });
-    expect(req.method).toBe('POST');
-    // Expected: 400 VALIDATION_ERROR
+
+    const res = await callRollback(id, { snapshot_id: snapshotId }, adminLocals(id));
+    expect(res.status).toBe(200);
+
+    const row = await rollbackDb.select().from(masjids).where(eq(masjids.id, id)).get();
+    expect(row?.name).toBe('Restored Masjid');
+    expect(row?.asrMadhab).toBe('hanafi');
+    expect(row?.highLatitudeRule).toBe('middle_of_night');
+    expect(row?.showDualAsr).toBe(true);
+    expect(row?.showDonateQr).toBe(false);
+    expect(row?.aboutMarkdown).toBe('# About Us');
+    expect(row?.donationLinks).toBe('[{"label":"Donate","url":"https://x.com"}]');
+  });
+
+  it('restores theme fields including label_speech', async () => {
+    const id = await seedRollbackMasjid('theme');
+    const snapshotId = `snap-theme-${Date.now()}`;
+    await rollbackDb.insert(configSnapshots).values({
+      id: snapshotId,
+      masjidId: id,
+      summary: 'Restore theme',
+      fullStateJson: JSON.stringify({
+        version: 1,
+        summary: 'Restore theme',
+        created_at: new Date().toISOString(),
+        masjid: {
+          name: 'Themed Masjid',
+          latitude: 34.0,
+          longitude: -85.0,
+          timezone: 'America/Chicago',
+          calculation_method: 3,
+          theme: {
+            primary_color: '#ff0000',
+            accent_color: '#00ff00',
+            label_speech: 'Bayaan',
+            label_fajr: 'Subh',
+          },
+        },
+      }),
+    });
+
+    const res = await callRollback(id, { snapshot_id: snapshotId }, adminLocals(id));
+    expect(res.status).toBe(200);
+
+    const theme = await rollbackDb.select().from(masjidThemes).where(eq(masjidThemes.masjidId, id)).get();
+    expect(theme?.primaryColor).toBe('#ff0000');
+    expect(theme?.accentColor).toBe('#00ff00');
+    expect(theme?.labelSpeech).toBe('Bayaan');
+    expect(theme?.labelFajr).toBe('Subh');
+  });
+
+  it('returns validation info about restored domains', async () => {
+    const id = await seedRollbackMasjid('validation');
+    const snapshotId = `snap-val-${Date.now()}`;
+    await rollbackDb.insert(configSnapshots).values({
+      id: snapshotId,
+      masjidId: id,
+      summary: 'Full restore',
+      fullStateJson: JSON.stringify({
+        version: 1,
+        summary: 'Full restore',
+        created_at: new Date().toISOString(),
+        masjid: {
+          name: 'Validated',
+          latitude: 34.0,
+          longitude: -85.0,
+          timezone: 'America/Chicago',
+          calculation_method: 3,
+        },
+        prayer_rules: { rules: [] },
+        jumuah: { sessions: [] },
+        announcements: { announcements: [] },
+      }),
+    });
+
+    const res = await callRollback(id, { snapshot_id: snapshotId }, adminLocals(id));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.restored instanceof Array).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────
+// Integrations PUT — sibling-row isolation regression
+// ─────────────────────────────────────────────────────────────────────────────────
+describe('PUT /admin/masjids/:id/integrations', () => {
+  function callIntegrationsPut(id: string, body: unknown, locals: Record<string, unknown>) {
+    const req = createTestRequest('PUT', `/api/v1/admin/masjids/${id}/integrations`, body);
+    return putIntegrations({
+      params: { id },
+      request: req,
+      url: new URL(req.url),
+      locals,
+      platform: { env: {} },
+      cookies: {} as any,
+      fetch: globalThis.fetch,
+    } as any);
+  }
+
+  it('saves Square keys and returns masked access_token', async () => {
+    const id = await seedRollbackMasjid('int-square');
+    const res = await callIntegrationsPut(id, {
+      square: {
+        access_token: 'tok-real',
+        app_id: 'sq0id-app',
+        location_id: 'L123',
+      },
+    }, adminLocals(id));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.square.configured).toBe(true);
+    expect(body.square.access_token).toBe('●●●●');
+    expect(body.square.app_id).toBe('sq0id-app');
+    expect(body.square.location_id).toBe('L123');
+  });
+
+  it('masked values do not overwrite stored tokens', async () => {
+    const id = await seedRollbackMasjid('int-mask');
+    await callIntegrationsPut(id, {
+      square: { access_token: 'tok-real', app_id: 'app-real', location_id: 'L' },
+    }, adminLocals(id));
+
+    const res = await callIntegrationsPut(id, {
+      square: { access_token: '●●●●', location_id: 'L2' },
+    }, adminLocals(id));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.square.access_token).toBe('●●●●');
+    expect(body.square.app_id).toBe('app-real');
+    expect(body.square.location_id).toBe('L2');
+  });
+
+  it('square save does not touch brevo keys and vice versa', async () => {
+    const id = await seedRollbackMasjid('int-isolate');
+    await callIntegrationsPut(id, {
+      square: { access_token: 'tok', app_id: 'app', location_id: 'L' },
+      brevo: { api_key: 'brevo-key', sender_email: 'x@y.com', sender_name: 'Y' },
+    }, adminLocals(id));
+
+    // Update only Brevo key — Square rows should survive.
+    const res = await callIntegrationsPut(id, {
+      brevo: { sender_name: 'Z' },
+    }, adminLocals(id));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.square.configured).toBe(true);
+    expect(body.square.app_id).toBe('app');
+    expect(body.brevo.sender_name).toBe('Z');
+    expect(body.brevo.sender_email).toBe('x@y.com');
+  });
+
+  it('returns UNAUTHORIZED without admin', async () => {
+    const id = await seedRollbackMasjid('int-auth');
+    const res = await callIntegrationsPut(id, { square: {} }, {});
+    expect(res.status).toBe(401);
   });
 });
 
