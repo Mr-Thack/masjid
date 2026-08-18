@@ -570,6 +570,15 @@ describe('UpdateMasjidSchema', () => {
       }),
     ).not.toThrow();
   });
+
+  it('preprocess passes through valid URLs unchanged', () => {
+    const parsed = UpdateMasjidSchema.parse({
+      facebook_url: 'https://facebook.com/masjid',
+      contact_email: 'admin@masjid.org',
+    });
+    expect(parsed.facebook_url).toBe('https://facebook.com/masjid');
+    expect(parsed.contact_email).toBe('admin@masjid.org');
+  });
 });
 
 // ---------------------------------------------------------------------------
