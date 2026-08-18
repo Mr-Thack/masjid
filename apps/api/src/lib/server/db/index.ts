@@ -139,45 +139,25 @@ export function getD1Shim(): D1Database {
           return this;
         },
         async first<T>() {
-          try {
-            const stmt = getStmt();
-            stmt.bind(params);
-            return (stmt.get() as T | undefined) ?? null;
-          } catch (e) {
-            console.error('D1 shim first() error:', e instanceof Error ? e.message : e);
-            return null;
-          }
+          const stmt = getStmt();
+          stmt.bind(params);
+          return (stmt.get() as T | undefined) ?? null;
         },
         async all<T>() {
-          try {
-            const stmt = getStmt();
-            stmt.bind(params);
-            return { results: stmt.all() as T[], success: true, meta: {} };
-          } catch (e) {
-            console.error('D1 shim all() error:', e instanceof Error ? e.message : e);
-            return { results: [], success: false, meta: {} };
-          }
+          const stmt = getStmt();
+          stmt.bind(params);
+          return { results: stmt.all() as T[], success: true, meta: {} };
         },
         async run() {
-          try {
-            const stmt = getStmt();
-            stmt.bind(params);
-            stmt.run();
-            return { results: [], success: true, meta: {} };
-          } catch (e) {
-            console.error('D1 shim run() error:', e instanceof Error ? e.message : e);
-            return { results: [], success: false, meta: {} };
-          }
+          const stmt = getStmt();
+          stmt.bind(params);
+          stmt.run();
+          return { results: [], success: true, meta: {} };
         },
         async raw<T>() {
-          try {
-            const stmt = getStmt();
-            stmt.bind(params);
-            return stmt.all() as T[];
-          } catch (e) {
-            console.error('D1 shim raw() error:', e instanceof Error ? e.message : e);
-            return [];
-          }
+          const stmt = getStmt();
+          stmt.bind(params);
+          return stmt.all() as T[];
         },
       };
     },

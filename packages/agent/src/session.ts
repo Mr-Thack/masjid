@@ -20,6 +20,16 @@ export async function getOpenBranch(
   return stmt.bind(adminId, masjidId, 'OPEN').first<BranchRecord>() || null;
 }
 
+export async function getBranchById(
+  branchId: string,
+  db: D1Database,
+): Promise<BranchRecord | null> {
+  const stmt = db.prepare(
+    'SELECT id, masjid_id, admin_id, branch_name, status, created_at, updated_at FROM config_branches WHERE id = ? LIMIT 1',
+  );
+  return stmt.bind(branchId).first<BranchRecord>() || null;
+}
+
 export async function createBranch(
   adminId: string,
   masjidId: string,

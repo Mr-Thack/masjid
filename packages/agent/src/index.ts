@@ -13,6 +13,7 @@ export {
   getMutations,
   getMutationCount,
   listBranches,
+  getBranchById,
   getBranchTimeoutWarning,
   listSnapshots,
   getSnapshot,
