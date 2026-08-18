@@ -268,6 +268,15 @@ deliberately bad input.
 the canonical source. When the source changes, the comment tells you the
 test must change too.
 
+**What E2E can and can't catch:** admin UI interactions always send
+**complete** form data (the form loads current state and sends every
+field). Partial-save bugs — the single most repeated product bug class
+in this repo (Pattern 2) — will **never** be caught by E2E because the
+admin UI never sends partial forms. The WhatsApp agent does send partial
+payloads, but agent flows aren't covered by E2E. So if a partial-save
+guard is missing, only a unit test will find it. This is why the dumb
+test #2 (partial-PUT round-trip) is mandatory for every admin PUT endpoint.
+
 **External API integration:** one live sandbox test per provider.
 
 **HTTP client wrapper:** test #15.

@@ -2,9 +2,9 @@
 
 ## Current state (2026-08-13)
 The project is a fully implemented monorepo with:
-- **Working API** (SvelteKit + D1, 673 tests)
-- **Working TV frontend** (SvelteKit static, 266 tests — no Tailwind, hand-written CSS)
-- **Working consumer frontend** (SvelteKit static/SPA, 165 tests)
+- **Working API** (SvelteKit + D1, 715 tests)
+- **Working TV frontend** (SvelteKit static, 272 tests — no Tailwind, hand-written CSS)
+- **Working consumer frontend** (SvelteKit static/SPA, 183 tests)
 - **WhatsApp worker — NOT fully implemented / not working correctly** (Stages 1-4 complete — webhook + session + LLM agent + vision + dry-run + rollback + RTL, 231 tests — but the end-to-end WhatsApp flow is not yet working right; see the "WhatsApp Zero-UI worker" section below)
 - **Working @masjid/agent** (shared bot logic extracted from WhatsApp worker — 47 tools, runner, prompts, api-client, session, media)
 - **Admin app** (SvelteKit static/SPA on port 5176 — auth, dashboard, 12 settings pages, bot chat panel — 243 tests)
@@ -72,10 +72,10 @@ PORT=5190 npm run dev --workspace=@masjid/api  # single server on custom port
 
 ## How to test
 ```bash
-npm run test             # API unit tests, 673 (no server needed)
+npm run test             # API unit tests, 715 (no server needed)
 npm run test:integration  # API integration tests, 7 (requires API server on 5173)
-npm run test:tv          # TV frontend, 266 tests (jsdom + testing-library)
-npm run test:consumer    # Consumer frontend, 165 tests (jsdom + testing-library)
+npm run test:tv          # TV frontend, 272 tests (jsdom + testing-library)
+npm run test:consumer    # Consumer frontend, 183 tests (jsdom + testing-library)
 npm run test:whatsapp    # WhatsApp worker, 231 tests (node, mocked D1 + fetch)
 npm run test:sw          # Service worker removal tests, 12 (Playwright, requires dev servers)
 npm run test:agent       # Agent package tests, 40 tests (node)
