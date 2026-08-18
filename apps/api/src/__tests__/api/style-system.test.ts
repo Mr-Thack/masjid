@@ -269,4 +269,40 @@ describe('PUT /admin/masjids/:id — style fields', () => {
       logoUrl: '',
     });
   });
+
+  it('merges partial style_options over stored options instead of replacing', async () => {
+    // Regression: style_options used to be blob-replaced, so a partial send
+    // (e.g. the WhatsApp agent sending {metal:"gold"}) wiped photoUrl/logoUrl.
+    const { id } = await seedMasjid('put-merge-options');
+    await db
+      .update(masjidThemes)
+      .set({
+        styleOptions: JSON.stringify({ photoUrl: '/uploads/hero.svg', donateAppeal: 'Give generously', metal: 'silver' }),
+      })
+      .where(eq(masjidThemes.masjidId, id));
+
+    const res = await callAdminPut(id, { style_options: { metal: 'gold' } });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.theme.style_options).toEqual({
+      photoUrl: '/uploads/hero.svg',
+      donateAppeal: 'Give generously',
+      metal: 'gold',
+    });
+  });
+
+  it('does not persist masjid fields when theme validation fails', async () => {
+    // Regression: masjid fields were written BEFORE theme validation, so a
+    // request with valid masjid fields + invalid theme returned 400 but had
+    // already committed the masjid update (atomicity).
+    const { id } = await seedMasjid('put-atomic');
+    const res = await callAdminPut(id, {
+      timezone: 'America/Chicago',
+      style_system: 'fancy',
+    });
+    expect(res.status).toBe(400);
+
+    const row = await db.select().from(masjids).where(eq(masjids.id, id)).get();
+    expect(row?.timezone).toBe('America/New_York');
+  });
 });

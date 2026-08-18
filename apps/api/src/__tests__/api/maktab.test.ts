@@ -999,6 +999,59 @@ describe('Admin settings', () => {
     expect(body.assistance_code).toBeNull();
   });
 
+  it('PUT merges partial program_info over existing (preserves curriculum/faqs)', async () => {
+    // Regression: ProgramInfoSchema had .default('')/.default([]) so a partial
+    // program_info send (e.g. the WhatsApp agent sending {schedule_days}) wiped
+    // existing curriculum and FAQ data with defaults.
+    const slug = `settings-pimerge-${Date.now()}`;
+    const id = await seedMasjid(slug);
+    await db.insert(mktSettings).values({
+      masjidId: id,
+      programInfo: JSON.stringify({
+        goal: 'Learn Quran',
+        schedule_days: 'Mon-Wed',
+        schedule_time: '5 PM',
+        curriculum: [{ name: 'Quran', description: 'Tajweed' }],
+        faqs: [{ question: 'Ages?', answer: '5-16' }],
+      }),
+    });
+
+    const req = createRequest('PUT', `/api/v1/admin/masjids/${id}/settings`, {
+      program_info: { schedule_days: 'Tue-Thu' },
+    });
+    const res = await putSettings({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.program_info.schedule_days).toBe('Tue-Thu');
+    expect(body.program_info.goal).toBe('Learn Quran');
+    expect(body.program_info.curriculum).toEqual([{ name: 'Quran', description: 'Tajweed' }]);
+    expect(body.program_info.faqs).toEqual([{ question: 'Ages?', answer: '5-16' }]);
+  });
+
+  it('PUT clears active_term_id when set to empty string', async () => {
+    // Regression: `if (body.active_term_id)` skipped validation for '' but
+    // still wrote the empty string into the FK column.
+    const slug = `settings-emptterm-${Date.now()}`;
+    const id = await seedMasjid(slug);
+    const termId = crypto.randomUUID();
+    await db.insert(mktTerms).values({
+      id: termId, masjidId: id, name: 'Term', lengthMonths: 3,
+      priceCents1: 5000, priceCents2: 8000, priceCents3plus: 10000,
+    });
+    await db.insert(mktSettings).values({ masjidId: id, activeTermId: termId });
+
+    const req = createRequest('PUT', `/api/v1/admin/masjids/${id}/settings`, {
+      active_term_id: '',
+    });
+    const res = await putSettings({ params: { id }, request: req, url: new URL(req.url), locals: adminLocals(id), platform: { env: {} }, cookies: {} as any, fetch: globalThis.fetch } as any);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.active_term).toBeNull();
+
+    const row = await db.select().from(mktSettings).where(eq(mktSettings.masjidId, id)).get();
+    expect(row?.activeTermId).toBeNull();
+  });
+
   it('GET returns null assistance_code when not set', async () => {
     const slug = `settings-noaid-${Date.now()}`;
     const id = await seedMasjid(slug);

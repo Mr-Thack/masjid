@@ -74,6 +74,10 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       if (typeof m.longitude === 'number') masjidData.longitude = m.longitude;
       if (typeof m.timezone === 'string') masjidData.timezone = m.timezone;
       if (typeof m.calculation_method === 'number') masjidData.calculationMethod = m.calculation_method;
+      if (typeof m.asr_madhab === 'string') masjidData.asrMadhab = m.asr_madhab;
+      if (typeof m.high_latitude_rule === 'string') masjidData.highLatitudeRule = m.high_latitude_rule;
+      if (typeof m.show_dual_asr === 'boolean') masjidData.showDualAsr = m.show_dual_asr;
+      if (typeof m.show_donate_qr === 'boolean') masjidData.showDonateQr = m.show_donate_qr;
       if (typeof m.fajr_angle === 'number' || m.fajr_angle === null) masjidData.fajrAngle = m.fajr_angle;
       if (typeof m.isha_angle === 'number' || m.isha_angle === null) masjidData.ishaAngle = m.isha_angle;
       if (typeof m.adjust_fajr === 'number') masjidData.adjustFajr = m.adjust_fajr;
@@ -94,6 +98,8 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       if (typeof m.youtube_url === 'string' || m.youtube_url === null) masjidData.youtubeUrl = m.youtube_url;
       if (typeof m.instagram_url === 'string' || m.instagram_url === null) masjidData.instagramUrl = m.instagram_url;
       if (typeof m.website_url === 'string' || m.website_url === null) masjidData.websiteUrl = m.website_url;
+      if (typeof m.about_markdown === 'string' || m.about_markdown === null) masjidData.aboutMarkdown = m.about_markdown;
+      if (typeof m.donation_links === 'string' || m.donation_links === null) masjidData.donationLinks = m.donation_links;
 
       if (Object.keys(masjidData).length > 0) {
         await db.update(masjids).set(masjidData).where(eq(masjids.id, params.id));
@@ -114,6 +120,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
         if (typeof t.label_adhaan === 'string') themeData.labelAdhaan = t.label_adhaan;
         if (typeof t.label_iqaamah === 'string') themeData.labelIqaamah = t.label_iqaamah;
         if (typeof t.label_jumuah === 'string') themeData.labelJumuah = t.label_jumuah;
+        if (typeof t.label_speech === 'string') themeData.labelSpeech = t.label_speech;
         if (typeof t.label_sunrise === 'string') themeData.labelSunrise = t.label_sunrise;
         if (typeof t.label_fajr === 'string') themeData.labelFajr = t.label_fajr;
         if (typeof t.label_dhuhr === 'string') themeData.labelDhuhr = t.label_dhuhr;

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const emptyToNull = (v: unknown) => (typeof v === 'string' && v === '' ? null : v);
+
 export const TenantStatus = z.enum(['SHADOW', 'ACTIVE']);
 export type TenantStatus = z.infer<typeof TenantStatus>;
 
@@ -111,11 +113,11 @@ export const UpdateMasjidSchema = z.object({
   postal_code: z.string().max(20).optional().nullable(),
   country: z.string().max(100).optional().nullable(),
   contact_phone: z.string().max(30).optional().nullable(),
-  contact_email: z.string().email().max(200).optional().nullable(),
-  facebook_url: z.string().url().max(500).optional().nullable(),
-  youtube_url: z.string().url().max(500).optional().nullable(),
-  instagram_url: z.string().url().max(500).optional().nullable(),
-  website_url: z.string().url().max(500).optional().nullable(),
+  contact_email: z.preprocess(emptyToNull, z.string().email().max(200).nullable().optional()),
+  facebook_url: z.preprocess(emptyToNull, z.string().url().max(500).nullable().optional()),
+  youtube_url: z.preprocess(emptyToNull, z.string().url().max(500).nullable().optional()),
+  instagram_url: z.preprocess(emptyToNull, z.string().url().max(500).nullable().optional()),
+  website_url: z.preprocess(emptyToNull, z.string().url().max(500).nullable().optional()),
   about_markdown: z.string().max(10000).optional().nullable(),
   donation_links: z.string().max(5000).optional().nullable(),
   calculation_method: CalculationMethod.optional(),

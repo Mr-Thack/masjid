@@ -147,11 +147,11 @@ export const FaqItemSchema = z.object({
 });
 
 export const ProgramInfoSchema = z.object({
-  goal: z.string().default(''),
-  schedule_days: z.string().default(''),
-  schedule_time: z.string().default(''),
-  curriculum: z.array(CurriculumItemSchema).default([]),
-  faqs: z.array(FaqItemSchema).default([]),
+  goal: z.string().optional(),
+  schedule_days: z.string().optional(),
+  schedule_time: z.string().optional(),
+  curriculum: z.array(CurriculumItemSchema).optional(),
+  faqs: z.array(FaqItemSchema).optional(),
 });
 
 export type CurriculumItem = z.infer<typeof CurriculumItemSchema>;

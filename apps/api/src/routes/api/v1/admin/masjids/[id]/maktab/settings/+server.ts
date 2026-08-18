@@ -68,7 +68,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     const body = SettingsUpdateSchema.parse(await request.json());
     const db = getDb(platform?.env?.DB);
 
-    if (body.active_term_id) {
+    if (body.active_term_id !== undefined && body.active_term_id !== null && body.active_term_id !== '') {
       const term = await db
         .select()
         .from(mktTerms)
@@ -88,10 +88,13 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 
     const setData: Record<string, unknown> = {};
     if (body.enrollment_open !== undefined) setData.enrollmentOpen = body.enrollment_open;
-    if (body.active_term_id !== undefined) setData.activeTermId = body.active_term_id;
+    if (body.active_term_id !== undefined) setData.activeTermId = body.active_term_id === '' ? null : body.active_term_id;
     if (body.status_message !== undefined) setData.statusMessage = body.status_message;
     if (body.assistance_code !== undefined) setData.assistanceCode = body.assistance_code;
-    if (body.program_info !== undefined) setData.programInfo = JSON.stringify(body.program_info);
+    if (body.program_info !== undefined) {
+      const currentInfo = current?.programInfo ? parseProgramInfo(current.programInfo) : {};
+      setData.programInfo = JSON.stringify({ ...currentInfo, ...body.program_info });
+    }
 
     const now = new Date().toISOString();
 

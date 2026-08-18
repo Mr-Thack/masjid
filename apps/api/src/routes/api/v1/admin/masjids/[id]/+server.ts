@@ -155,48 +155,59 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (masjidUpdate.latitude !== undefined) masjidData.latitude = masjidUpdate.latitude;
     if (masjidUpdate.longitude !== undefined) masjidData.longitude = masjidUpdate.longitude;
 
+    const THEME_KEYS = ['style_system', 'style_options', 'layout_preset', 'primary_color', 'accent_color',
+      'font_heading', 'font_body', 'time_format',
+      'label_adhaan', 'label_iqaamah', 'label_jumuah', 'label_speech', 'label_sunrise',
+      'label_fajr', 'label_dhuhr', 'label_asr', 'label_maghrib', 'label_isha'];
+    const hasThemeKeys = THEME_KEYS.some((k) => k in body);
+
+    // Validate the theme BEFORE any DB write so a failed theme parse cannot
+    // leave the masjid row half-updated (atomicity — regression-prevention.md).
+    let themeData: Record<string, unknown> = {};
+    if (hasThemeKeys) {
+      const themeUpdate = UpdateThemeSchema.safeParse(body);
+      if (!themeUpdate.success) {
+        console.error('Theme validation failed:', themeUpdate.error.issues);
+        return ErrorJsonResponse('VALIDATION_ERROR', 'Theme update contains invalid fields');
+      }
+      if (themeUpdate.data.style_system !== undefined) themeData.styleSystem = themeUpdate.data.style_system;
+      if (themeUpdate.data.style_options !== undefined) {
+        // Merge partial style_options over the stored blob so a partial send
+        // (e.g. the WhatsApp agent sending {metal:"gold"}) preserves unrelated
+        // keys like photoUrl/logoUrl/donateReasons.
+        const currentTheme = await fetchThemeRow(db, params.id, platform?.env?.DB);
+        const existingOptions = currentTheme ? parseStyleOptionsJson(currentTheme.style_options) : {};
+        themeData.styleOptions = JSON.stringify({
+          ...existingOptions,
+          ...(themeUpdate.data.style_options as Record<string, unknown>),
+        });
+      }
+      if (themeUpdate.data.layout_preset !== undefined) themeData.layoutPreset = themeUpdate.data.layout_preset;
+      if (themeUpdate.data.primary_color !== undefined) themeData.primaryColor = themeUpdate.data.primary_color;
+      if (themeUpdate.data.accent_color !== undefined) themeData.accentColor = themeUpdate.data.accent_color;
+      if (themeUpdate.data.font_heading !== undefined) themeData.fontHeading = themeUpdate.data.font_heading;
+      if (themeUpdate.data.font_body !== undefined) themeData.fontBody = themeUpdate.data.font_body;
+      if (themeUpdate.data.time_format !== undefined) themeData.timeFormat = themeUpdate.data.time_format;
+      if (themeUpdate.data.label_adhaan !== undefined) themeData.labelAdhaan = themeUpdate.data.label_adhaan;
+      if (themeUpdate.data.label_iqaamah !== undefined) themeData.labelIqaamah = themeUpdate.data.label_iqaamah;
+      if (themeUpdate.data.label_jumuah !== undefined) themeData.labelJumuah = themeUpdate.data.label_jumuah;
+      if (themeUpdate.data.label_speech !== undefined) themeData.labelSpeech = themeUpdate.data.label_speech;
+      if (themeUpdate.data.label_sunrise !== undefined) themeData.labelSunrise = themeUpdate.data.label_sunrise;
+      if (themeUpdate.data.label_fajr !== undefined) themeData.labelFajr = themeUpdate.data.label_fajr;
+      if (themeUpdate.data.label_dhuhr !== undefined) themeData.labelDhuhr = themeUpdate.data.label_dhuhr;
+      if (themeUpdate.data.label_asr !== undefined) themeData.labelAsr = themeUpdate.data.label_asr;
+      if (themeUpdate.data.label_maghrib !== undefined) themeData.labelMaghrib = themeUpdate.data.label_maghrib;
+      if (themeUpdate.data.label_isha !== undefined) themeData.labelIsha = themeUpdate.data.label_isha;
+    }
+
     if (Object.keys(masjidData).length > 0) {
       console.log('PUT masjid update fields:', Object.keys(masjidData).join(', '));
       await db.update(masjids).set(masjidData).where(eq(masjids.id, params.id));
       console.log('PUT masjid update OK');
     }
 
-    const THEME_KEYS = ['style_system', 'style_options', 'layout_preset', 'primary_color', 'accent_color',
-      'font_heading', 'font_body', 'time_format',
-      'label_adhaan', 'label_iqaamah', 'label_jumuah', 'label_speech', 'label_sunrise',
-      'label_fajr', 'label_dhuhr', 'label_asr', 'label_maghrib', 'label_isha'];
-    const hasThemeKeys = THEME_KEYS.some((k) => k in body);
-    console.log('PUT hasThemeKeys:', hasThemeKeys);
-
-    if (hasThemeKeys) {
-      const themeUpdate = UpdateThemeSchema.safeParse(body);
-      if (themeUpdate.success && Object.keys(themeUpdate.data).length > 0) {
-        const themeData: Record<string, unknown> = {};
-        if (themeUpdate.data.style_system !== undefined) themeData.styleSystem = themeUpdate.data.style_system;
-        if (themeUpdate.data.style_options !== undefined) themeData.styleOptions = JSON.stringify(themeUpdate.data.style_options);
-        if (themeUpdate.data.layout_preset !== undefined) themeData.layoutPreset = themeUpdate.data.layout_preset;
-        if (themeUpdate.data.primary_color !== undefined) themeData.primaryColor = themeUpdate.data.primary_color;
-        if (themeUpdate.data.accent_color !== undefined) themeData.accentColor = themeUpdate.data.accent_color;
-        if (themeUpdate.data.font_heading !== undefined) themeData.fontHeading = themeUpdate.data.font_heading;
-        if (themeUpdate.data.font_body !== undefined) themeData.fontBody = themeUpdate.data.font_body;
-        if (themeUpdate.data.time_format !== undefined) themeData.timeFormat = themeUpdate.data.time_format;
-        if (themeUpdate.data.label_adhaan !== undefined) themeData.labelAdhaan = themeUpdate.data.label_adhaan;
-        if (themeUpdate.data.label_iqaamah !== undefined) themeData.labelIqaamah = themeUpdate.data.label_iqaamah;
-        if (themeUpdate.data.label_jumuah !== undefined) themeData.labelJumuah = themeUpdate.data.label_jumuah;
-        if (themeUpdate.data.label_speech !== undefined) themeData.labelSpeech = themeUpdate.data.label_speech;
-        if (themeUpdate.data.label_sunrise !== undefined) themeData.labelSunrise = themeUpdate.data.label_sunrise;
-        if (themeUpdate.data.label_fajr !== undefined) themeData.labelFajr = themeUpdate.data.label_fajr;
-        if (themeUpdate.data.label_dhuhr !== undefined) themeData.labelDhuhr = themeUpdate.data.label_dhuhr;
-        if (themeUpdate.data.label_asr !== undefined) themeData.labelAsr = themeUpdate.data.label_asr;
-        if (themeUpdate.data.label_maghrib !== undefined) themeData.labelMaghrib = themeUpdate.data.label_maghrib;
-        if (themeUpdate.data.label_isha !== undefined) themeData.labelIsha = themeUpdate.data.label_isha;
-        if (Object.keys(themeData).length > 0) {
-          await db.update(masjidThemes).set(themeData).where(eq(masjidThemes.masjidId, params.id));
-        }
-      } else if (!themeUpdate.success) {
-        console.error('Theme validation failed:', themeUpdate.error.issues);
-        return ErrorJsonResponse('VALIDATION_ERROR', 'Theme update contains invalid fields');
-      }
+    if (Object.keys(themeData).length > 0) {
+      await db.update(masjidThemes).set(themeData).where(eq(masjidThemes.masjidId, params.id));
     }
 
     await invalidateMasjidCache(platform?.env?.CACHE, params.id);

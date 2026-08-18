@@ -530,27 +530,33 @@ describe('UpdateMasjidSchema', () => {
     ).toThrow();
   });
 
-  it('rejects empty string in url fields (must send null)', () => {
-    // Empty string is not a valid URL — the admin form must convert "" → null
+  it('accepts empty string in url fields (converts to null)', () => {
+    // Empty string is preprocessed to null so partial saves from agents don't 400
     expect(() =>
       UpdateMasjidSchema.parse({ facebook_url: '' }),
-    ).toThrow();
+    ).not.toThrow();
     expect(() =>
       UpdateMasjidSchema.parse({ youtube_url: '' }),
-    ).toThrow();
+    ).not.toThrow();
     expect(() =>
       UpdateMasjidSchema.parse({ instagram_url: '' }),
-    ).toThrow();
+    ).not.toThrow();
     expect(() =>
       UpdateMasjidSchema.parse({ website_url: '' }),
-    ).toThrow();
+    ).not.toThrow();
+    // Verify the preprocess output is null
+    const parsed = UpdateMasjidSchema.parse({ facebook_url: '', website_url: null });
+    expect(parsed.facebook_url).toBeNull();
+    expect(parsed.website_url).toBeNull();
   });
 
-  it('rejects empty string in contact_email (must send null)', () => {
-    // Empty string is not a valid email
+  it('accepts empty string in contact_email (converts to null)', () => {
+    // Empty string is preprocessed to null so partial saves from agents don't 400
     expect(() =>
       UpdateMasjidSchema.parse({ contact_email: '' }),
-    ).toThrow();
+    ).not.toThrow();
+    const parsed = UpdateMasjidSchema.parse({ contact_email: '' });
+    expect(parsed.contact_email).toBeNull();
   });
 
   it('accepts null url and email fields', () => {
