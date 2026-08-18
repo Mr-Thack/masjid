@@ -343,6 +343,7 @@ The TV display is a static SvelteKit kiosk for prayer hall TVs. Full design doc:
 | **Bot abstraction / MCP** | `docs/bot-abstraction.md` + `docs/mcp-integration.md` |
 | **E2E testing harness** | `docs/integration-testing.md` + `docs/integration-test-cases.md` |
 | **E2E determinism issues** | `docs/e2e-determinism.md` |
+| **Regression prevention ("dumb tests")** | `docs/regression-prevention.md` — bug-pattern catalog + the 15-test checklist to write with new code |
 | **Maktab / enrollment** | `docs/maktab-integration.md` |
 | **Posts / custom pages / nav** | `docs/post-engine.md` + `docs/nav-config.md` |
 | **Service worker / caching** | `docs/consumer-service-worker.md` + `docs/admin-cache-poisoning.md` |
