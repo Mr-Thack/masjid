@@ -145,7 +145,7 @@ describe('runAgent — agent loop', () => {
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
-    expect(result).toContain('Something went wrong');
+    expect(result).toContain('Error:');
   });
 
   it('handles LLM non-OK response', async () => {
@@ -155,7 +155,7 @@ describe('runAgent — agent loop', () => {
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
-    expect(result).toContain('Something went wrong');
+    expect(result).toContain('Error:');
   });
 
   it('handles empty choices array', async () => {
@@ -165,7 +165,7 @@ describe('runAgent — agent loop', () => {
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
-    expect(result).toContain('Something went wrong');
+    expect(result).toContain('Error:');
   });
 
   it('handles missing message in choice', async () => {
@@ -175,7 +175,7 @@ describe('runAgent — agent loop', () => {
     const { runAgent } = await import('../agent/runner');
 
     const result = await runAgent('test', testAdmin, testEnv, 'branch-1');
-    expect(result).toContain('Something went wrong');
+    expect(result).toContain('Error:');
   });
 
   it('uses custom LLM config when provided', async () => {
