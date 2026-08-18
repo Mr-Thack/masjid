@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { getDb, upsertIntegrationValue } from '../../lib/server/db';
+import { getDb, upsertIntegrationValue, getD1Shim } from '../../lib/server/db';
 import { masjids, masjidIntegrations } from '../../lib/server/db/schema';
 
 const db = getDb();
@@ -51,6 +51,34 @@ describe('getDb', () => {
     const db2 = getDb();
     expect(db2).toBeDefined();
     expect(typeof db2.select).toBe('function');
+  });
+});
+
+describe('D1 shim error semantics', () => {
+  // Regression: the shim used to swallow every SQL error (returning
+  // null/[]/false), diverging from production D1 which throws. This made
+  // agent flows silently no-op on failed INSERTs in local dev.
+  // (docs/regression-prevention.md, pattern 15)
+
+  it('throws on invalid SQL instead of returning null', async () => {
+    const shim = getD1Shim();
+    await expect(
+      shim.prepare('SELECT * FROM nonexistent_table').bind().first(),
+    ).rejects.toThrow();
+  });
+
+  it('all() throws on invalid SQL', async () => {
+    const shim = getD1Shim();
+    await expect(
+      shim.prepare('GARBAGE SQL SYNTAX').bind().all(),
+    ).rejects.toThrow();
+  });
+
+  it('run() throws on invalid SQL', async () => {
+    const shim = getD1Shim();
+    await expect(
+      shim.prepare('INSERT INTO nonexistent_table VALUES (1)').bind().run(),
+    ).rejects.toThrow();
   });
 });
 

@@ -202,8 +202,11 @@ describe('POST /admin/masjids/:id/agent/confirm', () => {
       branchName: 'main',
       status: 'OPEN',
     });
+    const snapshotsBefore = await db.select().from(configSnapshots).all();
     const res = await callConfirm(id, { branch_id: branchId }, adminLocals(id));
     expect(res.status).toBe(409);
+    const snapshotsAfter = await db.select().from(configSnapshots).all();
+    expect(snapshotsAfter.length).toBe(snapshotsBefore.length);
   });
 
   it('confirms an open branch with mutations and creates a snapshot', async () => {
@@ -261,6 +264,22 @@ describe('POST /admin/masjids/:id/agent/cancel', () => {
     const id = await seedMasjid(`cancel-ghost-${Date.now()}`);
     const res = await callCancel(id, { branch_id: 'does-not-exist' }, adminLocals(id));
     expect(res.status).toBe(404);
+  });
+
+  it('returns FORBIDDEN for another masjid\'s branch', async () => {
+    const mine = await seedMasjid(`cancel-mine-${Date.now()}`);
+    const theirs = await seedMasjid(`cancel-theirs-${Date.now()}`);
+    const branchId = `cancel-cross-branch-${Date.now()}`;
+    await db.insert(configBranches).values({
+      id: branchId,
+      masjidId: theirs,
+      adminId: `admin-${theirs}`,
+      branchName: 'main',
+      status: 'OPEN',
+    });
+
+    const res = await callCancel(mine, { branch_id: branchId }, adminLocals(mine));
+    expect(res.status).toBe(403);
   });
 
   it('returns CONFLICT for an already-merged branch (no silent success)', async () => {

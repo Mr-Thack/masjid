@@ -291,6 +291,24 @@ describe('PUT /admin/masjids/:id — style fields', () => {
     });
   });
 
+  it('merging an empty style_options object preserves all stored options', async () => {
+    const { id } = await seedMasjid('put-merge-empty');
+    await db
+      .update(masjidThemes)
+      .set({
+        styleOptions: JSON.stringify({ photoUrl: '/uploads/hero.svg', metal: 'gold' }),
+      })
+      .where(eq(masjidThemes.masjidId, id));
+
+    const res = await callAdminPut(id, { style_options: {} });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.theme.style_options).toEqual({
+      photoUrl: '/uploads/hero.svg',
+      metal: 'gold',
+    });
+  });
+
   it('does not persist masjid fields when theme validation fails', async () => {
     // Regression: masjid fields were written BEFORE theme validation, so a
     // request with valid masjid fields + invalid theme returned 400 but had
