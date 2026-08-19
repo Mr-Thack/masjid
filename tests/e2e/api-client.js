@@ -41,7 +41,7 @@ export async function apiLogin(cfg) {
   return session;
 }
 
-async function rawRequest(cfg, method, path, body, token, attempt = 0) {
+export async function rawRequest(cfg, method, path, body, token, attempt = 0) {
   try {
     const resp = await fetch(`${cfg.api}${path}`, {
       method,
