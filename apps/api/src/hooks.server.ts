@@ -9,6 +9,8 @@ const ALLOWED_ORIGINS = [
   'https://masjid-live.pages.dev',
   // Staging pages (docs/integration-testing.md) — points at this same API:
   'https://masjid-staging.pages.dev',
+  // Mirror pages — advanced code vs prod D1:
+  'https://masjid-mirror.pages.dev',
   'http://localhost:5175',
   'http://localhost:5176',
 ];

@@ -87,3 +87,35 @@ database_id = "placeholder-staging-db-id"
 [env.staging.assets]
 binding = "ASSETS"
 directory = ".svelte-kit/cloudflare"
+
+# Mirror = advanced code running against the SAME prod D1 (masjid-db).
+# Deployed by .github/workflows/deploy-mirror.yml (workflow_dispatch only).
+# Use to verify fixes (e.g. Square) against live data without touching mapi.
+[env.mirror]
+name = "mapi-mirror"
+
+[env.mirror.vars]
+JWT_SECRET = ""
+ENVIRONMENT = "production"
+SQUARE_ACCESS_TOKEN = ""
+SQUARE_APP_ID = ""
+SQUARE_LOCATION_ID = ""
+BREVO_API_KEY = ""
+SENDER_EMAIL = "automated@masjidsuffah.com"
+SENDER_NAME = "Masjid Suffah (Mirror)"
+FORWARD_TO_EMAIL = "suffahmasjid@gmail.com"
+LOGGING_EMAIL = "masjidsuffahlogging@gmail.com"
+BOT_NAME = "masjid-api-mirror/1.0"
+CONSUMER_BASE_URL = "https://masjid-mirror.pages.dev"
+LLM_API_KEY = ""
+LLM_API_URL = "https://openrouter.ai/api/v1"
+LLM_MODEL = "google/gemma-4-31b-it"
+
+[[env.mirror.d1_databases]]
+binding = "DB"
+database_name = "masjid-db"
+database_id = "placeholder-mirror-db-id"
+
+[env.mirror.assets]
+binding = "ASSETS"
+directory = ".svelte-kit/cloudflare"
