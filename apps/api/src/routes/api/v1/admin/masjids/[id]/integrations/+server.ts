@@ -8,7 +8,15 @@ import { testSquareConnection, testBrevoConnection } from '$lib/server/maktab/in
 import { z } from 'zod';
 import type { RequestHandler } from './$types';
 
-const MASK = '\u25CF\u25CF\u25CF\u25CF';
+const BULLET = '\u25CF';
+
+function maskValue(value: string): string {
+  return BULLET.repeat(value.length);
+}
+
+function isMasked(value: string): boolean {
+  return value.length > 0 && [...value].every((ch) => ch === BULLET);
+}
 
 const SQUARE_KEYS = ['access_token', 'app_id', 'location_id'] as const;
 const BREVO_KEYS = ['api_key', 'sender_email', 'sender_name', 'forward_to_email', 'logging_email', 'bot_name'] as const;
@@ -30,13 +38,13 @@ export const GET: RequestHandler = async ({ params, locals, platform }) => {
 
     return JsonResponse({
       square: {
-        access_token: square.access_token ? MASK : '',
+        access_token: square.access_token ? maskValue(square.access_token) : '',
         app_id: square.app_id || '',
         location_id: square.location_id || '',
         configured: !!(square.access_token && square.app_id && square.location_id),
       },
       brevo: {
-        api_key: brevo.api_key ? MASK : '',
+        api_key: brevo.api_key ? maskValue(brevo.api_key) : '',
         sender_email: brevo.sender_email || '',
         sender_name: brevo.sender_name || '',
         forward_to_email: brevo.forward_to_email || '',
@@ -66,7 +74,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (body.square) {
       for (const key of SQUARE_KEYS) {
         const val = body.square[key];
-        if (val !== undefined && val !== MASK) {
+        if (val !== undefined && !isMasked(val)) {
           await upsertIntegrationValue(db, params.id, 'square', key, val);
         }
       }
@@ -75,7 +83,7 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
     if (body.brevo) {
       for (const key of BREVO_KEYS) {
         const val = body.brevo[key];
-        if (val !== undefined && val !== MASK) {
+        if (val !== undefined && !isMasked(val)) {
           await upsertIntegrationValue(db, params.id, 'brevo', key, val);
         }
       }
@@ -87,13 +95,13 @@ export const PUT: RequestHandler = async ({ params, request, locals, platform })
 
     return JsonResponse({
       square: {
-        access_token: square.access_token ? MASK : '',
+        access_token: square.access_token ? maskValue(square.access_token) : '',
         app_id: square.app_id || '',
         location_id: square.location_id || '',
         configured: !!(square.access_token && square.app_id && square.location_id),
       },
       brevo: {
-        api_key: brevo.api_key ? MASK : '',
+        api_key: brevo.api_key ? maskValue(brevo.api_key) : '',
         sender_email: brevo.sender_email || '',
         sender_name: brevo.sender_name || '',
         forward_to_email: brevo.forward_to_email || '',
@@ -143,7 +151,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       }
 
       let accessToken = body.square.access_token;
-      if (accessToken === MASK) {
+      if (isMasked(accessToken)) {
         const integrations = await getMasjidIntegrations(db, params.id);
         accessToken = integrations.square?.access_token || '';
       }
@@ -163,7 +171,7 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       }
 
       let apiKey = body.brevo.api_key;
-      if (apiKey === MASK) {
+      if (isMasked(apiKey)) {
         const integrations = await getMasjidIntegrations(db, params.id);
         apiKey = integrations.brevo?.api_key || '';
       }

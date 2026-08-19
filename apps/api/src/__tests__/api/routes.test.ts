@@ -782,7 +782,7 @@ describe('PUT /admin/masjids/:id/integrations', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.square.configured).toBe(true);
-    expect(body.square.access_token).toBe('●●●●');
+    expect(body.square.access_token).toBe('●'.repeat('tok-real'.length));
     expect(body.square.app_id).toBe('sq0id-app');
     expect(body.square.location_id).toBe('L123');
   });
@@ -794,11 +794,11 @@ describe('PUT /admin/masjids/:id/integrations', () => {
     }, adminLocals(id));
 
     const res = await callIntegrationsPut(id, {
-      square: { access_token: '●●●●', location_id: 'L2' },
+      square: { access_token: '●'.repeat('tok-real'.length), location_id: 'L2' },
     }, adminLocals(id));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.square.access_token).toBe('●●●●');
+    expect(body.square.access_token).toBe('●'.repeat('tok-real'.length));
     expect(body.square.app_id).toBe('app-real');
     expect(body.square.location_id).toBe('L2');
   });
