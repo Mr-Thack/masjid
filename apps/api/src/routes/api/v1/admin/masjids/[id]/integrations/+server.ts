@@ -125,7 +125,7 @@ const TestIntegrationSchema = z.object({
   }).optional(),
 });
 
-export const POST: RequestHandler = async ({ params, request, locals }) => {
+export const POST: RequestHandler = async ({ params, request, locals, platform }) => {
   if (!locals.admin) {
     return ErrorJsonResponse('UNAUTHORIZED', 'Authentication required');
   }
@@ -142,7 +142,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
       }
       const result = await testSquareConnection(
         body.square.access_token,
+        body.square.app_id,
         body.square.location_id,
+        platform?.env?.ENVIRONMENT,
       );
       return JsonResponse(result);
     }

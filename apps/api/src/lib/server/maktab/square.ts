@@ -5,7 +5,11 @@ export function hasSquare(env: Partial<SquareEnv>): boolean {
 }
 
 function squareBase(env: SquareEnv): string {
-  return env.ENVIRONMENT === 'production'
+  return getSquareBaseUrl(env.ENVIRONMENT);
+}
+
+export function getSquareBaseUrl(environment?: string): string {
+  return environment === 'production'
     ? 'https://connect.squareup.com/v2'
     : 'https://connect.squareupsandbox.com/v2';
 }

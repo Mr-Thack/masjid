@@ -38,7 +38,7 @@
     configured: false,
   });
 
-  let testResult = $state<{ ok: boolean; message: string } | null>(null);
+  let testResult = $state<{ ok: boolean; message: string; environment?: 'production' | 'sandbox'; hints?: string[] } | null>(null);
 
   $effect(() => { loadIntegrations(); });
 
@@ -221,7 +221,17 @@
 
         {#if testResult}
           <div class="p-3 rounded-lg text-sm {testResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}">
-            {testResult.ok ? '\u2713' : '\u2717'} {testResult.message}
+            <p>{testResult.ok ? '\u2713' : '\u2717'} {testResult.message}</p>
+            {#if testResult.environment}
+              <p class="mt-1 text-xs opacity-80">Tested against the {testResult.environment} Square API.</p>
+            {/if}
+            {#if testResult.hints && testResult.hints.length > 0}
+              <ul class="mt-2 space-y-1 text-xs list-disc list-inside">
+                {#each testResult.hints as hint}
+                  <li>{hint}</li>
+                {/each}
+              </ul>
+            {/if}
           </div>
         {/if}
       </section>
@@ -333,7 +343,14 @@
 
         {#if testResult}
           <div class="p-3 rounded-lg text-sm {testResult.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}">
-            {testResult.ok ? '\u2713' : '\u2717'} {testResult.message}
+            <p>{testResult.ok ? '\u2713' : '\u2717'} {testResult.message}</p>
+            {#if testResult.hints && testResult.hints.length > 0}
+              <ul class="mt-2 space-y-1 text-xs list-disc list-inside">
+                {#each testResult.hints as hint}
+                  <li>{hint}</li>
+                {/each}
+              </ul>
+            {/if}
           </div>
         {/if}
       </section>
