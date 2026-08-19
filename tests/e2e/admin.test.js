@@ -25,13 +25,13 @@ import {
   settlePage,
   waitForHydration,
 } from './helpers.js';
-import { targets, SLUG_A, SLUG_B } from './targets.js';
+import { targets, SLUG_A, SLUG_B, SLUG_C } from './targets.js';
 import {
   apiLogin,
   apiGet,
   apiPost,
   apiDelete,
-  rawRequest,
+  apiLoginAs,
   snapshotProfileFields,
   restoreProfileFields,
   restoreEnrollmentOpen,
@@ -837,64 +837,59 @@ if (!cfg.adminEmail || !authState) {
 }
 
 // ADM-29 — Nav items created via API render in the admin page DOM.
-// Uses a unique per-run masjid so parallel consumer suites are never affected.
+// Runs on the SEEDED masjid-test (SLUG_C), never on Al-Noor/Al-Jabal, so
+// parallel consumer suites are never affected.
 if (!cfg.adminEmail || !authState) {
   t.skip('ADM-29', 'no admin credentials for this env');
 } else {
+  const TESTER_EMAIL = 'tester@masjid-test.org';
+  const TESTER_PASSWORD = 'password123';
+
   await testCase(t, 'ADM-29', async () => {
-    const rand = Math.random().toString(36).slice(2, 8);
-    const slug = `adm-29-nav-${rand}`;
-    const adminEmail = `adm-29-${rand}@e2e.test`;
-    const adminPassword = 'adm-29-pw-123';
+    const { token, masjidId } = await apiLoginAs(cfg, TESTER_EMAIL, TESTER_PASSWORD);
 
-    // 1. Register a unique masjid
-    const regRes = await rawRequest(cfg, 'POST', '/api/v1/auth/register', {
-      slug,
-      name: 'E2E Nav Test',
-      latitude: 41.8781,
-      longitude: -87.6298,
-      timezone: 'America/Chicago',
-      calculation_method: 2,
-      asr_madhab: 'shafi',
-      high_latitude_rule: 'seventh_of_night',
-      show_dual_asr: false,
-      admin_email: adminEmail,
-      admin_password: adminPassword,
-    });
-    t.assert(regRes.status === 200 || regRes.status === 201, `ADM-29 registered masjid (status ${regRes.status})`);
-    const newToken = regRes.json?.token;
-    const newMasjidId = regRes.json?.admin?.masjid_id;
-    t.assert(newToken && newMasjidId, `ADM-29 got token and masjid_id`);
+    async function req(method, path, body) {
+      const res = await fetch(`${cfg.api}${path}`, {
+        method,
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          Authorization: `Bearer ${token}`,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const text = await res.text();
+      let json = null;
+      try { json = JSON.parse(text); } catch {}
+      return { status: res.status, json, text };
+    }
 
-    // 2. Make a temporary API caller for the new admin
-    const call = (method, path, body) => rawRequest(cfg, method, path, body, newToken);
-
-    // 3. Create a nav item on the isolated masjid
+    const label = `E2E Link ${Math.random().toString(36).slice(2, 6)}`;
+    const url = 'https://example.com';
     let createdItemId = '';
+
     try {
-      const label = `E2E Link ${Math.random().toString(36).slice(2, 6)}`;
-      const url = 'https://example.com';
-      const postRes = await call('POST', `/api/v1/admin/masjids/${newMasjidId}/nav`, {
+      const postRes = await req('POST', `/api/v1/admin/masjids/${masjidId}/nav`, {
         kind: 'link', external_url: url, label,
       });
       t.assert(postRes.status === 201, `ADM-29 nav item created via API (status ${postRes.status})`);
       createdItemId = postRes?.json?.id;
       t.assert(createdItemId, `ADM-29 nav item returned an id`);
 
-      // 4. Verify the item appears in the admin navigation page DOM
+      // Verify the item appears in the admin navigation page DOM
       const context = await browser.newContext();
       const page = await context.newPage();
       const b = collectPage(page, cfg);
       try {
         await page.goto(`${cfg.admin}/login`, { waitUntil: 'load', timeout: 30000 });
         await waitForHydration(page);
-        await page.fill('input[type="email"]', adminEmail);
-        await page.fill('input[type="password"]', adminPassword);
+        await page.fill('input[type="email"]', TESTER_EMAIL);
+        await page.fill('input[type="password"]', TESTER_PASSWORD);
         await page.click('button[type="submit"]');
         await page.waitForURL('**/admin/**', { waitUntil: 'commit', timeout: 45000 }).catch(() => {});
         await page.waitForSelector('main', { state: 'visible', timeout: 15000 }).catch(() => {});
 
-        await gotoPage(page, b, `${cfg.admin}/admin/${slug}/settings/navigation`);
+        // SLUG_C = 'masjid-test' — the seeded masjid for isolated mutation tests
+        await gotoPage(page, b, `${cfg.admin}/admin/${SLUG_C}/settings/navigation`);
         await settlePage(page, b, 2000);
 
         const inDom = await page.waitForFunction(
@@ -908,7 +903,7 @@ if (!cfg.adminEmail || !authState) {
       }
     } finally {
       if (createdItemId) {
-        await call('DELETE', `/api/v1/admin/masjids/${newMasjidId}/nav/${createdItemId}`).catch(() => {});
+        await req('DELETE', `/api/v1/admin/masjids/${masjidId}/nav/${createdItemId}`).catch(() => {});
       }
     }
   });

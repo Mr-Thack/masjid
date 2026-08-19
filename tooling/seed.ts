@@ -22,6 +22,13 @@ const JABAL_MASJID_ID = '00000000-0000-0000-0000-000000000003';
 const JABAL_ADMIN_ID = '00000000-0000-0000-0000-000000000004';
 const JABAL_SLUG = 'masjid-al-jabal';
 
+// Masjid Test — E2E isolate. Never tested by the consumer suite; exists
+// so admin mutation tests (ADM-29 etc.) can write without racing parallel
+// jobs on Al-Noor / Al-Jabal.
+const TEST_MASJID_ID = '00000000-0000-0000-0000-000000000005';
+const TEST_ADMIN_ID = '00000000-0000-0000-0000-000000000006';
+const TEST_SLUG = 'masjid-test';
+
 function clearSeed() {
   db.delete(schema.announcementAttachments).run();
   db.delete(schema.masjidAssets).run();
@@ -697,6 +704,56 @@ async function seed() {
     verifiedAt: new Date().toISOString(),
   }).run();
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Masjid Test — E2E isolate (nav items, minimal config)
+  // ─────────────────────────────────────────────────────────────────────────────
+  db.insert(schema.masjids).values({
+    id: TEST_MASJID_ID,
+    slug: TEST_SLUG,
+    name: 'Masjid Test',
+    latitude: 40.7128,
+    longitude: -74.006,
+    timezone: 'America/New_York',
+    calculationMethod: 2,
+    asrMadhab: 'shafi',
+    highLatitudeRule: 'seventh_of_night',
+    showDualAsr: false,
+    fajrAngle: null,
+    ishaAngle: null,
+    city: 'New York',
+    state: 'NY',
+    postalCode: '10001',
+    country: 'US',
+    adminEmail: 'tester@masjid-test.org',
+  }).run();
+
+  db.insert(schema.masjidThemes).values({
+    masjidId: TEST_MASJID_ID,
+    styleSystem: 'mishkaat',
+    styleOptions: '{}',
+    layoutPreset: 'mishkaat',
+    primaryColor: '#9c7c1e',
+    accentColor: '#d4af37',
+    fontHeading: 'Amiri',
+    fontBody: 'Inter',
+  }).run();
+
+  const passwordHash = await hashPassword(PASSWORD);
+  db.insert(schema.admins).values({
+    id: TEST_ADMIN_ID,
+    masjidId: TEST_MASJID_ID,
+    email: 'tester@masjid-test.org',
+    passwordHash,
+    createdAt: new Date().toISOString(),
+  }).run();
+
+  db.insert(schema.navItems).values([
+    { id: 'nav-test-01', masjidId: TEST_MASJID_ID, sortOrder: 0, kind: 'route', routeSegment: 'prayer', label: 'Times', icon: 'Clock' },
+    { id: 'nav-test-02', masjidId: TEST_MASJID_ID, sortOrder: 1, kind: 'route', routeSegment: 'news', label: 'News', icon: 'Newspaper' },
+    { id: 'nav-test-03', masjidId: TEST_MASJID_ID, sortOrder: 2, kind: 'route', routeSegment: 'info', label: 'Info', icon: 'Info' },
+    { id: 'nav-test-04', masjidId: TEST_MASJID_ID, sortOrder: 3, kind: 'route', routeSegment: 'maktab', label: 'Maktab', icon: 'GraduationCap' },
+  ]).run();
+
   console.log(`Seed complete.`);
   console.log(`  Masjid Al-Noor — ${NOOR_SLUG}`);
   console.log(`    Admin: admin@masjid-alnoor.org / ${PASSWORD}`);
@@ -708,6 +765,11 @@ async function seed() {
   console.log(`    http://localhost:5173/api/v1/masjids/${JABAL_SLUG}`);
   console.log(`    http://localhost:5174/display/${JABAL_SLUG}`);
   console.log(`    http://localhost:5175/${JABAL_SLUG}`);
+  console.log(`  Masjid Test — ${TEST_SLUG}`);
+  console.log(`    Admin: tester@masjid-test.org / ${PASSWORD}`);
+  console.log(`    http://localhost:5173/api/v1/masjids/${TEST_SLUG}`);
+  console.log(`    http://localhost:5174/display/${TEST_SLUG}`);
+  console.log(`    http://localhost:5175/${TEST_SLUG}`);
 }
 
 // Exported so tooling/dump-seed-sql.ts can await completion before reading

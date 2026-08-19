@@ -90,4 +90,5 @@ export function targets() {
 
 export const SLUG_A = 'masjid-al-noor'; // local seed: Mishkaat flagship
 export const SLUG_B = 'masjid-al-jabal'; // local seed: Sakeenah, Indo-Pak labels
+export const SLUG_C = 'masjid-test'; // local seed: E2E isolate, never tested by consumer suite
 export const SLUG_UNKNOWN = 'definitely-not-a-masjid';

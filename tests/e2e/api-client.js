@@ -41,7 +41,16 @@ export async function apiLogin(cfg) {
   return session;
 }
 
-export async function rawRequest(cfg, method, path, body, token, attempt = 0) {
+// Login with specific credentials (separate admin, no global-cache pollution).
+export async function apiLoginAs(cfg, email, password) {
+  const r = await rawRequest(cfg, 'POST', '/api/v1/auth/login', { email, password });
+  if (r.status !== 200 || !r.json?.token || !r.json?.admin?.masjid_id) {
+    throw new ApiClientError(`apiLoginAs: login failed (${r.status})`, r.status);
+  }
+  return { token: r.json.token, masjidId: r.json.admin.masjid_id };
+}
+
+async function rawRequest(cfg, method, path, body, token, attempt = 0) {
   try {
     const resp = await fetch(`${cfg.api}${path}`, {
       method,
