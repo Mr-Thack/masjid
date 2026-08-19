@@ -135,13 +135,21 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
 
   try {
     const body = TestIntegrationSchema.parse(await request.json());
+    const db = getDb(platform?.env?.DB);
 
     if (body.provider === 'square') {
       if (!body.square) {
         return ErrorJsonResponse('VALIDATION_ERROR', 'Square config is required');
       }
+
+      let accessToken = body.square.access_token;
+      if (accessToken === MASK) {
+        const integrations = await getMasjidIntegrations(db, params.id);
+        accessToken = integrations.square?.access_token || '';
+      }
+
       const result = await testSquareConnection(
-        body.square.access_token,
+        accessToken,
         body.square.app_id,
         body.square.location_id,
         platform?.env?.ENVIRONMENT,
@@ -153,8 +161,15 @@ export const POST: RequestHandler = async ({ params, request, locals, platform }
       if (!body.brevo) {
         return ErrorJsonResponse('VALIDATION_ERROR', 'Brevo config is required');
       }
+
+      let apiKey = body.brevo.api_key;
+      if (apiKey === MASK) {
+        const integrations = await getMasjidIntegrations(db, params.id);
+        apiKey = integrations.brevo?.api_key || '';
+      }
+
       const result = await testBrevoConnection(
-        body.brevo.api_key,
+        apiKey,
         body.brevo.sender_email,
         body.brevo.sender_name || '',
       );
